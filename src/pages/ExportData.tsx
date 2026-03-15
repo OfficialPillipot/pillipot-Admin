@@ -1,9 +1,10 @@
 import { memo, useMemo, useCallback } from "react";
-import { useStore } from "../context/StoreContext";
+import { useAppSelector } from "../store/hooks";
+import { selectOrders } from "../store/ordersSlice";
 import { Card, CardHeader, Button } from "../components/ui";
 
 function ExportDataPage() {
-  const { orders } = useStore();
+  const orders = useAppSelector(selectOrders);
 
   const uniqueCustomers = useMemo(() => {
     const seen = new Set<string>();

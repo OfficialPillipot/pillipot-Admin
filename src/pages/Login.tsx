@@ -1,13 +1,14 @@
 import { memo, useState, useCallback } from "react";
 import { Navigate, useLocation } from "react-router";
 import { useAuth } from "../context/AuthContext";
-import { useStore } from "../context/StoreContext";
+import { useAppSelector } from "../store/hooks";
+import { selectStaff } from "../store/staffSlice";
 import { MOCK_USERS } from "../data/mockData";
 import { Button, Input, Card } from "../components/ui";
 
 function LoginPage() {
   const { login, isAuthenticated, user } = useAuth();
-  const { staff } = useStore();
+  const staff = useAppSelector(selectStaff);
   const location = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");

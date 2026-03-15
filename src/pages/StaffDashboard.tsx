@@ -1,7 +1,10 @@
 import { memo, useMemo } from "react";
 import { Link } from "react-router";
 import { useAuth } from "../context/AuthContext";
-import { useStore } from "../context/StoreContext";
+import { useAppSelector } from "../store/hooks";
+import { selectOrders } from "../store/ordersSlice";
+import { selectStaff } from "../store/staffSlice";
+import { selectProducts } from "../store/productsSlice";
 import {
   Card,
   CardHeader,
@@ -23,7 +26,9 @@ const todayStart = () => {
 
 function StaffDashboardPage() {
   const { user } = useAuth();
-  const { orders, staff, getProductById } = useStore();
+  const orders = useAppSelector(selectOrders);
+  const staff = useAppSelector(selectStaff);
+  const products = useAppSelector(selectProducts);
 
   const staffId = user?.role === "staff" ? user.staffId : null;
   const staffProfile = useMemo(
@@ -155,7 +160,7 @@ function StaffDashboardPage() {
                     </td>
                     <td className="py-2 pr-4">{o.customerName}</td>
                     <td className="py-2 pr-4">
-                      {getProductById(o.productId)?.name ?? o.productId}
+                      {products.find((p) => p.id === o.productId)?.name ?? o.productId}
                     </td>
                     <td className="py-2">
                       <Badge

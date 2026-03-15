@@ -1,12 +1,19 @@
 import { memo, useMemo, useState, useCallback } from "react";
-import { useStore } from "../context/StoreContext";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { selectOrders } from "../store/ordersSlice";
+import { updateOrder, deleteOrder } from "../store/ordersSlice";
+import { selectStaff } from "../store/staffSlice";
+import { selectProducts } from "../store/productsSlice";
 import { Card, CardHeader, Button, Table, Badge, Modal } from "../components/ui";
+import { toast } from "../lib/toast";
 import type { Order } from "../types";
 import { formatDate } from "../lib/orderUtils";
 
 function AdminOrderManagementPage() {
-  const { orders, staff, products, getProductById, updateOrder, deleteOrder } =
-    useStore();
+  const dispatch = useAppDispatch();
+  const orders = useAppSelector(selectOrders);
+  const staff = useAppSelector(selectStaff);
+  const products = useAppSelector(selectProducts);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [productFilter, setProductFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
@@ -27,21 +34,30 @@ function AdminOrderManagementPage() {
   );
 
   const handleStatusChange = useCallback(
-    (orderId: string, status: Order["status"]) => {
-      updateOrder(orderId, { status });
-      if (status === "cancelled" || status === "delivered") setDetailId(null);
+    async (orderId: string, status: Order["status"]) => {
+      try {
+        await dispatch(updateOrder({ id: orderId, patch: { status } })).unwrap();
+        toast.success(`Order ${status}`);
+        if (status === "cancelled" || status === "delivered") setDetailId(null);
+      } catch {
+        toast.error("Failed to update order");
+      }
     },
-    [updateOrder]
+    [dispatch]
   );
 
   const handleDelete = useCallback(
-    (orderId: string) => {
-      if (window.confirm("Delete this order? This cannot be undone.")) {
-        deleteOrder(orderId);
+    async (orderId: string) => {
+      if (!window.confirm("Delete this order? This cannot be undone.")) return;
+      try {
+        await dispatch(deleteOrder(orderId)).unwrap();
         setDetailId(null);
+        toast.success("Order deleted");
+      } catch {
+        toast.error("Failed to delete order");
       }
     },
-    [deleteOrder]
+    [dispatch]
   );
 
   const productOptions = useMemo(
@@ -85,7 +101,7 @@ function AdminOrderManagementPage() {
       {
         key: "productId",
         header: "Product",
-        render: (row: Order) => getProductById(row.productId)?.name ?? row.productId,
+        render: (row: Order) => products.find((p) => p.id === row.productId)?.name ?? row.productId,
       },
       {
         key: "staffId",
@@ -111,7 +127,7 @@ function AdminOrderManagementPage() {
         ),
       },
     ],
-    [staff, getProductById]
+    [staff, products]
   );
 
   return (
@@ -169,7 +185,7 @@ function AdminOrderManagementPage() {
               </div>
               <div>
                 <dt className="text-text-muted">Product</dt>
-                <dd>{getProductById(orderDetail.productId)?.name}</dd>
+                <dd>{products.find((p) => p.id === orderDetail.productId)?.name}</dd>
               </div>
               <div>
                 <dt className="text-text-muted">Status</dt>

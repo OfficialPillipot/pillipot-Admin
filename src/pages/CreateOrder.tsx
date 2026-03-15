@@ -1,8 +1,11 @@
 import { memo, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../context/AuthContext";
-import { useStore } from "../context/StoreContext";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { selectProducts } from "../store/productsSlice";
+import { createOrder } from "../store/ordersSlice";
 import { Card, CardHeader, Button, Input, Select, Textarea } from "../components/ui";
+import { toast } from "../lib/toast";
 import type { OrderType } from "../types";
 import type { SelectOption } from "../components/ui/Select";
 
@@ -24,8 +27,9 @@ const INITIAL = {
 
 function CreateOrderPage() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const { user } = useAuth();
-  const { products, addOrder } = useStore();
+  const products = useAppSelector(selectProducts);
   const [form, setForm] = useState(INITIAL);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -64,34 +68,39 @@ function CreateOrderPage() {
   }, [form]);
 
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    async (e: React.FormEvent) => {
       e.preventDefault();
       if (!validate() || !user?.staffId) return;
       setSubmitting(true);
       try {
-        const order = addOrder({
-          staffId: user.staffId,
-          customerName: form.customerName.trim(),
-          deliveryAddress: form.deliveryAddress.trim(),
-          phone: form.phone.trim(),
-          pincode: form.pincode.trim(),
-          postOffice: form.postOffice.trim(),
-          email: form.email.trim(),
-          state: form.state.trim(),
-          district: form.district.trim(),
-          orderType: form.orderType as OrderType,
-          productId: form.productId,
-          quantity: Number(form.quantity),
-          sellingAmount: Number(form.sellingAmount),
-          notes: form.notes.trim() || undefined,
-          status: "pending",
-        });
-        navigate(`/orders/${order.id}`);
+        const result = await dispatch(
+          createOrder({
+            staffId: user.staffId!,
+            customerName: form.customerName.trim(),
+            deliveryAddress: form.deliveryAddress.trim(),
+            phone: form.phone.trim(),
+            pincode: form.pincode.trim(),
+            postOffice: form.postOffice.trim(),
+            email: form.email.trim(),
+            state: form.state.trim(),
+            district: form.district.trim(),
+            orderType: form.orderType as OrderType,
+            productId: form.productId,
+            quantity: Number(form.quantity),
+            sellingAmount: Number(form.sellingAmount),
+            notes: form.notes.trim() || undefined,
+            status: "pending",
+          })
+        ).unwrap();
+        toast.success(`Order ${result.orderId} created`);
+        navigate(`/orders/${result.id}`);
+      } catch {
+        toast.error("Failed to create order");
       } finally {
         setSubmitting(false);
       }
     },
-    [form, validate, user?.staffId, addOrder, navigate]
+    [form, validate, user?.staffId, dispatch, navigate]
   );
 
   const update = useCallback((field: string, value: string) => {

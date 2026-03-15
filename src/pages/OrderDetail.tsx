@@ -1,15 +1,16 @@
 import { memo } from "react";
 import { useParams, Link } from "react-router";
-import { useStore } from "../context/StoreContext";
+import { useAppSelector } from "../store/hooks";
+import { selectOrders } from "../store/ordersSlice";
+import { selectProductById } from "../store/productsSlice";
 import { Card, CardHeader, Badge } from "../components/ui";
 import { formatDateTime, formatCurrency } from "../lib/orderUtils";
 
 function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { orders, getProductById } = useStore();
-
+  const orders = useAppSelector(selectOrders);
   const order = orders.find((o) => o.id === id);
-  const product = order ? getProductById(order.productId) : null;
+  const product = useAppSelector((s) => (order ? selectProductById(s, order.productId) : undefined));
 
   if (!order) {
     return (

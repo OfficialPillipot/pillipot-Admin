@@ -1,6 +1,9 @@
 import { memo, useMemo } from "react";
 import { Link } from "react-router";
-import { useStore } from "../context/StoreContext";
+import { useAppSelector } from "../store/hooks";
+import { selectOrders } from "../store/ordersSlice";
+import { selectStaff } from "../store/staffSlice";
+import { selectProducts } from "../store/productsSlice";
 import { Card, CardHeader, Button, Table } from "../components/ui";
 import {
   computeEarningsForStaff,
@@ -10,7 +13,9 @@ import {
 } from "../lib/orderUtils";
 
 function AdminDashboardPage() {
-  const { orders, staff, getProductById } = useStore();
+  const orders = useAppSelector(selectOrders);
+  const staff = useAppSelector(selectStaff);
+  const products = useAppSelector(selectProducts);
 
   const { start: weekStart, end: weekEnd } = useMemo(
     () => getWeekRange(new Date()),
@@ -157,7 +162,7 @@ function AdminDashboardPage() {
             {
               key: "productId",
               header: "Product",
-              render: (o: { productId: string }) => getProductById(o.productId)?.name ?? o.productId,
+              render: (o: { productId: string }) => products.find((p) => p.id === o.productId)?.name ?? o.productId,
             },
             {
               key: "status",

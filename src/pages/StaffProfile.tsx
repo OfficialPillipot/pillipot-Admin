@@ -1,6 +1,9 @@
 import { memo, useMemo, useState } from "react";
 import { useParams, Link } from "react-router";
-import { useStore } from "../context/StoreContext";
+import { useAppSelector } from "../store/hooks";
+import { selectStaff } from "../store/staffSlice";
+import { selectOrders } from "../store/ordersSlice";
+import { selectProducts } from "../store/productsSlice";
 import { Card, CardHeader, Table, Select } from "../components/ui";
 import {
   computeEarningsForStaff,
@@ -12,7 +15,9 @@ import type { SelectOption } from "../components/ui/Select";
 
 function StaffProfilePage() {
   const { id } = useParams<{ id: string }>();
-  const { staff, orders, products, getProductById } = useStore();
+  const staff = useAppSelector(selectStaff);
+  const orders = useAppSelector(selectOrders);
+  const products = useAppSelector(selectProducts);
   const [productFilter, setProductFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
@@ -68,7 +73,7 @@ function StaffProfilePage() {
       {
         key: "productId",
         header: "Product",
-        render: (o: Order) => getProductById(o.productId)?.name ?? o.productId,
+        render: (o: Order) => products.find((p) => p.id === o.productId)?.name ?? o.productId,
       },
       {
         key: "orderType",
@@ -77,7 +82,7 @@ function StaffProfilePage() {
       },
       { key: "status", header: "Status" },
     ],
-    [getProductById]
+    [products]
   );
 
   if (!staffProfile) {

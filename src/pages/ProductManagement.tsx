@@ -1,11 +1,14 @@
 import { memo, useState, useCallback, useMemo } from "react";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { useStore } from "../context/StoreContext";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { selectProducts, createProduct, updateProduct, deleteProduct } from "../store/productsSlice";
 import { Card, CardHeader, Button, Table, Modal, Input, Tooltip } from "../components/ui";
+import { toast } from "../lib/toast";
 import type { Product } from "../types";
 
 function ProductManagementPage() {
-  const { products, addProduct, updateProduct, deleteProduct } = useStore();
+  const dispatch = useAppDispatch();
+  const products = useAppSelector(selectProducts);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -25,24 +28,36 @@ function ProductManagementPage() {
     setModalOpen(true);
   }, []);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!name.trim()) return;
-    if (editingId) {
-      updateProduct(editingId, { name: name.trim(), sku: sku.trim() || undefined });
-    } else {
-      addProduct({ name: name.trim(), sku: sku.trim() || undefined });
+    try {
+      if (editingId) {
+        await dispatch(
+          updateProduct({ id: editingId, patch: { name: name.trim(), sku: sku.trim() || undefined } })
+        ).unwrap();
+        toast.success("Product updated");
+      } else {
+        await dispatch(createProduct({ name: name.trim(), sku: sku.trim() || undefined })).unwrap();
+        toast.success("Product created");
+      }
+      setModalOpen(false);
+    } catch {
+      toast.error("Failed to save product");
     }
-    setModalOpen(false);
-  }, [editingId, name, sku, addProduct, updateProduct]);
+  }, [editingId, name, sku, dispatch]);
 
   const handleDelete = useCallback(
-    (id: string) => {
-      if (window.confirm("Remove this product? It will disappear from dropdowns.")) {
-        deleteProduct(id);
+    async (id: string) => {
+      if (!window.confirm("Remove this product? It will disappear from dropdowns.")) return;
+      try {
+        await dispatch(deleteProduct(id)).unwrap();
         if (editingId === id) setModalOpen(false);
+        toast.success("Product deleted");
+      } catch {
+        toast.error("Failed to delete product");
       }
     },
-    [deleteProduct, editingId]
+    [dispatch, editingId]
   );
 
   const columns = useMemo(

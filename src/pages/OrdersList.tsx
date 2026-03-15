@@ -1,7 +1,9 @@
 import { memo, useMemo, useState, useCallback } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useAuth } from "../context/AuthContext";
-import { useStore } from "../context/StoreContext";
+import { useAppSelector } from "../store/hooks";
+import { selectOrders } from "../store/ordersSlice";
+import { selectProducts } from "../store/productsSlice";
 import { Card, CardHeader, Button, Table, Badge, Select } from "../components/ui";
 import type { Order } from "../types";
 import { formatDate } from "../lib/orderUtils";
@@ -9,7 +11,8 @@ import type { SelectOption } from "../components/ui/Select";
 
 function OrdersListPage() {
   const { user } = useAuth();
-  const { orders, products, getProductById } = useStore();
+  const orders = useAppSelector(selectOrders);
+  const products = useAppSelector(selectProducts);
   const [searchParams, setSearchParams] = useSearchParams();
   const [productFilter, setProductFilter] = useState(
     () => searchParams.get("product") ?? ""
@@ -86,7 +89,7 @@ function OrdersListPage() {
       {
         key: "product",
         header: "Product",
-        render: (row: Order) => getProductById(row.productId)?.name ?? row.productId,
+        render: (row: Order) => products.find((p) => p.id === row.productId)?.name ?? row.productId,
       },
       {
         key: "orderType",
@@ -113,7 +116,7 @@ function OrdersListPage() {
         ),
       },
     ],
-    [staffId, getProductById]
+    [products]
   );
 
   return (
