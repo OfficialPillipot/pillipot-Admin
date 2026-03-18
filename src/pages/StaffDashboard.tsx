@@ -16,6 +16,7 @@ import {
   computeEarningsForStaff,
   getNextMilestone,
   formatCurrency,
+  formatDate,
 } from "../lib/orderUtils";
 
 const todayStart = () => {
@@ -95,12 +96,12 @@ function StaffDashboardPage() {
             {formatCurrency(stats.totalEarnings)}
           </p>
         </Card>
-        <Card>
+        {/* <Card>
           <p className="text-sm text-text-muted">Undelivered Orders</p>
           <p className="mt-1 text-2xl font-semibold text-text-heading">
             {stats.undelivered}
           </p>
-        </Card>
+        </Card> */}
         <Card>
           <p className="text-sm text-text-muted">This Week</p>
           <p className="mt-1 text-2xl font-semibold text-primary">
@@ -138,9 +139,10 @@ function StaffDashboardPage() {
             <thead>
               <tr className="border-b border-border text-text-muted">
                 <th className="pb-2 pr-4">Order ID</th>
+                <th className="pb-2 pr-4">Date</th>
                 <th className="pb-2 pr-4">Customer</th>
                 <th className="pb-2 pr-4">Product</th>
-                <th className="pb-2">Status</th>
+                <th className="pb-2">Type</th>
               </tr>
             </thead>
             <tbody>
@@ -158,22 +160,13 @@ function StaffDashboardPage() {
                         {o.orderId}
                       </Link>
                     </td>
+                    <td className="py-2 pr-4">{formatDate(o.createdAt)}</td>
                     <td className="py-2 pr-4">{o.customerName}</td>
                     <td className="py-2 pr-4">
                       {products.find((p) => p.id === o.productId)?.name ?? o.productId}
                     </td>
                     <td className="py-2">
-                      <Badge
-                        variant={
-                          o.status === "delivered"
-                            ? "success"
-                            : o.status === "cancelled"
-                              ? "error"
-                              : "warning"
-                        }
-                      >
-                        {o.status}
-                      </Badge>
+                      <Badge variant="default">{o.orderType.toUpperCase()}</Badge>
                     </td>
                   </tr>
                 ))}

@@ -9,6 +9,12 @@ import type { Order } from "../types";
 import { formatDate } from "../lib/orderUtils";
 import type { SelectOption } from "../components/ui/Select";
 
+const getTodayStr = () => {
+  const d = new Date();
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
 function OrdersListPage() {
   const { user } = useAuth();
   const orders = useAppSelector(selectOrders);
@@ -20,8 +26,11 @@ function OrdersListPage() {
   const [typeFilter, setTypeFilter] = useState(
     () => searchParams.get("type") ?? ""
   );
-  const [dateFilter, setDateFilter] = useState(
-    () => searchParams.get("date") ?? ""
+  const [fromDate, setFromDate] = useState(
+    () => searchParams.get("from") ?? getTodayStr()
+  );
+  const [toDate, setToDate] = useState(
+    () => searchParams.get("to") ?? getTodayStr()
   );
 
   const staffId = user?.role === "staff" ? user.staffId : null;
@@ -36,14 +45,17 @@ function OrdersListPage() {
     if (typeFilter) {
       list = list.filter((o) => o.orderType === typeFilter);
     }
-    if (dateFilter) {
-      list = list.filter((o) => o.createdAt.startsWith(dateFilter));
+    if (fromDate) {
+      list = list.filter((o) => o.createdAt >= fromDate);
+    }
+    if (toDate) {
+      list = list.filter((o) => o.createdAt <= `${toDate}T23:59:59.999Z`);
     }
     return list.sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-  }, [orders, staffId, productFilter, typeFilter, dateFilter]);
+  }, [orders, staffId, productFilter, typeFilter, fromDate, toDate]);
 
   const productOptions: SelectOption[] = useMemo(
     () => [
@@ -66,9 +78,10 @@ function OrdersListPage() {
     const p = new URLSearchParams();
     if (productFilter) p.set("product", productFilter);
     if (typeFilter) p.set("type", typeFilter);
-    if (dateFilter) p.set("date", dateFilter);
+    if (fromDate) p.set("from", fromDate);
+    if (toDate) p.set("to", toDate);
     setSearchParams(p, { replace: true });
-  }, [productFilter, typeFilter, dateFilter, setSearchParams]);
+  }, [productFilter, typeFilter, fromDate, toDate, setSearchParams]);
 
   const columns = useMemo(
     () => [
@@ -98,23 +111,6 @@ function OrdersListPage() {
           <Badge variant="default">{row.orderType.toUpperCase()}</Badge>
         ),
       },
-      {
-        key: "status",
-        header: "Status",
-        render: (row: Order) => (
-          <Badge
-            variant={
-              row.status === "delivered"
-                ? "success"
-                : row.status === "cancelled"
-                  ? "error"
-                  : "warning"
-            }
-          >
-            {row.status}
-          </Badge>
-        ),
-      },
     ],
     [products]
   );
@@ -133,12 +129,21 @@ function OrdersListPage() {
             )
           }
         />
-        <div className="mb-4 flex flex-wrap gap-3">
+        <div className="mb-4 flex flex-wrap gap-3 items-center">
           <input
             type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
             className="rounded-[var(--radius-md)] border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            title="From Date"
+          />
+          <span className="text-text-muted text-sm font-medium">to</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="rounded-[var(--radius-md)] border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            title="To Date"
           />
           <Select
             options={productOptions}

@@ -27,16 +27,16 @@ interface NavItem {
 
 const STAFF_NAV: NavItem[] = [
   { to: "/", label: "Dashboard", roles: ["staff"], end: true, icon: HomeIcon },
-  { to: "/orders/create", label: "Create Order", roles: ["staff"], icon: DocumentPlusIcon },
-  { to: "/orders", label: "My Orders", roles: ["staff"], icon: ClipboardDocumentListIcon },
+  { to: "/orders/create", label: "Create Order", roles: ["staff"], end: true, icon: DocumentPlusIcon },
+  { to: "/orders", label: "My Orders", roles: ["staff"], end: true, icon: ClipboardDocumentListIcon },
 ];
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin", label: "Dashboard", roles: ["super_admin"], end: true, icon: HomeIcon },
-  { to: "/admin/staff", label: "Staff", roles: ["super_admin"], icon: UsersIcon },
-  { to: "/admin/orders", label: "Orders", roles: ["super_admin"], icon: CubeIcon },
-  { to: "/admin/products", label: "Products", roles: ["super_admin"], icon: Squares2X2Icon },
-  { to: "/admin/export", label: "Export Data", roles: ["super_admin"], icon: ArrowDownTrayIcon },
+  { to: "/admin/staff", label: "Staff", roles: ["super_admin"], end: true, icon: UsersIcon },
+  { to: "/admin/orders", label: "Orders", roles: ["super_admin"], end: true, icon: CubeIcon },
+  { to: "/admin/products", label: "Products", roles: ["super_admin"], end: true, icon: Squares2X2Icon },
+  { to: "/admin/export", label: "Export Data", roles: ["super_admin"], end: true, icon: ArrowDownTrayIcon },
 ];
 
 function getStoredCollapsed(): boolean {
@@ -56,9 +56,11 @@ function setStoredCollapsed(value: boolean) {
 interface SidebarProps {
   role: UserRole;
   onLogout: () => void;
+  mobileOpen?: boolean;
+  setMobileOpen?: (open: boolean) => void;
 }
 
-function SidebarComponent({ role, onLogout }: SidebarProps) {
+function SidebarComponent({ role, onLogout, mobileOpen, setMobileOpen }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(getStoredCollapsed);
 
   const toggleCollapsed = useCallback(() => {
@@ -69,6 +71,10 @@ function SidebarComponent({ role, onLogout }: SidebarProps) {
     });
   }, []);
 
+  const handleMobileNavClick = () => {
+    if (setMobileOpen) setMobileOpen(false);
+  };
+
   const items = role === "super_admin" ? ADMIN_NAV : STAFF_NAV;
   const filtered = items.filter((i) => i.roles.includes(role));
 
@@ -77,51 +83,34 @@ function SidebarComponent({ role, onLogout }: SidebarProps) {
   const linkActive = "bg-sidebar-hover text-sidebar-text-active";
   const linkInactive = "text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-active";
 
-  const renderNavLink = (item: NavItem) => {
-    const content = (
-      <NavLink
-        to={item.to}
-        end={item.end}
-        className={({ isActive }: { isActive: boolean }) =>
-          linkBase + (isActive ? linkActive : linkInactive) + (collapsed ? " w-full justify-center px-2" : "")
-        }
-      >
-        <item.icon className="h-5 w-5 shrink-0" />
-        {!collapsed && <span>{item.label}</span>}
-      </NavLink>
-    );
 
-    if (collapsed) {
-      return (
-        <Tooltip key={item.to} content={item.label} side="right" className="w-full">
-          {content}
-        </Tooltip>
-      );
-    }
-    return <div key={item.to}>{content}</div>;
-  };
 
   return (
     <aside
       className={
-        "flex h-full flex-col bg-sidebar-bg text-sidebar-text transition-[width] duration-200 " +
-        (collapsed ? "w-[4.5rem]" : "w-64 md:w-56 lg:w-64")
+        "flex h-full flex-col bg-sidebar-bg text-sidebar-text transition-all duration-300 z-50 " +
+        "fixed inset-y-0 left-0 transform md:relative md:translate-x-0 " +
+        (mobileOpen ? "translate-x-0 " : "-translate-x-full ") +
+        (collapsed ? "w-64 md:w-[4.5rem] " : "w-64 md:w-56 lg:w-64 ")
       }
     >
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-sidebar-hover px-2">
-        {collapsed ? (
-          <div className="flex w-10 items-center justify-center">
-            <span className="text-lg font-bold text-sidebar-text-active">E</span>
-          </div>
-        ) : (
+        <div className={`flex items-center ${collapsed ? "md:hidden" : ""}`}>
           <span className="truncate px-2 font-semibold text-sidebar-text-active">
             Edenecart Admin
           </span>
+        </div>
+        
+        {collapsed && (
+          <div className="hidden md:flex w-10 items-center justify-center">
+            <span className="text-lg font-bold text-sidebar-text-active">E</span>
+          </div>
         )}
+
         <button
           type="button"
           onClick={toggleCollapsed}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-active focus:outline-none focus:ring-2 focus:ring-sidebar-text-active/50"
+          className="hidden md:flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-active focus:outline-none focus:ring-2 focus:ring-sidebar-text-active/50"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (
@@ -132,24 +121,43 @@ function SidebarComponent({ role, onLogout }: SidebarProps) {
         </button>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
-        {filtered.map(renderNavLink)}
+        {/* Render nav items correctly based on responsive rules. We conditionally show tooltips only on md+ */}
+        {filtered.map((item) => (
+          <div key={item.to}>
+            <NavLink
+              to={item.to}
+              end={item.end}
+              onClick={handleMobileNavClick}
+              title={collapsed ? item.label : undefined} // Fallback title
+              className={({ isActive }: { isActive: boolean }) =>
+                linkBase + 
+                (isActive ? linkActive : linkInactive) + 
+                (collapsed ? " md:justify-center md:px-2" : "")
+              }
+            >
+              <item.icon className="h-5 w-5 shrink-0" />
+              <span className={collapsed ? "block md:hidden" : "block"}>{item.label}</span>
+            </NavLink>
+          </div>
+        ))}
       </nav>
       <div className="border-t border-sidebar-hover p-2">
         {collapsed ? (
-          <Tooltip content="Logout" side="right">
+          <Tooltip content="Logout" side="right" className="hidden md:block">
             <button
               type="button"
-              onClick={onLogout}
-              className="flex w-full items-center justify-center rounded-[var(--radius-md)] p-2 text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-active"
+              onClick={() => { handleMobileNavClick(); onLogout(); }}
+              className="flex w-full items-center md:justify-center rounded-[var(--radius-md)] md:p-2 px-3 py-2 text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-active"
               aria-label="Logout"
             >
-              <ArrowLeftOnRectangleIcon className="h-5 w-5" />
+              <ArrowLeftOnRectangleIcon className="h-5 w-5 shrink-0" />
+              <span className="ml-3 block md:hidden text-sm">Logout</span>
             </button>
           </Tooltip>
         ) : (
           <button
             type="button"
-            onClick={onLogout}
+            onClick={() => { handleMobileNavClick(); onLogout(); }}
             className="flex w-full items-center gap-3 rounded-[var(--radius-md)] px-3 py-2 text-left text-sm text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-active"
           >
             <ArrowLeftOnRectangleIcon className="h-5 w-5 shrink-0" />
@@ -162,3 +170,4 @@ function SidebarComponent({ role, onLogout }: SidebarProps) {
 }
 
 export const Sidebar = memo(SidebarComponent);
+
