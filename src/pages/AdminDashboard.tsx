@@ -104,12 +104,12 @@ function AdminDashboardPage() {
             {totalOrders}
           </p>
         </Card>
-        <Card>
+        {/* <Card>
           <p className="text-sm text-text-muted">Active Staff</p>
           <p className="mt-1 text-2xl font-semibold text-text-heading">
             {staff.filter((s) => s.isActive).length}
           </p>
-        </Card>
+        </Card> */}
         <Card>
           <p className="text-sm text-text-muted">Total Salary (this week)</p>
           <p className="mt-1 text-2xl font-semibold text-earnings">

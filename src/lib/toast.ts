@@ -9,9 +9,7 @@ const defaultOptions: ToastOptions = {
   draggable: true,
 };
 
-/**
- * Reusable toast helpers. Use after create/update/delete (and errors) for consistent UX.
- */
+
 export const toast = {
   success: (message: string, options?: ToastOptions) => {
     toastify.success(message, { ...defaultOptions, ...options });

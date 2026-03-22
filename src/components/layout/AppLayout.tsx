@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { useLocation } from "react-router";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
@@ -43,15 +43,31 @@ function AppLayoutComponent({
   const titles = { ...DEFAULT_TITLES, ...pageTitles };
   const title = getTitle(location.pathname, titles);
   const roleLabel = user.role === "super_admin" ? "Super Admin" : "Staff";
+  
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar role={user.role} onLogout={onLogout} />
+      {/* Mobile Sidebar Backdrop */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/50 transition-opacity md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <Sidebar 
+        role={user.role} 
+        onLogout={onLogout} 
+        mobileOpen={mobileMenuOpen}
+        setMobileOpen={setMobileMenuOpen}
+      />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header
           title={title}
           userDisplayName={user.name}
           userRole={roleLabel}
+          onMenuClick={() => setMobileMenuOpen(true)}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}

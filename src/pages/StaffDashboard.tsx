@@ -16,6 +16,7 @@ import {
   computeEarningsForStaff,
   getNextMilestone,
   formatCurrency,
+  formatDate,
 } from "../lib/orderUtils";
 
 const todayStart = () => {
@@ -89,18 +90,18 @@ function StaffDashboardPage() {
             {stats.todayOrders}
           </p>
         </Card>
-        <Card>
+        {/* <Card>
           <p className="text-sm text-text-muted">Total Earnings</p>
           <p className="mt-1 text-2xl font-semibold text-earnings">
             {formatCurrency(stats.totalEarnings)}
           </p>
-        </Card>
-        <Card>
+        </Card> */}
+        {/* <Card>
           <p className="text-sm text-text-muted">Undelivered Orders</p>
           <p className="mt-1 text-2xl font-semibold text-text-heading">
             {stats.undelivered}
           </p>
-        </Card>
+        </Card> */}
         <Card>
           <p className="text-sm text-text-muted">This Week</p>
           <p className="mt-1 text-2xl font-semibold text-primary">
@@ -111,9 +112,18 @@ function StaffDashboardPage() {
 
       {nextMilestone && (
         <Card title="Bonus Progress">
+          <div className="flex justify-between">
+            <p className="mb-2 text-sm text-text-muted">
+              Orders: {stats.orderCount}
+            </p>
+            <p className="mb-2 text-sm text-text-muted">
+              Today's Earnings: {formatCurrency(stats.totalEarnings)}
+            </p>
+          </div>
           <p className="mb-2 text-sm text-text-muted">
             Reach {nextMilestone.orders} orders for ₹{nextMilestone.bonus} bonus
           </p>
+
           <ProgressBar
             value={stats.orderCount}
             max={nextMilestone.orders}
@@ -138,9 +148,10 @@ function StaffDashboardPage() {
             <thead>
               <tr className="border-b border-border text-text-muted">
                 <th className="pb-2 pr-4">Order ID</th>
+                <th className="pb-2 pr-4">Date</th>
                 <th className="pb-2 pr-4">Customer</th>
                 <th className="pb-2 pr-4">Product</th>
-                <th className="pb-2">Status</th>
+                <th className="pb-2">Type</th>
               </tr>
             </thead>
             <tbody>
@@ -158,22 +169,13 @@ function StaffDashboardPage() {
                         {o.orderId}
                       </Link>
                     </td>
+                    <td className="py-2 pr-4">{formatDate(o.createdAt)}</td>
                     <td className="py-2 pr-4">{o.customerName}</td>
                     <td className="py-2 pr-4">
                       {products.find((p) => p.id === o.productId)?.name ?? o.productId}
                     </td>
                     <td className="py-2">
-                      <Badge
-                        variant={
-                          o.status === "delivered"
-                            ? "success"
-                            : o.status === "cancelled"
-                              ? "error"
-                              : "warning"
-                        }
-                      >
-                        {o.status}
-                      </Badge>
+                      <Badge variant="default">{o.orderType.toUpperCase()}</Badge>
                     </td>
                   </tr>
                 ))}

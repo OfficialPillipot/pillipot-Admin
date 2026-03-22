@@ -1,7 +1,7 @@
 import { memo, useMemo, useState, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { selectOrders } from "../store/ordersSlice";
-import { updateOrder, deleteOrder } from "../store/ordersSlice";
+import { updateOrder } from "../store/ordersSlice";
 import { selectStaff } from "../store/staffSlice";
 import { selectProducts } from "../store/productsSlice";
 import { Card, CardHeader, Button, Table, Badge, Modal } from "../components/ui";
@@ -46,19 +46,7 @@ function AdminOrderManagementPage() {
     [dispatch]
   );
 
-  const handleDelete = useCallback(
-    async (orderId: string) => {
-      if (!window.confirm("Delete this order? This cannot be undone.")) return;
-      try {
-        await dispatch(deleteOrder(orderId)).unwrap();
-        setDetailId(null);
-        toast.success("Order deleted");
-      } catch {
-        toast.error("Failed to delete order");
-      }
-    },
-    [dispatch]
-  );
+
 
   const productOptions = useMemo(
     () => [
@@ -174,55 +162,97 @@ function AdminOrderManagementPage() {
       >
         {orderDetail && (
           <div className="space-y-4">
-            <dl className="grid gap-2 text-sm sm:grid-cols-2">
+            <dl className="grid gap-4 text-sm sm:grid-cols-2">
               <div>
-                <dt className="text-text-muted">Customer</dt>
-                <dd>{orderDetail.customerName}</dd>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Customer Name</dt>
+                <dd className="font-medium">{orderDetail.customerName}</dd>
               </div>
               <div>
-                <dt className="text-text-muted">Phone</dt>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Phone Number</dt>
                 <dd>{orderDetail.phone}</dd>
               </div>
               <div>
-                <dt className="text-text-muted">Product</dt>
-                <dd>{products.find((p) => p.id === orderDetail.productId)?.name}</dd>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Building/Street</dt>
+                <dd>{orderDetail.deliveryAddress}</dd>
               </div>
               <div>
-                <dt className="text-text-muted">Status</dt>
-                <dd>{orderDetail.status}</dd>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Post Office</dt>
+                <dd>{orderDetail.postOffice}</dd>
               </div>
+              <div>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">District</dt>
+                <dd>{orderDetail.district}</dd>
+              </div>
+              <div>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">State</dt>
+                <dd>{orderDetail.state}</dd>
+              </div>
+              <div>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Pincode</dt>
+                <dd>{orderDetail.pincode}</dd>
+              </div>
+              <div>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Product</dt>
+                <dd className="font-medium">{products.find((p) => p.id === orderDetail.productId)?.name || orderDetail.productId}</dd>
+              </div>
+              <div>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Quantity</dt>
+                <dd>{orderDetail.quantity}</dd>
+              </div>
+              <div>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Order Type</dt>
+                <dd><Badge variant="default">{orderDetail.orderType.toUpperCase()}</Badge></dd>
+              </div>
+              <div>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Total Amount</dt>
+                <dd className="font-medium text-earnings">₹{orderDetail.sellingAmount}</dd>
+              </div>
+              <div>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Current Status</dt>
+                <dd className="capitalize">{orderDetail.status}</dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Staff Details</dt>
+                <dd>{staff.find(s => s.id === orderDetail.staffId)?.name || orderDetail.staffId}</dd>
+              </div>
+              {orderDetail.notes && (
+                <div className="sm:col-span-2">
+                  <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Notes</dt>
+                  <dd className="bg-surface-alt p-2 rounded-[var(--radius-sm)] border border-border text-text-muted">
+                    {orderDetail.notes}
+                  </dd>
+                </div>
+              )}
             </dl>
-            <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+            <div className="flex flex-wrap gap-2 border-t border-border mt-4 pt-4 justify-end">
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => handleStatusChange(orderDetail.id, "pending")}
-                disabled={orderDetail.status === "pending"}
+                onClick={() => setDetailId(null)}
               >
-                Pending
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => handleStatusChange(orderDetail.id, "delivered")}
-                disabled={orderDetail.status === "delivered"}
-              >
-                Delivered
+                Close
               </Button>
               <Button
                 variant="danger"
                 size="sm"
-                onClick={() => handleStatusChange(orderDetail.id, "cancelled")}
+                onClick={() => {
+                   handleStatusChange(orderDetail.id, "cancelled");
+                   setDetailId(null);
+                }}
                 disabled={orderDetail.status === "cancelled"}
               >
-                Cancel order
+                Cancel Order
               </Button>
               <Button
-                variant="danger"
+                variant="primary"
                 size="sm"
-                onClick={() => handleDelete(orderDetail.id)}
+                onClick={() => {
+                   handleStatusChange(orderDetail.id, "delivered");
+                   setDetailId(null);
+                }}
+                disabled={orderDetail.status === "delivered"}
               >
-                Delete
+                Dispatch
               </Button>
             </div>
           </div>
