@@ -7,7 +7,6 @@ interface ProgressBarProps {
   showValue?: boolean;
   className?: string;
 }
-
 function ProgressBarComponent({
   value,
   max,
@@ -15,7 +14,7 @@ function ProgressBarComponent({
   showValue = true,
   className = "",
 }: ProgressBarProps) {
-  const pct = max <= 0 ? 0 : Math.min(100, (value / max) * 100);
+  const pct = max <= 0 ? 0 : Math.min(100, (value / max) * 100)
   return (
     <div className={className}>
       {(label || showValue) && (
