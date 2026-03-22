@@ -94,18 +94,12 @@ function SidebarComponent({ role, onLogout, mobileOpen, setMobileOpen }: Sidebar
         (collapsed ? "w-64 md:w-[4.5rem] " : "w-64 md:w-56 lg:w-64 ")
       }
     >
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-sidebar-hover px-2">
+      <div className={`flex h-14 shrink-0 items-center ${collapsed ? "md:justify-center justify-between" : "justify-between"} border-b border-sidebar-hover px-2`}>
         <div className={`flex items-center ${collapsed ? "md:hidden" : ""}`}>
           <span className="truncate px-2 font-semibold text-sidebar-text-active">
             Edenecart Admin
           </span>
         </div>
-        
-        {collapsed && (
-          <div className="hidden md:flex w-10 items-center justify-center">
-            <span className="text-lg font-bold text-sidebar-text-active">E</span>
-          </div>
-        )}
 
         <button
           type="button"
