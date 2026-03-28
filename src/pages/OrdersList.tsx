@@ -111,6 +111,31 @@ function OrdersListPage() {
           <Badge variant="default">{row.orderType.toUpperCase()}</Badge>
         ),
       },
+      {
+        key: "discountAmount",
+        header: "Discount",
+        render: (row: Order) =>
+          row.discountAmount != null && row.discountAmount > 0
+            ? `₹${Number(row.discountAmount).toFixed(2)}`
+            : "—",
+      },
+      {
+        key: "sellingAmount",
+        header: "Total",
+        render: (row: Order) => `₹${Number(row.sellingAmount).toFixed(2)}`,
+      },
+      {
+        key: "trackingId",
+        header: "Tracking ID",
+        render: (row: Order) => {
+          const t = row.trackingId?.trim();
+          return t ? (
+            <span className="font-mono text-xs">{t}</span>
+          ) : (
+            "—"
+          );
+        },
+      },
     ],
     [products]
   );

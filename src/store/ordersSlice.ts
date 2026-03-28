@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import type { Order } from "../types";
+import type { CreateOrderPayload, Order } from "../types";
 import { api } from "../api/client";
 import { endpoints } from "../api/endpoints";
 
@@ -26,7 +26,7 @@ export const fetchOrders = createAsyncThunk(
 
 export const createOrder = createAsyncThunk(
   "orders/create",
-  async (payload: Omit<Order, "id" | "orderId" | "createdAt">, { rejectWithValue }) => {
+  async (payload: CreateOrderPayload, { rejectWithValue }) => {
     try {
       return await api.post<Order>(endpoints.orders, payload);
     } catch (e) {

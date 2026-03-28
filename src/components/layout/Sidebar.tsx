@@ -7,11 +7,14 @@ import {
   UsersIcon,
   CubeIcon,
   Squares2X2Icon,
+  TagIcon,
   ArrowDownTrayIcon,
   ArrowLeftOnRectangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   KeyIcon,
+  UserCircleIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { Tooltip } from "../ui";
 import type { UserRole } from "../../types";
@@ -30,6 +33,7 @@ const STAFF_NAV: NavItem[] = [
   { to: "/", label: "Dashboard", roles: ["staff"], end: true, icon: HomeIcon },
   { to: "/orders/create", label: "Create Order", roles: ["staff"], end: true, icon: DocumentPlusIcon },
   { to: "/orders", label: "My Orders", roles: ["staff"], end: true, icon: ClipboardDocumentListIcon },
+  { to: "/profile", label: "Profile", roles: ["staff"], end: true, icon: UserCircleIcon },
   { to: "/account/password", label: "Change password", roles: ["staff"], end: true, icon: KeyIcon },
 ];
 
@@ -37,6 +41,8 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/admin", label: "Dashboard", roles: ["super_admin"], end: true, icon: HomeIcon },
   { to: "/admin/staff", label: "Staff", roles: ["super_admin"], end: true, icon: UsersIcon },
   { to: "/admin/orders", label: "Orders", roles: ["super_admin"], end: true, icon: CubeIcon },
+  { to: "/admin/customers", label: "Customers", roles: ["super_admin"], end: true, icon: UserGroupIcon },
+  { to: "/admin/categories", label: "Categories", roles: ["super_admin"], end: true, icon: TagIcon },
   { to: "/admin/products", label: "Products", roles: ["super_admin"], end: true, icon: Squares2X2Icon },
   { to: "/admin/export", label: "Export Data", roles: ["super_admin"], end: true, icon: ArrowDownTrayIcon },
   { to: "/account/password", label: "Change password", roles: ["super_admin"], end: true, icon: KeyIcon },
@@ -53,7 +59,9 @@ function getStoredCollapsed(): boolean {
 function setStoredCollapsed(value: boolean) {
   try {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, value ? "true" : "false");
-  } catch {}
+  } catch {
+    /* storage unavailable */
+  }
 }
 
 interface SidebarProps {
@@ -82,7 +90,7 @@ function SidebarComponent({ role, onLogout, mobileOpen, setMobileOpen }: Sidebar
   const filtered = items.filter((i) => i.roles.includes(role));
 
   const linkBase =
-    "flex items-center gap-3 rounded-[var(--radius-md)] px-3 py-2 text-sm font-medium transition-colors ";
+    "flex min-h-11 items-center gap-3 rounded-[var(--radius-md)] px-3 py-2 text-sm font-medium transition-colors md:min-h-0 md:py-2 ";
   const linkActive = "bg-sidebar-hover text-sidebar-text-active";
   const linkInactive = "text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-active";
 
@@ -91,13 +99,16 @@ function SidebarComponent({ role, onLogout, mobileOpen, setMobileOpen }: Sidebar
   return (
     <aside
       className={
-        "flex h-full flex-col bg-sidebar-bg text-sidebar-text transition-all duration-300 z-50 " +
-        "fixed inset-y-0 left-0 transform md:relative md:translate-x-0 " +
+        "flex h-full flex-col bg-sidebar-bg text-sidebar-text transition-[transform,width] duration-300 ease-out z-50 " +
+        "max-md:shadow-[4px_0_24px_rgba(15,23,42,0.12)] " +
+        "fixed inset-y-0 left-0 transform md:relative md:translate-x-0 md:shadow-none " +
         (mobileOpen ? "translate-x-0 " : "-translate-x-full ") +
-        (collapsed ? "w-64 md:w-[4.5rem] " : "w-64 md:w-56 lg:w-64 ")
+        (collapsed ? "w-[min(16rem,85vw)] md:w-[4.5rem] " : "w-[min(16rem,85vw)] md:w-56 lg:w-64 ")
       }
     >
-      <div className={`flex h-14 shrink-0 items-center ${collapsed ? "md:justify-center justify-between" : "justify-between"} border-b border-sidebar-hover px-2`}>
+      <div
+        className={`flex h-14 shrink-0 items-center border-b border-sidebar-hover px-2 pl-[max(0.5rem,env(safe-area-inset-left))] ${collapsed ? "md:justify-center justify-between" : "justify-between"}`}
+      >
         <div className={`flex items-center ${collapsed ? "md:hidden" : ""}`}>
           <span className="truncate px-2 font-semibold text-sidebar-text-active">
             Edenecart Admin
@@ -117,7 +128,7 @@ function SidebarComponent({ role, onLogout, mobileOpen, setMobileOpen }: Sidebar
           )}
         </button>
       </div>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {/* Render nav items correctly based on responsive rules. We conditionally show tooltips only on md+ */}
         {filtered.map((item) => (
           <div key={item.to}>
@@ -138,7 +149,7 @@ function SidebarComponent({ role, onLogout, mobileOpen, setMobileOpen }: Sidebar
           </div>
         ))}
       </nav>
-      <div className="border-t border-sidebar-hover p-2">
+      <div className="border-t border-sidebar-hover p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {collapsed ? (
           <Tooltip content="Logout" side="right" className="hidden md:block">
             <button

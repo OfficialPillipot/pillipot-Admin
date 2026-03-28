@@ -26,7 +26,12 @@ export function computeEarningsForStaff(
   options?: { weekOnly?: boolean }
 ): { orderEarnings: number; bonus: number; total: number; orderCount: number } {
   const { weekOnly } = options ?? {};
-  let list = orders.filter((o) => o.staffId === staff.id && o.status !== "cancelled");
+  let list = orders.filter(
+    (o) =>
+      o.staffId === staff.id &&
+      o.status !== "cancelled" &&
+      o.status !== "returned"
+  );
   if (weekOnly) {
     const { start, end } = getWeekRange(new Date());
     list = list.filter((o) => isInWeek(o.createdAt, start, end));

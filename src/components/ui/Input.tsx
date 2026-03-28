@@ -23,7 +23,7 @@ const InputComponent = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={[
-            "w-full rounded-[var(--radius-md)] border bg-surface px-3 py-2 text-text shadow-[var(--shadow-card)] transition-colors placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary",
+            "min-h-10 w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text transition-colors placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-0 sm:min-h-0",
             error
               ? "border-error focus:ring-error"
               : "border-border focus:border-primary",

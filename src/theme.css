@@ -11,7 +11,7 @@
 
   /* Surface & background */
   --color-surface: #ffffff;
-  --color-surface-alt: #f8fafc;
+  --color-surface-alt: #f1f5f9;
   --color-surface-elevated: #ffffff;
   --color-border: #e2e8f0;
   --color-border-strong: #cbd5e1;
@@ -54,6 +54,8 @@
   --radius-xl: 1rem;
 
   /* Shadows */
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
-  --shadow-dropdown: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.08);
+  --shadow-card-lg: 0 4px 6px -1px rgb(15 23 42 / 0.06), 0 2px 4px -2px rgb(15 23 42 / 0.05);
+  --shadow-dropdown: 0 20px 25px -5px rgb(15 23 42 / 0.1), 0 8px 10px -6px rgb(15 23 42 / 0.08);
+  --shadow-header: 0 1px 0 0 rgb(15 23 42 / 0.06);
 }

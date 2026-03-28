@@ -2,12 +2,31 @@ export type UserRole = "super_admin" | "staff";
 
 export type OrderType = "cod" | "prepaid";
 
-export type OrderStatus = "pending" | "delivered" | "cancelled";
+export type OrderStatus =
+  | "pending"
+  | "dispatch"
+  | "delivered"
+  | "cancelled"
+  | "returned";
+
+export interface Category {
+  id: string;
+  name: string;
+  description?: string;
+}
 
 export interface Product {
   id: string;
+  /** Business id e.g. PRD-1001 */
+  productCode?: string;
   name: string;
+  categoryId?: string;
+  categoryName?: string;
   sku?: string;
+  price: number;
+  stockQuantity: number;
+  size?: string;
+  color?: string;
 }
 
 export interface Staff {
@@ -17,6 +36,8 @@ export interface Staff {
   phone: string;
   joinedDate: string;
   isActive: boolean;
+  /** Job type: sales, packing, etc. (login role remains “staff”) */
+  jobRole: string;
   avatar?: string;
   /** Payout per order (e.g. 30) */
   payoutPerOrder: number;
@@ -27,12 +48,33 @@ export interface Staff {
    * Admin UI shows "Staff changed" when null.
    */
   temporaryPassword: string | null;
+  /** From GET /staff when a forgot-password (or dashboard) reset is waiting for admin. */
+  pendingPasswordResetRequest?: {
+    id: string;
+    createdAt: string;
+  } | null;
+}
+
+export interface Customer {
+  id: string;
+  customerName: string;
+  deliveryAddress: string;
+  phone: string;
+  pincode: string;
+  postOffice: string;
+  email: string;
+  state: string;
+  district: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Order {
   id: string;
   orderId: string; // display ID e.g. ORD-001
   staffId: string;
+  /** Set when order was created after customers feature (links to customers table). */
+  customerId?: string | null;
   customerName: string;
   deliveryAddress: string;
   phone: string;
@@ -45,11 +87,23 @@ export interface Order {
   productId: string;
   quantity: number;
   sellingAmount: number;
+  /** Line discount in ₹; omitted or null when none */
+  discountAmount?: number | null;
   notes?: string;
   status: OrderStatus;
+  /** Courier / shipment tracking reference when set */
+  trackingId?: string | null;
   createdAt: string; // ISO date
   updatedAt?: string;
 }
+
+/** Payload for POST /orders; total is computed from product price on the server. */
+export type CreateOrderPayload = Omit<
+  Order,
+  "id" | "orderId" | "createdAt" | "sellingAmount" | "discountAmount"
+> & {
+  discountAmount?: number;
+};
 
 export interface User {
   id: string;

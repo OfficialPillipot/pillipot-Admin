@@ -44,7 +44,7 @@ function ButtonComponent({
       type="button"
       disabled={disabled || loading}
       className={[
-        "inline-flex items-center justify-center font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none",
+        "inline-flex touch-manipulation items-center justify-center font-medium transition-colors active:transition-none disabled:opacity-50 disabled:pointer-events-none",
         variantClasses[variant],
         sizeClasses[size],
         fullWidth ? "w-full" : "",

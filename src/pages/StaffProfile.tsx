@@ -1,10 +1,12 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router";
-import { useAppSelector } from "../store/hooks";
-import { selectStaff } from "../store/staffSlice";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { selectStaff, updateStaff } from "../store/staffSlice";
 import { selectOrders } from "../store/ordersSlice";
 import { selectProducts } from "../store/productsSlice";
-import { Card, CardHeader, Table, Select } from "../components/ui";
+import { Card, CardHeader, Table, Select, Button } from "../components/ui";
+import { STAFF_JOB_ROLE_OPTIONS, staffJobRoleLabel } from "../lib/staffJobRoles";
+import { toast } from "../lib/toast";
 import {
   computeEarningsForStaff,
   formatDate,
@@ -15,17 +17,39 @@ import type { SelectOption } from "../components/ui/Select";
 
 function StaffProfilePage() {
   const { id } = useParams<{ id: string }>();
+  const dispatch = useAppDispatch();
   const staff = useAppSelector(selectStaff);
   const orders = useAppSelector(selectOrders);
   const products = useAppSelector(selectProducts);
   const [productFilter, setProductFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [jobRoleDraft, setJobRoleDraft] = useState("sales");
+  const [jobRoleSaving, setJobRoleSaving] = useState(false);
 
   const staffProfile = useMemo(
     () => staff.find((s) => s.id === id),
     [staff, id]
   );
+
+  useEffect(() => {
+    if (staffProfile) setJobRoleDraft(staffProfile.jobRole || "sales");
+  }, [staffProfile?.id, staffProfile?.jobRole]);
+
+  const saveJobRole = useCallback(async () => {
+    if (!staffProfile || !id) return;
+    setJobRoleSaving(true);
+    try {
+      await dispatch(
+        updateStaff({ id, patch: { jobRole: jobRoleDraft } })
+      ).unwrap();
+      toast.success("Job type updated");
+    } catch {
+      toast.error("Failed to update job type");
+    } finally {
+      setJobRoleSaving(false);
+    }
+  }, [dispatch, id, staffProfile, jobRoleDraft]);
 
   const staffOrders = useMemo(() => {
     if (!id) return [];
@@ -80,6 +104,19 @@ function StaffProfilePage() {
         header: "Type",
         render: (o: Order) => o.orderType.toUpperCase(),
       },
+      {
+        key: "discountAmount",
+        header: "Discount",
+        render: (o: Order) =>
+          o.discountAmount != null && o.discountAmount > 0
+            ? `₹${Number(o.discountAmount).toFixed(2)}`
+            : "—",
+      },
+      {
+        key: "sellingAmount",
+        header: "Total",
+        render: (o: Order) => `₹${Number(o.sellingAmount).toFixed(2)}`,
+      },
       { key: "status", header: "Status" },
     ],
     [products]
@@ -113,6 +150,32 @@ function StaffProfilePage() {
           <div>
             <dt className="text-sm text-text-muted">Phone</dt>
             <dd className="font-medium">{staffProfile.phone || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-text-muted">Job type</dt>
+            <dd className="font-medium">{staffJobRoleLabel(staffProfile.jobRole)}</dd>
+          </div>
+          <div className="sm:col-span-3">
+            <dt className="text-sm text-text-muted">Change job type</dt>
+            <dd className="mt-2 flex flex-wrap items-end gap-2">
+              <div className="min-w-[12rem] flex-1">
+                <Select
+                  label=""
+                  options={STAFF_JOB_ROLE_OPTIONS}
+                  value={jobRoleDraft}
+                  onChange={(e) => setJobRoleDraft(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                loading={jobRoleSaving}
+                onClick={() => void saveJobRole()}
+              >
+                Save
+              </Button>
+            </dd>
           </div>
           <div>
             <dt className="text-sm text-text-muted">Total orders</dt>

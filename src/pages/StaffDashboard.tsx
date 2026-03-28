@@ -1,9 +1,8 @@
 import { memo, useMemo } from "react";
 import { Link } from "react-router";
-import { useAuth } from "../context/AuthContext";
 import { useAppSelector } from "../store/hooks";
 import { selectOrders } from "../store/ordersSlice";
-import { selectStaff } from "../store/staffSlice";
+import { selectStaffMe, selectStaffMeLoading } from "../store/staffSlice";
 import { selectProducts } from "../store/productsSlice";
 import {
   Card,
@@ -26,24 +25,22 @@ const todayStart = () => {
 };
 
 function StaffDashboardPage() {
-  const { user } = useAuth();
   const orders = useAppSelector(selectOrders);
-  const staff = useAppSelector(selectStaff);
+  const staffProfile = useAppSelector(selectStaffMe);
+  const meLoading = useAppSelector(selectStaffMeLoading);
   const products = useAppSelector(selectProducts);
 
-  const staffId = user?.role === "staff" ? user.staffId : null;
-  const staffProfile = useMemo(
-    () => (staffId ? staff.find((s) => s.id === staffId) : null),
-    [staffId, staff]
-  );
+  const staffId = staffProfile?.id ?? null;
 
   const stats = useMemo(() => {
-    if (!staffProfile) return null;
+    if (!staffProfile || !staffId) return null;
     const todayOrders = orders.filter(
       (o) => o.staffId === staffId && o.createdAt >= todayStart()
     ).length;
     const undelivered = orders.filter(
-      (o) => o.staffId === staffId && o.status === "pending"
+      (o) =>
+        o.staffId === staffId &&
+        (o.status === "pending" || o.status === "dispatch")
     ).length;
     const { total, orderCount } = computeEarningsForStaff(orders, staffProfile);
     const weekly = computeEarningsForStaff(orders, staffProfile, {
@@ -63,10 +60,14 @@ function StaffDashboardPage() {
     return getNextMilestone(staffProfile, stats.orderCount);
   }, [staffProfile, stats]);
 
+  if (meLoading) {
+    return <div className="text-text-muted">Loading…</div>;
+  }
+
   if (!staffProfile || !stats) {
     return (
       <div className="text-text-muted">
-        Staff profile not found. Please contact admin.
+        Could not load your profile. Please contact admin.
       </div>
     );
   }
@@ -90,18 +91,6 @@ function StaffDashboardPage() {
             {stats.todayOrders}
           </p>
         </Card>
-        {/* <Card>
-          <p className="text-sm text-text-muted">Total Earnings</p>
-          <p className="mt-1 text-2xl font-semibold text-earnings">
-            {formatCurrency(stats.totalEarnings)}
-          </p>
-        </Card> */}
-        {/* <Card>
-          <p className="text-sm text-text-muted">Undelivered Orders</p>
-          <p className="mt-1 text-2xl font-semibold text-text-heading">
-            {stats.undelivered}
-          </p>
-        </Card> */}
         <Card>
           <p className="text-sm text-text-muted">This Week</p>
           <p className="mt-1 text-2xl font-semibold text-primary">
@@ -111,13 +100,14 @@ function StaffDashboardPage() {
       </div>
 
       {nextMilestone && (
-        <Card title="Bonus Progress">
+        <Card>
+          <CardHeader title="Bonus Progress" />
           <div className="flex justify-between">
             <p className="mb-2 text-sm text-text-muted">
               Orders: {stats.orderCount}
             </p>
             <p className="mb-2 text-sm text-text-muted">
-              Today's Earnings: {formatCurrency(stats.totalEarnings)}
+              Today&apos;s Earnings: {formatCurrency(stats.totalEarnings)}
             </p>
           </div>
           <p className="mb-2 text-sm text-text-muted">
@@ -151,7 +141,8 @@ function StaffDashboardPage() {
                 <th className="pb-2 pr-4">Date</th>
                 <th className="pb-2 pr-4">Customer</th>
                 <th className="pb-2 pr-4">Product</th>
-                <th className="pb-2">Type</th>
+                <th className="pb-2 pr-4">Type</th>
+                <th className="pb-2">Tracking ID</th>
               </tr>
             </thead>
             <tbody>
@@ -174,8 +165,11 @@ function StaffDashboardPage() {
                     <td className="py-2 pr-4">
                       {products.find((p) => p.id === o.productId)?.name ?? o.productId}
                     </td>
-                    <td className="py-2">
+                    <td className="py-2 pr-4">
                       <Badge variant="default">{o.orderType.toUpperCase()}</Badge>
+                    </td>
+                    <td className="py-2 font-mono text-xs">
+                      {o.trackingId?.trim() ?? "—"}
                     </td>
                   </tr>
                 ))}

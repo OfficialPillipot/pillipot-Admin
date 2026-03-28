@@ -1,7 +1,10 @@
 import { memo, useState, useCallback } from "react";
 import { Navigate, useLocation } from "react-router";
 import { useAuth } from "../context/AuthContext";
-import { Button, Input, Card } from "../components/ui";
+import { Button, Input, Card, Modal } from "../components/ui";
+import { api } from "../api/client";
+import { endpoints } from "../api/endpoints";
+import { toast } from "../lib/toast";
 
 function LoginPage() {
   const { login, isAuthenticated, user } = useAuth();
@@ -10,6 +13,10 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotUsername, setForgotUsername] = useState("");
+  const [forgotError, setForgotError] = useState("");
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? "/";
 
@@ -31,6 +38,41 @@ function LoginPage() {
     [login, username, password]
   );
 
+  const handleForgotOpen = useCallback(() => {
+    setForgotUsername(username.trim());
+    setForgotError("");
+    setForgotOpen(true);
+  }, [username]);
+
+  const handleForgotSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setForgotError("");
+      const trimmed = forgotUsername.trim().toLowerCase();
+      if (!trimmed) {
+        setForgotError("Enter your username");
+        return;
+      }
+      setForgotSubmitting(true);
+      try {
+        const res = await api.post<{ message: string }>(
+          endpoints.authForgotPassword,
+          { username: trimmed }
+        );
+        toast.success(res.message);
+        setForgotOpen(false);
+        setForgotUsername("");
+      } catch (err) {
+        setForgotError(
+          err instanceof Error ? err.message : "Something went wrong"
+        );
+      } finally {
+        setForgotSubmitting(false);
+      }
+    },
+    [forgotUsername]
+  );
+
   if (isAuthenticated && user) {
     if (user.mustChangePassword) {
       return <Navigate to="/account/password" replace state={{ from: location }} />;
@@ -40,14 +82,17 @@ function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-alt p-4">
-      <Card className="w-full max-w-md" padding="lg">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-semibold text-text-heading">
-            Edenecart Order Management
+    <div className="flex min-h-[100dvh] items-center justify-center bg-gradient-to-br from-slate-100 via-surface-alt to-primary-muted/40 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] sm:p-6">
+      <Card className="w-full max-w-md shadow-[var(--shadow-card-lg)]" padding="lg">
+        <div className="mb-8 text-center">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            Edenecart
+          </p>
+          <h1 className="mt-2 text-xl font-semibold tracking-tight text-text-heading sm:text-2xl">
+            Order management
           </h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Sign in to continue
+          <p className="mt-2 text-sm text-text-muted">
+            Sign in to your account
           </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -70,14 +115,71 @@ function LoginPage() {
           {error && (
             <p className="text-sm text-error">{error}</p>
           )}
-          <Button type="submit" fullWidth size="lg" loading={submitting}>
-            Sign in
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+            <Button
+              type="submit"
+              size="lg"
+              loading={submitting}
+              className="sm:flex-1"
+            >
+              Sign in
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              className="sm:flex-1"
+              onClick={handleForgotOpen}
+            >
+              Forgot password
+            </Button>
+          </div>
         </form>
-        <p className="mt-4 text-center text-xs text-text-muted">
+        <p className="mt-6 text-pretty text-center text-xs leading-relaxed text-text-muted">
           Use the account created by your admin. First-time staff: use the temporary password, then change it when prompted.
+          Forgot password uses your username; an admin will see the request in Staff Management. If you are already signed in, you can also use Profile → Request password reset.
         </p>
       </Card>
+
+      <Modal
+        isOpen={forgotOpen}
+        onClose={() => {
+          if (!forgotSubmitting) setForgotOpen(false);
+        }}
+        title="Forgot password"
+        size="sm"
+      >
+        <form onSubmit={handleForgotSubmit} className="space-y-4">
+          <p className="text-sm text-text-muted">
+            Enter your staff username. If it matches an active account, a reset request is
+            sent to your administrator.
+          </p>
+          <Input
+            label="Username"
+            value={forgotUsername}
+            onChange={(e) => setForgotUsername(e.target.value)}
+            placeholder="Your username"
+            autoComplete="username"
+            autoFocus
+          />
+          {forgotError && (
+            <p className="text-sm text-error">{forgotError}</p>
+          )}
+          <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={forgotSubmitting}
+              onClick={() => setForgotOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" loading={forgotSubmitting}>
+              OK
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

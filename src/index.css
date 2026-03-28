@@ -11,15 +11,19 @@ html {
   font-family: var(--font-sans-app);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   color: var(--color-text);
   background-color: var(--color-surface-alt);
+  line-height: 1.5;
 }
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
 }

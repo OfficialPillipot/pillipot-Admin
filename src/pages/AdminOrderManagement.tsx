@@ -1,15 +1,34 @@
-import { memo, useMemo, useState, useCallback } from "react";
+import {
+  memo,
+  useMemo,
+  useState,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { selectOrders } from "../store/ordersSlice";
 import { fetchOrders, updateOrder } from "../store/ordersSlice";
 import { selectStaff } from "../store/staffSlice";
-import { selectProducts } from "../store/productsSlice";
+import { selectProducts, fetchProducts } from "../store/productsSlice";
 import { Card, CardHeader, Button, Table, Badge, Modal } from "../components/ui";
 import { toast } from "../lib/toast";
 import { downloadOrderPdf } from "../lib/download-order-pdf";
 import type { Order } from "../types";
 import { formatDate } from "../lib/orderUtils";
+
+function safeMoney(v: unknown): number {
+  if (v == null) return 0;
+  const n = typeof v === "number" ? v : parseFloat(String(v));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function discountDisplay(v: unknown): string | null {
+  const n = safeMoney(v);
+  return n > 0 ? `₹${n.toFixed(2)}` : null;
+}
 
 function AdminOrderManagementPage() {
   const dispatch = useAppDispatch();
@@ -18,6 +37,8 @@ function AdminOrderManagementPage() {
   const products = useAppSelector(selectProducts);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [productFilter, setProductFilter] = useState("");
+  const [staffFilter, setStaffFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -25,6 +46,16 @@ function AdminOrderManagementPage() {
   const [appliedDateTo, setAppliedDateTo] = useState("");
   const [filtersLoading, setFiltersLoading] = useState(false);
   const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
+  const [discountDraft, setDiscountDraft] = useState("");
+  const [savingDiscount, setSavingDiscount] = useState(false);
+  const [trackingDraft, setTrackingDraft] = useState("");
+  const [dispatching, setDispatching] = useState(false);
+  const [markingPacked, setMarkingPacked] = useState(false);
+  const [returning, setReturning] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const selectAllHeaderRef = useRef<HTMLInputElement>(null);
+  const ordersRef = useRef(orders);
+  ordersRef.current = orders;
 
   const filteredOrders = useMemo(() => {
     let list = [...orders].sort(
@@ -32,21 +63,187 @@ function AdminOrderManagementPage() {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
     if (productFilter) list = list.filter((o) => o.productId === productFilter);
+    if (staffFilter) list = list.filter((o) => o.staffId === staffFilter);
+    if (statusFilter) list = list.filter((o) => o.status === statusFilter);
     if (typeFilter) list = list.filter((o) => o.orderType === typeFilter);
     return list;
-  }, [orders, productFilter, typeFilter]);
+  }, [orders, productFilter, staffFilter, statusFilter, typeFilter]);
+
+  const allVisibleSelected =
+    filteredOrders.length > 0 &&
+    filteredOrders.every((o) => selectedIds.has(o.id));
+  const someVisibleSelected = filteredOrders.some((o) => selectedIds.has(o.id));
+
+  useLayoutEffect(() => {
+    const el = selectAllHeaderRef.current;
+    if (!el) return;
+    el.indeterminate = someVisibleSelected && !allVisibleSelected;
+  }, [someVisibleSelected, allVisibleSelected]);
+
+  const toggleRowSelected = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAllVisibleSelected = useCallback(() => {
+    const ids = filteredOrders.map((o) => o.id);
+    setSelectedIds((prev) => {
+      const allOn = ids.length > 0 && ids.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allOn) ids.forEach((id) => next.delete(id));
+      else ids.forEach((id) => next.add(id));
+      return next;
+    });
+  }, [filteredOrders]);
+
+  const clearRowSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
 
   const orderDetail = useMemo(
     () => (detailId ? orders.find((o) => o.id === detailId) : null),
     [orders, detailId]
   );
 
+  /** Only when switching orders — do not depend on `orders` or the draft resets on every list refresh while typing. */
+  useEffect(() => {
+    if (!detailId) {
+      setDiscountDraft("");
+      return;
+    }
+    const o = ordersRef.current.find((x) => x.id === detailId);
+    if (!o) return;
+    const d = o.discountAmount;
+    setDiscountDraft(d != null && safeMoney(d) > 0 ? String(safeMoney(d)) : "");
+  }, [detailId]);
+
+  useEffect(() => {
+    if (!detailId) {
+      setTrackingDraft("");
+      return;
+    }
+    const o = ordersRef.current.find((x) => x.id === detailId);
+    if (!o) return;
+    const t = (o.trackingId ?? "").trim();
+    setTrackingDraft(t);
+  }, [detailId]);
+
+  const persistTrackingFromBlur = useCallback(async () => {
+    if (!detailId) return;
+    const o = ordersRef.current.find((x) => x.id === detailId);
+    if (!o || (o.status !== "pending" && o.status !== "dispatch")) return;
+    const localT = trackingDraft.trim();
+    const serverT = (o.trackingId ?? "").trim();
+    if (localT === serverT) return;
+    try {
+      await dispatch(
+        updateOrder({
+          id: detailId,
+          patch: { trackingId: localT || null },
+        })
+      ).unwrap();
+    } catch {
+      toast.error("Failed to save tracking ID");
+    }
+  }, [detailId, trackingDraft, dispatch]);
+
+  const markPacked = useCallback(async () => {
+    if (!orderDetail || orderDetail.status !== "pending") return;
+    setMarkingPacked(true);
+    try {
+      await dispatch(
+        updateOrder({ id: orderDetail.id, patch: { status: "dispatch" } })
+      ).unwrap();
+      toast.success("Order moved to dispatch");
+    } catch {
+      toast.error("Failed to update status");
+    } finally {
+      setMarkingPacked(false);
+    }
+  }, [orderDetail, dispatch]);
+
+  const confirmDispatch = useCallback(async () => {
+    if (!orderDetail || orderDetail.status !== "dispatch") return;
+    const tid = trackingDraft.trim();
+    if (!tid) {
+      toast.error("Enter a tracking ID");
+      return;
+    }
+    setDispatching(true);
+    try {
+      await dispatch(
+        updateOrder({
+          id: orderDetail.id,
+          patch: { status: "delivered", trackingId: tid },
+        })
+      ).unwrap();
+      toast.success("Order marked delivered");
+      setDetailId(null);
+    } catch {
+      toast.error("Failed to update order");
+    } finally {
+      setDispatching(false);
+    }
+  }, [orderDetail, trackingDraft, dispatch]);
+
+  const handleReturn = useCallback(async () => {
+    if (!orderDetail || orderDetail.status !== "delivered") return;
+    setReturning(true);
+    try {
+      await dispatch(
+        updateOrder({ id: orderDetail.id, patch: { status: "returned" } })
+      ).unwrap();
+      setDetailId(null);
+      toast.success("Return recorded — stock restocked");
+      void dispatch(fetchProducts());
+    } catch {
+      toast.error("Failed to process return");
+    } finally {
+      setReturning(false);
+    }
+  }, [orderDetail, dispatch]);
+
+  const saveDiscount = useCallback(async () => {
+    if (!orderDetail) return;
+    const raw = discountDraft.trim();
+    const amount = raw === "" ? 0 : Number(raw);
+    if (raw !== "" && Number.isNaN(amount)) {
+      toast.error("Enter a valid discount");
+      return;
+    }
+    if (amount < 0) {
+      toast.error("Discount cannot be negative");
+      return;
+    }
+    setSavingDiscount(true);
+    try {
+      const updated = await dispatch(
+        updateOrder({
+          id: orderDetail.id,
+          patch: { discountAmount: amount },
+        })
+      ).unwrap();
+      const ud = updated.discountAmount;
+      setDiscountDraft(ud != null && safeMoney(ud) > 0 ? String(safeMoney(ud)) : "");
+      toast.success("Discount updated");
+    } catch {
+      toast.error("Failed to update discount");
+    } finally {
+      setSavingDiscount(false);
+    }
+  }, [orderDetail, discountDraft, dispatch]);
+
   const handleStatusChange = useCallback(
     async (orderId: string, status: Order["status"]) => {
       try {
         await dispatch(updateOrder({ id: orderId, patch: { status } })).unwrap();
         toast.success(`Order ${status}`);
-        if (status === "cancelled" || status === "delivered") setDetailId(null);
+        if (status === "cancelled" || status === "delivered" || status === "returned")
+          setDetailId(null);
       } catch {
         toast.error("Failed to update order");
       }
@@ -101,17 +298,46 @@ function AdminOrderManagementPage() {
     }
   }, []);
 
+  const clearTableFilters = useCallback(() => {
+    setStaffFilter("");
+    setStatusFilter("");
+    setProductFilter("");
+    setTypeFilter("");
+  }, []);
+
   const productOptions = useMemo(
     () => [
-      { value: "", label: "All products" },
+      { value: "", label: "Select all products" },
       ...products.map((p) => ({ value: p.id, label: p.name })),
     ],
     [products]
   );
 
+  const staffOptions = useMemo(
+    () => [
+      { value: "", label: "Select all staff" },
+      ...[...staff]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((s) => ({ value: s.id, label: s.name })),
+    ],
+    [staff]
+  );
+
+  const statusOptions = useMemo(
+    () => [
+      { value: "", label: "Select all statuses" },
+      { value: "pending", label: "Pending" },
+      { value: "dispatch", label: "Dispatch" },
+      { value: "returned", label: "Returned" },
+      { value: "delivered", label: "Delivered" },
+      { value: "cancelled", label: "Cancelled" },
+    ],
+    []
+  );
+
   const typeOptions = useMemo(
     () => [
-      { value: "", label: "All" },
+      { value: "", label: "Select all types" },
       { value: "cod", label: "COD" },
       { value: "prepaid", label: "Prepaid" },
     ],
@@ -120,6 +346,32 @@ function AdminOrderManagementPage() {
 
   const columns = useMemo(
     () => [
+      {
+        key: "__select",
+        header: (
+          <span className="inline-flex items-center justify-center">
+            <input
+              ref={selectAllHeaderRef}
+              type="checkbox"
+              checked={allVisibleSelected}
+              onChange={() => toggleAllVisibleSelected()}
+              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              aria-label="Select all orders in this table"
+            />
+          </span>
+        ),
+        className: "w-12",
+        render: (row: Order) => (
+          <input
+            type="checkbox"
+            checked={selectedIds.has(row.id)}
+            onChange={() => toggleRowSelected(row.id)}
+            onClick={(e) => e.stopPropagation()}
+            className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+            aria-label={`Select order ${row.orderId}`}
+          />
+        ),
+      },
       {
         key: "orderId",
         header: "Order ID",
@@ -145,6 +397,16 @@ function AdminOrderManagementPage() {
         render: (row: Order) => products.find((p) => p.id === row.productId)?.name ?? row.productId,
       },
       {
+        key: "discountAmount",
+        header: "Discount",
+        render: (row: Order) => discountDisplay(row.discountAmount) ?? "—",
+      },
+      {
+        key: "sellingAmount",
+        header: "Total",
+        render: (row: Order) => `₹${safeMoney(row.sellingAmount).toFixed(2)}`,
+      },
+      {
         key: "staffId",
         header: "Staff",
         render: (row: Order) =>
@@ -160,12 +422,28 @@ function AdminOrderManagementPage() {
                 ? "success"
                 : row.status === "cancelled"
                   ? "error"
-                  : "warning"
+                  : row.status === "returned"
+                    ? "default"
+                    : row.status === "dispatch"
+                      ? "info"
+                      : "warning"
             }
           >
             {row.status}
           </Badge>
         ),
+      },
+      {
+        key: "trackingId",
+        header: "Tracking ID",
+        render: (row: Order) => {
+          const t = row.trackingId?.trim();
+          return t ? (
+            <span className="font-mono text-xs">{t}</span>
+          ) : (
+            "—"
+          );
+        },
       },
       {
         key: "pdf",
@@ -187,7 +465,16 @@ function AdminOrderManagementPage() {
         ),
       },
     ],
-    [staff, products, pdfLoadingId, downloadPdf]
+    [
+      staff,
+      products,
+      pdfLoadingId,
+      downloadPdf,
+      selectedIds,
+      allVisibleSelected,
+      toggleRowSelected,
+      toggleAllVisibleSelected,
+    ]
   );
 
   return (
@@ -195,7 +482,7 @@ function AdminOrderManagementPage() {
       <Card>
         <CardHeader
           title="Order Management"
-          subtitle="Filter by date (server), product, and type. Download order PDFs."
+          subtitle="Filter by date (server), staff, status, product, and order type. Staff-entered discounts appear in the Discount column."
         />
         <div className="mb-4 flex flex-col gap-3">
           <div className="flex flex-wrap items-end gap-3">
@@ -247,14 +534,39 @@ function AdminOrderManagementPage() {
               {" "}(UTC day boundaries).
             </p>
           )}
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <select
+              value={staffFilter}
+              onChange={(e) => setStaffFilter(e.target.value)}
+              className="rounded-[var(--radius-md)] border border-border px-3 py-2 text-sm"
+              aria-label="Filter by staff"
+            >
+              {staffOptions.map((opt) => (
+                <option key={opt.value || "all-staff"} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="rounded-[var(--radius-md)] border border-border px-3 py-2 text-sm"
+              aria-label="Filter by order status"
+            >
+              {statusOptions.map((opt) => (
+                <option key={opt.value || "all-status"} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
             <select
               value={productFilter}
               onChange={(e) => setProductFilter(e.target.value)}
               className="rounded-[var(--radius-md)] border border-border px-3 py-2 text-sm"
+              aria-label="Filter by product"
             >
               {productOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
+                <option key={opt.value || "all-products"} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
@@ -263,15 +575,37 @@ function AdminOrderManagementPage() {
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
               className="rounded-[var(--radius-md)] border border-border px-3 py-2 text-sm"
+              aria-label="Filter by order type"
             >
               {typeOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
+                <option key={opt.value || "all-types"} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
             </select>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={clearTableFilters}
+              aria-label="Reset staff, status, product, and type filters to show all"
+            >
+              Select all
+            </Button>
           </div>
         </div>
+        {selectedIds.size > 0 && (
+          <p className="mb-2 text-sm text-text-muted">
+            {selectedIds.size} order{selectedIds.size === 1 ? "" : "s"} selected.{" "}
+            <button
+              type="button"
+              className="font-medium text-primary underline hover:no-underline"
+              onClick={clearRowSelection}
+            >
+              Clear selection
+            </button>
+          </p>
+        )}
         <Table
           columns={columns}
           data={filteredOrders}
@@ -330,13 +664,71 @@ function AdminOrderManagementPage() {
                 <dd><Badge variant="default">{orderDetail.orderType.toUpperCase()}</Badge></dd>
               </div>
               <div>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Discount</dt>
+                <dd>{discountDisplay(orderDetail.discountAmount) ?? "—"}</dd>
+              </div>
+              <div>
                 <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Total Amount</dt>
-                <dd className="font-medium text-earnings">₹{orderDetail.sellingAmount}</dd>
+                <dd className="font-medium text-earnings">
+                  ₹{safeMoney(orderDetail.sellingAmount).toFixed(2)}
+                </dd>
+              </div>
+              <div className="sm:col-span-2 rounded-[var(--radius-md)] border border-border bg-surface-alt p-3">
+                <dt className="text-text-muted mb-2 text-xs uppercase tracking-wider">
+                  Edit discount (admin)
+                </dt>
+                <dd className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm text-text-muted">₹</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      className="w-32 rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-sm"
+                      value={discountDraft}
+                      onChange={(e) => setDiscountDraft(e.target.value)}
+                      placeholder="0"
+                      aria-label="Discount amount"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void saveDiscount()}
+                    loading={savingDiscount}
+                  >
+                    Apply discount
+                  </Button>
+                  <p className="text-xs text-text-muted sm:flex-1">
+                    Clear the field or set 0 to remove discount. Total is recalculated from the product catalog price.
+                  </p>
+                </dd>
               </div>
               <div>
                 <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Current Status</dt>
-                <dd className="capitalize">{orderDetail.status}</dd>
+                <dd>
+                  <span className="capitalize font-medium">{orderDetail.status}</span>
+                  {orderDetail.status === "dispatch" ? (
+                    <span className="mt-0.5 block text-xs font-normal text-text-muted">
+                      Dispatch stage — confirm tracking, then click Dispatch when shipped.
+                    </span>
+                  ) : null}
+                  {orderDetail.status === "pending" ? (
+                    <span className="mt-0.5 block text-xs font-normal text-text-muted">
+                      Enter tracking anytime below. Click Packed to move to dispatch, then Dispatch when shipped.
+                    </span>
+                  ) : null}
+                </dd>
               </div>
+              {(orderDetail.status === "delivered" ||
+                orderDetail.status === "cancelled" ||
+                orderDetail.status === "returned") &&
+              orderDetail.trackingId?.trim() ? (
+                <div>
+                  <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Tracking ID</dt>
+                  <dd className="font-mono text-sm">{orderDetail.trackingId.trim()}</dd>
+                </div>
+              ) : null}
               <div className="sm:col-span-2">
                 <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Staff Details</dt>
                 <dd>{staff.find(s => s.id === orderDetail.staffId)?.name || orderDetail.staffId}</dd>
@@ -350,6 +742,36 @@ function AdminOrderManagementPage() {
                 </div>
               )}
             </dl>
+            {orderDetail.status === "pending" || orderDetail.status === "dispatch" ? (
+              <div className="rounded-[var(--radius-md)] border border-border bg-surface-alt p-3">
+                <label
+                  htmlFor="order-tracking-id"
+                  className="text-text-muted mb-2 block text-xs font-medium uppercase tracking-wider"
+                >
+                  Tracking ID
+                </label>
+                <input
+                  id="order-tracking-id"
+                  type="text"
+                  value={trackingDraft}
+                  onChange={(e) => setTrackingDraft(e.target.value)}
+                  onBlur={() => void persistTrackingFromBlur()}
+                  placeholder="Enter courier tracking number"
+                  maxLength={255}
+                  autoComplete="off"
+                  className="w-full max-w-md rounded-[var(--radius-sm)] border border-border bg-surface px-3 py-2 text-sm"
+                />
+                <p className="mt-2 text-xs text-text-muted">
+                  {orderDetail.status === "pending"
+                    ? trackingDraft.trim()
+                      ? "Click Packed when the parcel is packed (moves to dispatch). Then use Dispatch when shipped."
+                      : "You can enter tracking now or later. After Packed, fill tracking to enable the Dispatch button."
+                    : trackingDraft.trim()
+                      ? "Click Dispatch when the shipment has been sent."
+                      : "Enter a tracking ID to enable Dispatch."}
+                </p>
+              </div>
+            ) : null}
             <div className="flex flex-wrap gap-2 border-t border-border mt-4 pt-4 justify-end">
               <Button
                 variant="secondary"
@@ -368,28 +790,51 @@ function AdminOrderManagementPage() {
               >
                 Close
               </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => {
-                   handleStatusChange(orderDetail.id, "cancelled");
-                   setDetailId(null);
-                }}
-                disabled={orderDetail.status === "cancelled"}
-              >
-                Cancel Order
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                   handleStatusChange(orderDetail.id, "delivered");
-                   setDetailId(null);
-                }}
-                disabled={orderDetail.status === "delivered"}
-              >
-                Dispatch
-              </Button>
+              {orderDetail.status === "pending" || orderDetail.status === "dispatch" ? (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => {
+                    handleStatusChange(orderDetail.id, "cancelled");
+                    setDetailId(null);
+                  }}
+                >
+                  Cancel Order
+                </Button>
+              ) : null}
+              {orderDetail.status === "delivered" ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void handleReturn()}
+                  loading={returning}
+                >
+                  Return
+                </Button>
+              ) : null}
+              {orderDetail.status === "pending" ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => void markPacked()}
+                  loading={markingPacked}
+                >
+                  Packed
+                </Button>
+              ) : null}
+              {orderDetail.status === "dispatch" && trackingDraft.trim() ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => void confirmDispatch()}
+                  loading={dispatching}
+                >
+                  Dispatch
+                </Button>
+              ) : null}
             </div>
           </div>
         )}

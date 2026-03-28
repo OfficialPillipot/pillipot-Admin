@@ -35,7 +35,11 @@ function OrderDetailPage() {
               ? "success"
               : order.status === "cancelled"
                 ? "error"
-                : "warning"
+                : order.status === "dispatch"
+                  ? "info"
+                  : order.status === "returned"
+                    ? "default"
+                    : "warning"
           }
         >
           {order.status}
@@ -78,12 +82,26 @@ function OrderDetailPage() {
             <dt className="text-sm text-text-muted">Quantity</dt>
             <dd>{order.quantity}</dd>
           </div>
+          {order.discountAmount != null && order.discountAmount > 0 && (
+            <div>
+              <dt className="text-sm text-text-muted">Discount</dt>
+              <dd>{formatCurrency(order.discountAmount)}</dd>
+            </div>
+          )}
           <div>
-            <dt className="text-sm text-text-muted">Selling Amount</dt>
+            <dt className="text-sm text-text-muted">Total</dt>
             <dd className="font-medium text-earnings">
               {formatCurrency(order.sellingAmount)}
             </dd>
           </div>
+          {order.trackingId?.trim() ? (
+            <div className="sm:col-span-2">
+              <dt className="text-sm text-text-muted">Tracking ID</dt>
+              <dd className="font-mono text-sm font-medium text-text-heading">
+                {order.trackingId.trim()}
+              </dd>
+            </div>
+          ) : null}
           {order.notes && (
             <div className="sm:col-span-2">
               <dt className="text-sm text-text-muted">Notes</dt>

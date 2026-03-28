@@ -8,8 +8,19 @@ import {
   updateStaff,
   fetchStaff,
   resetStaffPassword,
+  fulfillPasswordResetRequest,
 } from "../store/staffSlice";
-import { Card, CardHeader, Button, Table, Modal, Input } from "../components/ui";
+import {
+  Card,
+  CardHeader,
+  Button,
+  Table,
+  Modal,
+  Input,
+  Badge,
+  Select,
+} from "../components/ui";
+import { STAFF_JOB_ROLE_OPTIONS, staffJobRoleLabel } from "../lib/staffJobRoles";
 import { formatDate } from "../lib/orderUtils";
 import { toast } from "../lib/toast";
 import type { Staff } from "../types";
@@ -21,7 +32,6 @@ const DEFAULT_BONUS_MILESTONES = [
 ];
 
 const PHONE_RE = /^[\d+\s().-]{7,25}$/;
-
 function StaffManagementPage() {
   const dispatch = useAppDispatch();
   const staff = useAppSelector(selectStaff);
@@ -30,6 +40,7 @@ function StaffManagementPage() {
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
   const [joinedDate, setJoinedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [jobRole, setJobRole] = useState("sales");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [tempPasswordModal, setTempPasswordModal] = useState<{
@@ -38,9 +49,19 @@ function StaffManagementPage() {
   } | null>(null);
   const [resetConfirmStaff, setResetConfirmStaff] = useState<Staff | null>(null);
   const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [fulfillRequestId, setFulfillRequestId] = useState<string | null>(null);
+  const [fulfillSubmitting, setFulfillSubmitting] = useState(false);
 
   useEffect(() => {
     void dispatch(fetchStaff());
+  }, [dispatch]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      void dispatch(fetchStaff());
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [dispatch]);
 
   const openAdd = useCallback(() => {
@@ -48,6 +69,7 @@ function StaffManagementPage() {
     setUsername("");
     setPhone("");
     setJoinedDate(new Date().toISOString().slice(0, 10));
+    setJobRole("sales");
     setError("");
     setModalOpen(true);
   }, []);
@@ -87,6 +109,7 @@ function StaffManagementPage() {
             username: usernameTrim,
             phone: phoneTrim,
             joinedDate: joinedDate || new Date().toISOString().slice(0, 10),
+            jobRole,
             isActive: true,
             payoutPerOrder: 30,
             bonusMilestones: DEFAULT_BONUS_MILESTONES,
@@ -107,7 +130,7 @@ function StaffManagementPage() {
         setSubmitting(false);
       }
     },
-    [name, username, phone, joinedDate, staff, dispatch]
+    [name, username, phone, joinedDate, jobRole, staff, dispatch]
   );
 
   const toggleActive = useCallback(
@@ -144,6 +167,30 @@ function StaffManagementPage() {
     }
   }, [dispatch, resetConfirmStaff]);
 
+  const handleConfirmFulfillRequest = useCallback(async () => {
+    if (!fulfillRequestId) return;
+    setFulfillSubmitting(true);
+    try {
+      const updated = await dispatch(
+        fulfillPasswordResetRequest(fulfillRequestId)
+      ).unwrap();
+      setFulfillRequestId(null);
+      toast.success("Password reset issued; request marked complete.");
+      if (updated.temporaryPassword) {
+        setTempPasswordModal({
+          username: updated.username,
+          password: updated.temporaryPassword,
+        });
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to fulfill request"
+      );
+    } finally {
+      setFulfillSubmitting(false);
+    }
+  }, [dispatch, fulfillRequestId]);
+
   const copyPassword = useCallback((pwd: string) => {
     void navigator.clipboard.writeText(pwd);
     toast.success("Password copied");
@@ -166,7 +213,30 @@ function StaffManagementPage() {
         render: (row: Staff) => formatDate(row.joinedDate),
       },
       { key: "username", header: "Username" },
+      {
+        key: "jobRole",
+        header: "Job type",
+        render: (row: Staff) => staffJobRoleLabel(row.jobRole),
+      },
       { key: "phone", header: "Phone" },
+      {
+        key: "forgotPasswordRequest",
+        header: "Forgot password request",
+        render: (row: Staff) => {
+          const p = row.pendingPasswordResetRequest;
+          if (!p) {
+            return <span className="text-sm text-text-muted">—</span>;
+          }
+          return (
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+              <Badge variant="warning">Pending</Badge>
+              <span className="text-xs text-text-muted">
+                {formatDate(p.createdAt)}
+              </span>
+            </div>
+          );
+        },
+      },
       {
         key: "tempPassword",
         header: "Initial password",
@@ -194,19 +264,28 @@ function StaffManagementPage() {
         key: "resetPassword",
         header: "Reset password",
         render: (row: Staff) => {
-          const canReset = row.temporaryPassword === null;
+          const pending = row.pendingPasswordResetRequest;
+          const canReset =
+            pending != null || row.temporaryPassword === null;
+          const title = pending
+            ? "Issue a new temporary password and mark the forgot-password request complete"
+            : canReset
+              ? "Generate a new temporary password"
+              : "Available only after this staff member has changed their initial password (unless they have a pending forgot-password request)";
           return (
             <Button
               type="button"
               variant="secondary"
               size="sm"
               disabled={!canReset}
-              title={
-                canReset
-                  ? "Generate a new temporary password"
-                  : "Available only after this staff member has changed their initial password"
-              }
-              onClick={() => setResetConfirmStaff(row)}
+              title={title}
+              onClick={() => {
+                if (pending) {
+                  setFulfillRequestId(pending.id);
+                } else {
+                  setResetConfirmStaff(row);
+                }
+              }}
             >
               Reset
             </Button>
@@ -246,7 +325,7 @@ function StaffManagementPage() {
       <Card>
         <CardHeader
           title="Staff Management"
-          subtitle="Toggle Active on/off. Reset password is enabled only after “Staff changed” (they updated from the initial password). Confirm in the modal before resetting."
+          subtitle="A pending forgot-password request shows in the first column (status only). Use Reset in the “Reset password” column to issue a temporary password and mark that request complete—even if they have not changed their initial password yet. After “Staff changed,” Reset still works for a normal admin reset when there is no pending request."
           action={
             <Button onClick={openAdd}>Add Staff</Button>
           }
@@ -258,6 +337,42 @@ function StaffManagementPage() {
           emptyMessage="No staff."
         />
       </Card>
+
+      <Modal
+        isOpen={!!fulfillRequestId}
+        onClose={() => {
+          if (!fulfillSubmitting) setFulfillRequestId(null);
+        }}
+        title="Reset password from request?"
+        size="md"
+      >
+        {fulfillRequestId && (
+          <div className="space-y-4 text-sm text-text-heading">
+            <p>
+              Issue a new temporary password for this staff member and mark their
+              forgot-password request as completed? Their current password will stop
+              working until they sign in with the new temporary password.
+            </p>
+            <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={fulfillSubmitting}
+                onClick={() => setFulfillRequestId(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                loading={fulfillSubmitting}
+                onClick={() => void handleConfirmFulfillRequest()}
+              >
+                Confirm reset
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         isOpen={!!resetConfirmStaff}
@@ -358,6 +473,15 @@ function StaffManagementPage() {
             value={joinedDate}
             onChange={(e) => setJoinedDate(e.target.value)}
           />
+          <Select
+            label="Job type"
+            options={STAFF_JOB_ROLE_OPTIONS}
+            value={jobRole}
+            onChange={(e) => setJobRole(e.target.value)}
+          />
+          <p className="text-xs text-text-muted">
+            Job type is for your records (sales, packing, etc.). Login access is still the standard staff role.
+          </p>
           {error && <p className="text-sm text-error">{error}</p>}
           <div className="flex gap-2">
             <Button type="submit" loading={submitting}>

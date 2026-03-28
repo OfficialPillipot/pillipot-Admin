@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router";
 import { ProtectedRoute } from "../components/auth";
 import type { User } from "../types";
 import StaffDashboard from "../pages/StaffDashboard";
+import StaffMyProfile from "../pages/StaffMyProfile";
 import CreateOrder from "../pages/CreateOrder";
 import OrdersList from "../pages/OrdersList";
 import OrderDetail from "../pages/OrderDetail";
@@ -10,7 +11,9 @@ import StaffManagement from "../pages/StaffManagement";
 import StaffProfile from "../pages/StaffProfile";
 import AdminOrderManagement from "../pages/AdminOrderManagement";
 import ProductManagement from "../pages/ProductManagement";
+import CategoryManagement from "../pages/CategoryManagement";
 import ExportData from "../pages/ExportData";
+import CustomerManagement from "../pages/CustomerManagement";
 import ChangePassword from "../pages/ChangePassword";
 
 interface LayoutRoutesProps {
@@ -53,6 +56,14 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute allowedRoles={["staff"]}>
+            <StaffMyProfile />
+          </ProtectedRoute>
+        }
+      />
       {/* Admin routes */}
       <Route
         path="/admin"
@@ -83,6 +94,22 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         element={
           <ProtectedRoute allowedRoles={["super_admin"]}>
             <AdminOrderManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/customers"
+        element={
+          <ProtectedRoute allowedRoles={["super_admin"]}>
+            <CustomerManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/categories"
+        element={
+          <ProtectedRoute allowedRoles={["super_admin"]}>
+            <CategoryManagement />
           </ProtectedRoute>
         }
       />

@@ -16,10 +16,13 @@ const DEFAULT_TITLES: Record<string, string> = {
   "/orders": "My Orders",
   "/orders/create": "Create Order",
   "/orders/:id": "Order Detail",
+  "/profile": "Profile",
   "/admin": "Admin Dashboard",
   "/admin/staff": "Staff Management",
   "/admin/staff/:id": "Staff Profile",
   "/admin/orders": "Order Management",
+  "/admin/customers": "Customers",
+  "/admin/categories": "Category Management",
   "/admin/products": "Product Management",
   "/admin/export": "Export Data",
   "/account/password": "Change password",
@@ -48,30 +51,30 @@ function AppLayoutComponent({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-[100dvh] min-h-0 overflow-hidden bg-surface-alt">
       {/* Mobile Sidebar Backdrop */}
       {mobileMenuOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-black/50 transition-opacity md:hidden"
+        <div
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[2px] transition-opacity md:hidden"
           onClick={() => setMobileMenuOpen(false)}
           aria-hidden="true"
         />
       )}
-      <Sidebar 
-        role={user.role} 
-        onLogout={onLogout} 
+      <Sidebar
+        role={user.role}
+        onLogout={onLogout}
         mobileOpen={mobileMenuOpen}
         setMobileOpen={setMobileMenuOpen}
       />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Header
           title={title}
           userDisplayName={user.name}
           userRole={roleLabel}
           onMenuClick={() => setMobileMenuOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          {children}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden px-[max(0.75rem,env(safe-area-inset-left))] pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 pr-[max(0.75rem,env(safe-area-inset-right))] sm:px-[max(1rem,env(safe-area-inset-left))] sm:pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pt-5 sm:pr-[max(1rem,env(safe-area-inset-right))] md:px-[max(1.5rem,env(safe-area-inset-left))] md:pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pt-6 md:pr-[max(1.5rem,env(safe-area-inset-right))]">
+          <div className="mx-auto w-full max-w-[90rem]">{children}</div>
         </main>
       </div>
     </div>

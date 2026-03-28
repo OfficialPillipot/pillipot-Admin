@@ -29,7 +29,7 @@ const SelectComponent = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           id={selectId}
           className={[
-            "w-full rounded-[var(--radius-md)] border bg-surface px-3 py-2 text-text shadow-[var(--shadow-card)] focus:outline-none focus:ring-2 focus:ring-primary",
+            "min-h-10 w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-0 sm:min-h-0",
             error ? "border-error" : "border-border",
             className,
           ]

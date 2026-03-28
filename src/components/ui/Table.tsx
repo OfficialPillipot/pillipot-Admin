@@ -1,8 +1,8 @@
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 
 interface Column<T> {
   key: string;
-  header: string;
+  header: ReactNode;
   render?: (row: T) => React.ReactNode;
   className?: string;
 }
@@ -26,7 +26,7 @@ function TableComponent<T>({
     return (
       <div
         className={
-          "rounded-[var(--radius-md)] border border-border bg-surface py-12 text-center text-text-muted " +
+          "rounded-[var(--radius-lg)] border border-border bg-surface py-14 text-center text-sm text-text-muted ring-1 ring-slate-900/[0.04] " +
           className
         }
       >
@@ -38,18 +38,19 @@ function TableComponent<T>({
   return (
     <div
       className={
-        "overflow-x-auto rounded-[var(--radius-md)] border border-border bg-surface " +
+        "overflow-x-auto overscroll-x-contain rounded-[var(--radius-lg)] border border-border bg-surface shadow-[var(--shadow-card)] ring-1 ring-slate-900/[0.04] [-webkit-overflow-scrolling:touch] " +
         className
       }
     >
       <table className="w-full min-w-[600px] text-left text-sm">
         <thead>
-          <tr className="border-b border-border bg-surface-alt">
+          <tr className="border-b border-border bg-surface-alt/80">
             {columns.map((col) => (
               <th
                 key={col.key}
                 className={
-                  "px-4 py-3 font-medium text-text-heading " + (col.className ?? "")
+                  "whitespace-nowrap px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted first:pl-4 last:pr-4 sm:px-4 " +
+                  (col.className ?? "")
                 }
               >
                 {col.header}
@@ -57,16 +58,19 @@ function TableComponent<T>({
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-border">
           {data.map((row) => (
             <tr
               key={keyExtractor(row)}
-              className="border-b border-border last:border-b-0 hover:bg-surface-alt/50"
+              className="transition-colors hover:bg-surface-alt/60"
             >
               {columns.map((col) => (
                 <td
                   key={col.key}
-                  className={"px-4 py-3 text-text " + (col.className ?? "")}
+                  className={
+                    "px-3 py-3 align-middle text-text first:pl-4 last:pr-4 sm:px-4 " +
+                    (col.className ?? "")
+                  }
                 >
                   {col.render
                     ? col.render(row)

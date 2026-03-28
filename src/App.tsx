@@ -3,7 +3,14 @@ import { ToastContainer } from "react-toastify";
 import { BrowserRouter } from "react-router";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { useAppDispatch } from "./store/hooks";
-import { fetchProducts, fetchOrders, fetchStaff } from "./store";
+import {
+  fetchProducts,
+  fetchCategories,
+  fetchOrders,
+  fetchStaff,
+  fetchStaffMe,
+  fetchCustomers,
+} from "./store";
 import { RootRoutes } from "./routes";
 
 function DataLoader() {
@@ -12,9 +19,14 @@ function DataLoader() {
   useEffect(() => {
     if (!isAuthenticated) return;
     dispatch(fetchProducts());
+    dispatch(fetchCategories());
     dispatch(fetchOrders());
     if (user?.role === "super_admin") {
       dispatch(fetchStaff());
+      dispatch(fetchCustomers());
+    }
+    if (user?.role === "staff" && user.staffId) {
+      void dispatch(fetchStaffMe());
     }
   }, [dispatch, isAuthenticated, user?.role]);
   return null;

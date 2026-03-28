@@ -3,6 +3,13 @@ import type { Product } from "../types";
 import { api } from "../api/client";
 import { endpoints } from "../api/endpoints";
 
+export type NewProductPayload = Pick<Product, "name" | "price"> & {
+  categoryId: string;
+  stockQuantity?: number;
+  size?: string;
+  color?: string;
+};
+
 export const fetchProducts = createAsyncThunk(
   "products/fetchAll",
   async (_, { rejectWithValue }) => {
@@ -16,7 +23,7 @@ export const fetchProducts = createAsyncThunk(
 
 export const createProduct = createAsyncThunk(
   "products/create",
-  async (payload: Omit<Product, "id">, { rejectWithValue }) => {
+  async (payload: NewProductPayload, { rejectWithValue }) => {
     try {
       return await api.post<Product>(endpoints.products, payload);
     } catch (e) {
