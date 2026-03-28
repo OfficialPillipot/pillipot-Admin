@@ -39,7 +39,9 @@ function OrderDetailPage() {
                   ? "info"
                   : order.status === "returned"
                     ? "default"
-                    : "warning"
+                    : order.status === "packed"
+                      ? "default"
+                      : "warning"
           }
         >
           {order.status}
@@ -82,7 +84,9 @@ function OrderDetailPage() {
             <dt className="text-sm text-text-muted">Quantity</dt>
             <dd>{order.quantity}</dd>
           </div>
-          {order.discountAmount != null && order.discountAmount > 0 && (
+          {order.status !== "dispatch" &&
+            order.discountAmount != null &&
+            order.discountAmount > 0 && (
             <div>
               <dt className="text-sm text-text-muted">Discount</dt>
               <dd>{formatCurrency(order.discountAmount)}</dd>

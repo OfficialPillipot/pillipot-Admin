@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { ClipboardDocumentIcon } from "@heroicons/react/24/outline";
+import { ClipboardDocumentIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   selectStaff,
@@ -9,7 +9,10 @@ import {
   fetchStaff,
   resetStaffPassword,
   fulfillPasswordResetRequest,
+  deleteStaff,
 } from "../store/staffSlice";
+import { selectStaffPositions, fetchStaffPositions } from "../store/staffPositionsSlice";
+import { selectAssignedNumbers, fetchAssignedNumbers } from "../store/assignedNumbersSlice";
 import {
   Card,
   CardHeader,
@@ -19,11 +22,13 @@ import {
   Input,
   Badge,
   Select,
+  Tooltip,
 } from "../components/ui";
-import { STAFF_JOB_ROLE_OPTIONS, staffJobRoleLabel } from "../lib/staffJobRoles";
+import { staffJobRoleLabel } from "../lib/staffJobRoles";
 import { formatDate } from "../lib/orderUtils";
 import { toast } from "../lib/toast";
 import type { Staff } from "../types";
+import type { SelectOption } from "../components/ui/Select";
 
 const DEFAULT_BONUS_MILESTONES = [
   { orders: 10, bonus: 50 },
@@ -32,15 +37,20 @@ const DEFAULT_BONUS_MILESTONES = [
 ];
 
 const PHONE_RE = /^[\d+\s().-]{7,25}$/;
+
 function StaffManagementPage() {
   const dispatch = useAppDispatch();
   const staff = useAppSelector(selectStaff);
-  const [modalOpen, setModalOpen] = useState(false);
+  const positions = useAppSelector(selectStaffPositions);
+  const assignedNumbers = useAppSelector(selectAssignedNumbers);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [editStaff, setEditStaff] = useState<Staff | null>(null);
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
   const [joinedDate, setJoinedDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [jobRole, setJobRole] = useState("sales");
+  const [staffPositionId, setStaffPositionId] = useState("");
+  const [assignedNumberId, setAssignedNumberId] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [tempPasswordModal, setTempPasswordModal] = useState<{
@@ -51,27 +61,69 @@ function StaffManagementPage() {
   const [resetSubmitting, setResetSubmitting] = useState(false);
   const [fulfillRequestId, setFulfillRequestId] = useState<string | null>(null);
   const [fulfillSubmitting, setFulfillSubmitting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<Staff | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   useEffect(() => {
     void dispatch(fetchStaff());
+    void dispatch(fetchStaffPositions());
+    void dispatch(fetchAssignedNumbers());
   }, [dispatch]);
 
   useEffect(() => {
     const onFocus = () => {
       void dispatch(fetchStaff());
+      void dispatch(fetchAssignedNumbers());
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [dispatch]);
+
+  const positionOptions: SelectOption[] = useMemo(
+    () => positions.map((p) => ({ value: p.id, label: p.name })),
+    [positions]
+  );
+
+  const numberOptionsFor = useCallback(
+    (profileId: string | null) => {
+      const opts: SelectOption[] = [{ value: "", label: "None" }];
+      for (const n of assignedNumbers) {
+        if (!n.assignedToStaffProfileId || n.assignedToStaffProfileId === profileId) {
+          opts.push({ value: n.id, label: n.number });
+        }
+      }
+      return opts;
+    },
+    [assignedNumbers]
+  );
 
   const openAdd = useCallback(() => {
     setName("");
     setUsername("");
     setPhone("");
     setJoinedDate(new Date().toISOString().slice(0, 10));
-    setJobRole("sales");
+    setStaffPositionId(positions[0]?.id ?? "");
+    setAssignedNumberId("");
     setError("");
-    setModalOpen(true);
+    setAddModalOpen(true);
+  }, [positions]);
+
+  const openEdit = useCallback(
+    (s: Staff) => {
+      setEditStaff(s);
+      setName(s.name);
+      setPhone(s.phone);
+      setJoinedDate(s.joinedDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
+      setStaffPositionId(s.staffPositionId ?? positions[0]?.id ?? "");
+      setAssignedNumberId(s.assignedNumberId ?? "");
+      setError("");
+    },
+    [positions]
+  );
+
+  const closeEdit = useCallback(() => {
+    setEditStaff(null);
+    setError("");
   }, []);
 
   const handleCreate = useCallback(
@@ -97,6 +149,10 @@ function StaffManagementPage() {
         setError("Enter a valid phone number (7–25 characters)");
         return;
       }
+      if (!staffPositionId) {
+        setError("Select a role (add roles under Role management if empty)");
+        return;
+      }
       if (staff.some((s) => s.username.toLowerCase() === usernameTrim)) {
         setError("Username already exists");
         return;
@@ -109,14 +165,17 @@ function StaffManagementPage() {
             username: usernameTrim,
             phone: phoneTrim,
             joinedDate: joinedDate || new Date().toISOString().slice(0, 10),
-            jobRole,
+            staffPositionId,
+            assignedNumberId: assignedNumberId || null,
             isActive: true,
             payoutPerOrder: 30,
             bonusMilestones: DEFAULT_BONUS_MILESTONES,
+            jobRole: "sales",
           })
         ).unwrap();
         toast.success("Staff created");
-        setModalOpen(false);
+        setAddModalOpen(false);
+        void dispatch(fetchAssignedNumbers());
         if (created.temporaryPassword) {
           setTempPasswordModal({
             username: created.username,
@@ -130,8 +189,89 @@ function StaffManagementPage() {
         setSubmitting(false);
       }
     },
-    [name, username, phone, joinedDate, jobRole, staff, dispatch]
+    [
+      name,
+      username,
+      phone,
+      joinedDate,
+      staffPositionId,
+      assignedNumberId,
+      staff,
+      dispatch,
+    ]
   );
+
+  const handleSaveEdit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!editStaff) return;
+      setError("");
+      const nameTrim = name.trim();
+      const phoneTrim = phone.trim();
+      if (!nameTrim) {
+        setError("Name is required");
+        return;
+      }
+      if (!phoneTrim || !PHONE_RE.test(phoneTrim)) {
+        setError("Enter a valid phone number (7–25 characters)");
+        return;
+      }
+      if (!staffPositionId) {
+        setError("Select a role");
+        return;
+      }
+      setSubmitting(true);
+      try {
+        await dispatch(
+          updateStaff({
+            id: editStaff.id,
+            patch: {
+              name: nameTrim,
+              phone: phoneTrim,
+              joinedDate: joinedDate || editStaff.joinedDate.slice(0, 10),
+              staffPositionId,
+              assignedNumberId: assignedNumberId || null,
+            },
+          })
+        ).unwrap();
+        toast.success("Staff updated");
+        closeEdit();
+        void dispatch(fetchAssignedNumbers());
+      } catch {
+        setError("Failed to update staff");
+        toast.error("Failed to update staff");
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [
+      editStaff,
+      name,
+      phone,
+      joinedDate,
+      staffPositionId,
+      assignedNumberId,
+      dispatch,
+      closeEdit,
+    ]
+  );
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteConfirm) return;
+    setDeleteSubmitting(true);
+    try {
+      await dispatch(deleteStaff(deleteConfirm.id)).unwrap();
+      toast.success("Staff deleted");
+      setDeleteConfirm(null);
+      void dispatch(fetchAssignedNumbers());
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Cannot delete (orders may exist)"
+      );
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  }, [deleteConfirm, dispatch]);
 
   const toggleActive = useCallback(
     async (staffId: string, current: boolean) => {
@@ -196,6 +336,11 @@ function StaffManagementPage() {
     toast.success("Password copied");
   }, []);
 
+  const roleLabel = useCallback((row: Staff) => {
+    if (row.staffPositionName?.trim()) return row.staffPositionName;
+    return staffJobRoleLabel(row.jobRole);
+  }, []);
+
   const columns = useMemo(
     () => [
       {
@@ -208,6 +353,16 @@ function StaffManagementPage() {
         ),
       },
       {
+        key: "assignedNumber",
+        header: "Assigned #",
+        render: (row: Staff) =>
+          row.assignedNumber?.trim() ? (
+            <span className="font-mono text-sm">{row.assignedNumber}</span>
+          ) : (
+            <span className="text-text-muted">—</span>
+          ),
+      },
+      {
         key: "joinedDate",
         header: "Joined",
         render: (row: Staff) => formatDate(row.joinedDate),
@@ -215,8 +370,8 @@ function StaffManagementPage() {
       { key: "username", header: "Username" },
       {
         key: "jobRole",
-        header: "Job type",
-        render: (row: Staff) => staffJobRoleLabel(row.jobRole),
+        header: "Role",
+        render: (row: Staff) => roleLabel(row),
       },
       { key: "phone", header: "Phone" },
       {
@@ -293,6 +448,34 @@ function StaffManagementPage() {
         },
       },
       {
+        key: "actions",
+        header: "",
+        render: (row: Staff) => (
+          <div className="flex items-center gap-1">
+            <Tooltip content="Edit" side="top">
+              <button
+                type="button"
+                onClick={() => openEdit(row)}
+                className="rounded p-1.5 text-primary hover:bg-primary-muted"
+                aria-label={`Edit ${row.name}`}
+              >
+                <PencilIcon className="h-5 w-5" />
+              </button>
+            </Tooltip>
+            <Tooltip content="Delete" side="top">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(row)}
+                className="rounded p-1.5 text-error hover:bg-error/10"
+                aria-label={`Delete ${row.name}`}
+              >
+                <TrashIcon className="h-5 w-5" />
+              </button>
+            </Tooltip>
+          </div>
+        ),
+      },
+      {
         key: "isActive",
         header: "Active",
         render: (row: Staff) => (
@@ -317,7 +500,54 @@ function StaffManagementPage() {
         ),
       },
     ],
-    [toggleActive, copyPassword]
+    [toggleActive, copyPassword, openEdit, roleLabel]
+  );
+
+  const staffForm = (
+    <>
+      <Input
+        label="Full Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="e.g. Priya Sharma"
+      />
+      {!editStaff && (
+        <Input
+          label="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="e.g. priya.s (used for login)"
+        />
+      )}
+      <Input
+        label="Phone number"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        placeholder="e.g. 9876543210 or +91 9876543210"
+        autoComplete="tel"
+      />
+      <Input
+        label="Joined Date"
+        type="date"
+        value={joinedDate}
+        onChange={(e) => setJoinedDate(e.target.value)}
+      />
+      <Select
+        label="Role"
+        options={positionOptions}
+        value={staffPositionId}
+        onChange={(e) => setStaffPositionId(e.target.value)}
+      />
+      <Select
+        label="Assigned number"
+        options={numberOptionsFor(editStaff?.id ?? null)}
+        value={assignedNumberId}
+        onChange={(e) => setAssignedNumberId(e.target.value)}
+      />
+      <p className="text-xs text-text-muted">
+        Add numbers under Assigned numbers. Login access remains the standard staff account role.
+      </p>
+    </>
   );
 
   return (
@@ -325,11 +555,22 @@ function StaffManagementPage() {
       <Card>
         <CardHeader
           title="Staff Management"
-          subtitle="A pending forgot-password request shows in the first column (status only). Use Reset in the “Reset password” column to issue a temporary password and mark that request complete—even if they have not changed their initial password yet. After “Staff changed,” Reset still works for a normal admin reset when there is no pending request."
+          subtitle="Use Role management and Assigned numbers in the sidebar first. A pending forgot-password request shows below; use Reset to issue a temporary password."
           action={
-            <Button onClick={openAdd}>Add Staff</Button>
+            <Button onClick={openAdd} disabled={!positions.length}>
+              Add Staff
+            </Button>
           }
         />
+        {!positions.length ? (
+          <p className="text-sm text-text-muted">
+            Create at least one role under{" "}
+            <Link to="/admin/staff/roles" className="text-primary underline">
+              Role management
+            </Link>{" "}
+            before adding staff.
+          </p>
+        ) : null}
         <Table
           columns={columns}
           data={staff}
@@ -337,6 +578,43 @@ function StaffManagementPage() {
           emptyMessage="No staff."
         />
       </Card>
+
+      <Modal
+        isOpen={!!deleteConfirm}
+        onClose={() => {
+          if (!deleteSubmitting) setDeleteConfirm(null);
+        }}
+        title="Delete staff?"
+        size="md"
+      >
+        {deleteConfirm && (
+          <div className="space-y-4 text-sm text-text-heading">
+            <p>
+              Permanently delete{" "}
+              <span className="font-semibold">{deleteConfirm.name}</span> (
+              {deleteConfirm.username})? This only works if they have no orders.
+            </p>
+            <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={deleteSubmitting}
+                onClick={() => setDeleteConfirm(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                loading={deleteSubmitting}
+                onClick={() => void handleConfirmDelete()}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         isOpen={!!fulfillRequestId}
@@ -442,56 +720,48 @@ function StaffManagementPage() {
       </Modal>
 
       <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        isOpen={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
         title="Add Staff"
         size="md"
       >
         <form onSubmit={handleCreate} className="space-y-4">
-          <Input
-            label="Full Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Priya Sharma"
-          />
-          <Input
-            label="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="e.g. priya.s (used for login)"
-          />
-          <Input
-            label="Phone number"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="e.g. 9876543210 or +91 9876543210"
-            autoComplete="tel"
-          />
-          <Input
-            label="Joined Date"
-            type="date"
-            value={joinedDate}
-            onChange={(e) => setJoinedDate(e.target.value)}
-          />
-          <Select
-            label="Job type"
-            options={STAFF_JOB_ROLE_OPTIONS}
-            value={jobRole}
-            onChange={(e) => setJobRole(e.target.value)}
-          />
-          <p className="text-xs text-text-muted">
-            Job type is for your records (sales, packing, etc.). Login access is still the standard staff role.
-          </p>
+          {staffForm}
           {error && <p className="text-sm text-error">{error}</p>}
           <div className="flex gap-2">
             <Button type="submit" loading={submitting}>
               Create Staff
             </Button>
-            <Button variant="secondary" type="button" onClick={() => setModalOpen(false)}>
+            <Button variant="secondary" type="button" onClick={() => setAddModalOpen(false)}>
               Cancel
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={!!editStaff}
+        onClose={() => !submitting && closeEdit()}
+        title="Edit Staff"
+        size="md"
+      >
+        {editStaff && (
+          <form onSubmit={handleSaveEdit} className="space-y-4">
+            <p className="text-sm text-text-muted">
+              Username <span className="font-mono text-text-heading">{editStaff.username}</span> cannot be changed.
+            </p>
+            {staffForm}
+            {error && <p className="text-sm text-error">{error}</p>}
+            <div className="flex gap-2">
+              <Button type="submit" loading={submitting}>
+                Save
+              </Button>
+              <Button variant="secondary" type="button" onClick={closeEdit} disabled={submitting}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        )}
       </Modal>
     </div>
   );

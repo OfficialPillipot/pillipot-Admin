@@ -26,4 +26,8 @@ export const endpoints = {
   staffRequestPasswordReset: `${V1}/staff/request-password-reset`,
   staffPasswordResetRequestFulfill: (requestId: string) =>
     `${V1}/staff/password-reset-requests/${requestId}/reset`,
+  staffPositions: `${V1}/staff-positions`,
+  staffPositionById: (id: string) => `${V1}/staff-positions/${id}`,
+  assignedNumbers: `${V1}/assigned-numbers`,
+  assignedNumberById: (id: string) => `${V1}/assigned-numbers/${id}`,
 } as const;

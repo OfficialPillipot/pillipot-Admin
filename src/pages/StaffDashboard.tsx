@@ -40,7 +40,9 @@ function StaffDashboardPage() {
     const undelivered = orders.filter(
       (o) =>
         o.staffId === staffId &&
-        (o.status === "pending" || o.status === "dispatch")
+        (o.status === "pending" ||
+          o.status === "packed" ||
+          o.status === "dispatch")
     ).length;
     const { total, orderCount } = computeEarningsForStaff(orders, staffProfile);
     const weekly = computeEarningsForStaff(orders, staffProfile, {

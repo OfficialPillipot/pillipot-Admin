@@ -6,13 +6,21 @@ import { endpoints } from "../api/endpoints";
 /** Payload for POST /staff (no server-generated fields). */
 export type CreateStaffPayload = Omit<
   Staff,
-  "id" | "temporaryPassword" | "pendingPasswordResetRequest"
+  | "id"
+  | "temporaryPassword"
+  | "pendingPasswordResetRequest"
+  | "staffPositionName"
+  | "assignedNumber"
 >;
 
 function normalizeStaff(row: Staff): Staff {
   return {
     ...row,
     jobRole: row.jobRole ?? "sales",
+    staffPositionId: row.staffPositionId ?? null,
+    staffPositionName: row.staffPositionName ?? null,
+    assignedNumberId: row.assignedNumberId ?? null,
+    assignedNumber: row.assignedNumber ?? null,
     phone: row.phone ?? "",
     temporaryPassword:
       row.temporaryPassword === undefined || row.temporaryPassword === ""
@@ -109,6 +117,18 @@ export const fulfillPasswordResetRequest = createAsyncThunk(
   }
 );
 
+export const deleteStaff = createAsyncThunk(
+  "staff/delete",
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await api.delete(endpoints.staffById(id));
+      return id;
+    } catch (e) {
+      return rejectWithValue(e);
+    }
+  }
+);
+
 interface StaffState {
   list: Staff[];
   /** Logged-in staff user’s own row from GET /staff/me */
@@ -179,6 +199,10 @@ const staffSlice = createSlice({
         const si = s.list.findIndex((st) => st.id === staff.id);
         if (si !== -1) s.list[si] = normalized;
         if (s.me?.id === staff.id) s.me = normalized;
+      })
+      .addCase(deleteStaff.fulfilled, (s, a) => {
+        s.list = s.list.filter((st) => st.id !== a.payload);
+        if (s.me?.id === a.payload) s.me = null;
       });
   },
 });

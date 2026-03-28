@@ -4,6 +4,7 @@ export type OrderType = "cod" | "prepaid";
 
 export type OrderStatus =
   | "pending"
+  | "packed"
   | "dispatch"
   | "delivered"
   | "cancelled"
@@ -29,6 +30,18 @@ export interface Product {
   color?: string;
 }
 
+export interface StaffPosition {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface AssignedNumber {
+  id: string;
+  number: string;
+  assignedToStaffProfileId: string | null;
+}
+
 export interface Staff {
   id: string;
   name: string;
@@ -36,8 +49,12 @@ export interface Staff {
   phone: string;
   joinedDate: string;
   isActive: boolean;
-  /** Job type: sales, packing, etc. (login role remains “staff”) */
+  /** Slug from managed role (legacy fallback). */
   jobRole: string;
+  staffPositionId: string | null;
+  staffPositionName?: string | null;
+  assignedNumberId?: string | null;
+  assignedNumber?: string | null;
   avatar?: string;
   /** Payout per order (e.g. 30) */
   payoutPerOrder: number;
@@ -73,6 +90,8 @@ export interface Order {
   id: string;
   orderId: string; // display ID e.g. ORD-001
   staffId: string;
+  /** Staff assigned business number (from Assigned numbers). */
+  staffAssignedNumber?: string | null;
   /** Set when order was created after customers feature (links to customers table). */
   customerId?: string | null;
   customerName: string;

@@ -117,11 +117,14 @@ function AdminDashboardPage() {
           </p>
         </Card>
         <Card>
-          <p className="text-sm text-text-muted">Pending / dispatch delivery</p>
+          <p className="text-sm text-text-muted">Pending / packed / dispatch</p>
           <p className="mt-1 text-2xl font-semibold text-warning">
             {
               orders.filter(
-                (o) => o.status === "pending" || o.status === "dispatch"
+                (o) =>
+                  o.status === "pending" ||
+                  o.status === "packed" ||
+                  o.status === "dispatch"
               ).length
             }
           </p>

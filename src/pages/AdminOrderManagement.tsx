@@ -109,6 +109,9 @@ function AdminOrderManagementPage() {
     [orders, detailId]
   );
 
+  const discountEditable =
+    orderDetail?.status === "pending" || orderDetail?.status === "packed";
+
   /** Only when switching orders — do not depend on `orders` or the draft resets on every list refresh while typing. */
   useEffect(() => {
     if (!detailId) {
@@ -130,12 +133,12 @@ function AdminOrderManagementPage() {
     if (!o) return;
     const t = (o.trackingId ?? "").trim();
     setTrackingDraft(t);
-  }, [detailId]);
+  }, [detailId, orderDetail?.status, orderDetail?.trackingId]);
 
   const persistTrackingFromBlur = useCallback(async () => {
     if (!detailId) return;
     const o = ordersRef.current.find((x) => x.id === detailId);
-    if (!o || (o.status !== "pending" && o.status !== "dispatch")) return;
+    if (!o || (o.status !== "pending" && o.status !== "packed")) return;
     const localT = trackingDraft.trim();
     const serverT = (o.trackingId ?? "").trim();
     if (localT === serverT) return;
@@ -156,9 +159,9 @@ function AdminOrderManagementPage() {
     setMarkingPacked(true);
     try {
       await dispatch(
-        updateOrder({ id: orderDetail.id, patch: { status: "dispatch" } })
+        updateOrder({ id: orderDetail.id, patch: { status: "packed" } })
       ).unwrap();
-      toast.success("Order moved to dispatch");
+      toast.success("Order marked packed");
     } catch {
       toast.error("Failed to update status");
     } finally {
@@ -166,7 +169,30 @@ function AdminOrderManagementPage() {
     }
   }, [orderDetail, dispatch]);
 
-  const confirmDispatch = useCallback(async () => {
+  const moveToDispatch = useCallback(async () => {
+    if (!orderDetail || orderDetail.status !== "packed") return;
+    const tid = trackingDraft.trim();
+    if (!tid) {
+      toast.error("Enter a tracking ID");
+      return;
+    }
+    setDispatching(true);
+    try {
+      await dispatch(
+        updateOrder({
+          id: orderDetail.id,
+          patch: { status: "dispatch", trackingId: tid },
+        })
+      ).unwrap();
+      toast.success("Order marked dispatched");
+    } catch {
+      toast.error("Failed to update order");
+    } finally {
+      setDispatching(false);
+    }
+  }, [orderDetail, trackingDraft, dispatch]);
+
+  const confirmDelivered = useCallback(async () => {
     if (!orderDetail || orderDetail.status !== "dispatch") return;
     const tid = trackingDraft.trim();
     if (!tid) {
@@ -327,6 +353,7 @@ function AdminOrderManagementPage() {
     () => [
       { value: "", label: "Select all statuses" },
       { value: "pending", label: "Pending" },
+      { value: "packed", label: "Packed" },
       { value: "dispatch", label: "Dispatch" },
       { value: "returned", label: "Returned" },
       { value: "delivered", label: "Delivered" },
@@ -402,6 +429,18 @@ function AdminOrderManagementPage() {
         render: (row: Order) => discountDisplay(row.discountAmount) ?? "—",
       },
       {
+        key: "staffAssignedNumber",
+        header: "Assigned #",
+        render: (row: Order) => {
+          const n = row.staffAssignedNumber?.trim();
+          return n ? (
+            <span className="font-mono text-xs">{n}</span>
+          ) : (
+            "—"
+          );
+        },
+      },
+      {
         key: "sellingAmount",
         header: "Total",
         render: (row: Order) => `₹${safeMoney(row.sellingAmount).toFixed(2)}`,
@@ -426,7 +465,9 @@ function AdminOrderManagementPage() {
                     ? "default"
                     : row.status === "dispatch"
                       ? "info"
-                      : "warning"
+                      : row.status === "packed"
+                        ? "default"
+                        : "warning"
             }
           >
             {row.status}
@@ -673,49 +714,56 @@ function AdminOrderManagementPage() {
                   ₹{safeMoney(orderDetail.sellingAmount).toFixed(2)}
                 </dd>
               </div>
-              <div className="sm:col-span-2 rounded-[var(--radius-md)] border border-border bg-surface-alt p-3">
-                <dt className="text-text-muted mb-2 text-xs uppercase tracking-wider">
-                  Edit discount (admin)
-                </dt>
-                <dd className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm text-text-muted">₹</span>
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      className="w-32 rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-sm"
-                      value={discountDraft}
-                      onChange={(e) => setDiscountDraft(e.target.value)}
-                      placeholder="0"
-                      aria-label="Discount amount"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => void saveDiscount()}
-                    loading={savingDiscount}
-                  >
-                    Apply discount
-                  </Button>
-                  <p className="text-xs text-text-muted sm:flex-1">
-                    Clear the field or set 0 to remove discount. Total is recalculated from the product catalog price.
-                  </p>
-                </dd>
-              </div>
+              {discountEditable ? (
+                <div className="sm:col-span-2 rounded-[var(--radius-md)] border border-border bg-surface-alt p-3">
+                  <dt className="text-text-muted mb-2 text-xs uppercase tracking-wider">
+                    Edit discount (admin)
+                  </dt>
+                  <dd className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-text-muted">₹</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        className="w-32 rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-sm"
+                        value={discountDraft}
+                        onChange={(e) => setDiscountDraft(e.target.value)}
+                        placeholder="0"
+                        aria-label="Discount amount"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void saveDiscount()}
+                      loading={savingDiscount}
+                    >
+                      Apply discount
+                    </Button>
+                    <p className="text-xs text-text-muted sm:flex-1">
+                      Clear the field or set 0 to remove discount. Total is recalculated from the product catalog price.
+                    </p>
+                  </dd>
+                </div>
+              ) : null}
               <div>
                 <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Current Status</dt>
                 <dd>
                   <span className="capitalize font-medium">{orderDetail.status}</span>
                   {orderDetail.status === "dispatch" ? (
                     <span className="mt-0.5 block text-xs font-normal text-text-muted">
-                      Dispatch stage — confirm tracking, then click Dispatch when shipped.
+                      Dispatched — tracking is locked. Use Mark delivered when the customer receives the order.
                     </span>
                   ) : null}
                   {orderDetail.status === "pending" ? (
                     <span className="mt-0.5 block text-xs font-normal text-text-muted">
-                      Enter tracking anytime below. Click Packed to move to dispatch, then Dispatch when shipped.
+                      Enter or edit tracking below. Click Packed when the parcel is packed (not yet dispatched).
+                    </span>
+                  ) : null}
+                  {orderDetail.status === "packed" ? (
+                    <span className="mt-0.5 block text-xs font-normal text-text-muted">
+                      Packed — finish the tracking ID, then Mark dispatched when handed to the courier.
                     </span>
                   ) : null}
                 </dd>
@@ -729,6 +777,12 @@ function AdminOrderManagementPage() {
                   <dd className="font-mono text-sm">{orderDetail.trackingId.trim()}</dd>
                 </div>
               ) : null}
+              <div>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Assigned #</dt>
+                <dd className="font-mono text-sm">
+                  {orderDetail.staffAssignedNumber?.trim() || "—"}
+                </dd>
+              </div>
               <div className="sm:col-span-2">
                 <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Staff Details</dt>
                 <dd>{staff.find(s => s.id === orderDetail.staffId)?.name || orderDetail.staffId}</dd>
@@ -742,7 +796,7 @@ function AdminOrderManagementPage() {
                 </div>
               )}
             </dl>
-            {orderDetail.status === "pending" || orderDetail.status === "dispatch" ? (
+            {orderDetail.status === "pending" || orderDetail.status === "packed" ? (
               <div className="rounded-[var(--radius-md)] border border-border bg-surface-alt p-3">
                 <label
                   htmlFor="order-tracking-id"
@@ -763,12 +817,21 @@ function AdminOrderManagementPage() {
                 />
                 <p className="mt-2 text-xs text-text-muted">
                   {orderDetail.status === "pending"
-                    ? trackingDraft.trim()
-                      ? "Click Packed when the parcel is packed (moves to dispatch). Then use Dispatch when shipped."
-                      : "You can enter tracking now or later. After Packed, fill tracking to enable the Dispatch button."
+                    ? "You can set tracking before or after packing. Packed means ready for courier; use Mark dispatched only after you have a final tracking ID."
                     : trackingDraft.trim()
-                      ? "Click Dispatch when the shipment has been sent."
-                      : "Enter a tracking ID to enable Dispatch."}
+                      ? "Click Mark dispatched when the parcel is with the courier."
+                      : "Enter the tracking ID, then Mark dispatched."}
+                </p>
+              </div>
+            ) : null}
+            {orderDetail.status === "dispatch" && orderDetail.trackingId?.trim() ? (
+              <div className="rounded-[var(--radius-md)] border border-border bg-surface-alt p-3">
+                <p className="text-text-muted mb-1 text-xs font-medium uppercase tracking-wider">
+                  Tracking ID
+                </p>
+                <p className="font-mono text-sm">{orderDetail.trackingId.trim()}</p>
+                <p className="mt-2 text-xs text-text-muted">
+                  Tracking cannot be edited after dispatch. Use Mark delivered when appropriate.
                 </p>
               </div>
             ) : null}
@@ -790,7 +853,9 @@ function AdminOrderManagementPage() {
               >
                 Close
               </Button>
-              {orderDetail.status === "pending" || orderDetail.status === "dispatch" ? (
+              {orderDetail.status === "pending" ||
+              orderDetail.status === "packed" ||
+              orderDetail.status === "dispatch" ? (
                 <Button
                   variant="danger"
                   size="sm"
@@ -824,15 +889,26 @@ function AdminOrderManagementPage() {
                   Packed
                 </Button>
               ) : null}
+              {orderDetail.status === "packed" && trackingDraft.trim() ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => void moveToDispatch()}
+                  loading={dispatching}
+                >
+                  Mark dispatched
+                </Button>
+              ) : null}
               {orderDetail.status === "dispatch" && trackingDraft.trim() ? (
                 <Button
                   type="button"
                   variant="primary"
                   size="sm"
-                  onClick={() => void confirmDispatch()}
+                  onClick={() => void confirmDelivered()}
                   loading={dispatching}
                 >
-                  Dispatch
+                  Mark delivered
                 </Button>
               ) : null}
             </div>

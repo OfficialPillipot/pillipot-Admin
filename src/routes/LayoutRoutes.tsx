@@ -8,6 +8,8 @@ import OrdersList from "../pages/OrdersList";
 import OrderDetail from "../pages/OrderDetail";
 import AdminDashboard from "../pages/AdminDashboard";
 import StaffManagement from "../pages/StaffManagement";
+import StaffRoleManagement from "../pages/StaffRoleManagement";
+import AssignedNumbersManagement from "../pages/AssignedNumbersManagement";
 import StaffProfile from "../pages/StaffProfile";
 import AdminOrderManagement from "../pages/AdminOrderManagement";
 import ProductManagement from "../pages/ProductManagement";
@@ -78,6 +80,22 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         element={
           <ProtectedRoute allowedRoles={["super_admin"]}>
             <StaffManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/staff/roles"
+        element={
+          <ProtectedRoute allowedRoles={["super_admin"]}>
+            <StaffRoleManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/staff/assigned-numbers"
+        element={
+          <ProtectedRoute allowedRoles={["super_admin"]}>
+            <AssignedNumbersManagement />
           </ProtectedRoute>
         }
       />

@@ -15,6 +15,8 @@ import {
   KeyIcon,
   UserCircleIcon,
   UserGroupIcon,
+  HashtagIcon,
+  BriefcaseIcon,
 } from "@heroicons/react/24/outline";
 import { Tooltip } from "../ui";
 import type { UserRole } from "../../types";
@@ -40,6 +42,8 @@ const STAFF_NAV: NavItem[] = [
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin", label: "Dashboard", roles: ["super_admin"], end: true, icon: HomeIcon },
   { to: "/admin/staff", label: "Staff", roles: ["super_admin"], end: true, icon: UsersIcon },
+  { to: "/admin/staff/roles", label: "Staff roles", roles: ["super_admin"], end: true, icon: BriefcaseIcon },
+  { to: "/admin/staff/assigned-numbers", label: "Assigned numbers", roles: ["super_admin"], end: true, icon: HashtagIcon },
   { to: "/admin/orders", label: "Orders", roles: ["super_admin"], end: true, icon: CubeIcon },
   { to: "/admin/customers", label: "Customers", roles: ["super_admin"], end: true, icon: UserGroupIcon },
   { to: "/admin/categories", label: "Categories", roles: ["super_admin"], end: true, icon: TagIcon },
