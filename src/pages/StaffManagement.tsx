@@ -31,9 +31,9 @@ import type { Staff } from "../types";
 import type { SelectOption } from "../components/ui/Select";
 
 const DEFAULT_BONUS_MILESTONES = [
-  { orders: 10, bonus: 50 },
-  { orders: 15, bonus: 100 },
-  { orders: 20, bonus: 150 },
+  { orders: 5, bonus: 50 },
+  { orders: 10, bonus: 100 },
+  { orders: 15, bonus: 150 },
 ];
 
 const PHONE_RE = /^[\d+\s().-]{7,25}$/;
@@ -77,6 +77,13 @@ function StaffManagementPage() {
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
+  }, [dispatch]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void dispatch(fetchStaff());
+    }, 15000);
+    return () => window.clearInterval(timer);
   }, [dispatch]);
 
   const positionOptions: SelectOption[] = useMemo(

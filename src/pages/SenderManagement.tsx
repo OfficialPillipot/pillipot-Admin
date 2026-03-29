@@ -26,7 +26,8 @@ type SenderDraft = {
   state: string;
   phone: string;
   email: string;
-  contractId: string;
+  contractIdPrepaid: string;
+  contractIdCod: string;
   customerId: string;
   isDefault: boolean;
 };
@@ -44,7 +45,8 @@ const EMPTY_DRAFT: SenderDraft = {
   state: "",
   phone: "",
   email: "",
-  contractId: "",
+  contractIdPrepaid: "",
+  contractIdCod: "",
   customerId: "",
   isDefault: false,
 };
@@ -81,7 +83,8 @@ function SenderManagementPage() {
       state: sender.state ?? "",
       phone: sender.phone ?? "",
       email: sender.email ?? "",
-      contractId: sender.contractId ?? "",
+      contractIdPrepaid: sender.contractIdPrepaid ?? "",
+      contractIdCod: sender.contractIdCod ?? "",
       customerId: sender.customerId ?? "",
       isDefault: sender.isDefault,
     });
@@ -113,7 +116,8 @@ function SenderManagementPage() {
       state: draft.state.trim(),
       phone: draft.phone.trim(),
       email: draft.email.trim(),
-      contractId: draft.contractId.trim(),
+      contractIdPrepaid: draft.contractIdPrepaid.trim(),
+      contractIdCod: draft.contractIdCod.trim(),
       customerId: draft.customerId.trim(),
     };
     try {
@@ -177,8 +181,9 @@ function SenderManagementPage() {
       },
       {
         key: "ids",
-        header: "Contract / Customer",
-        render: (row: Sender) => `${row.contractId || "—"} / ${row.customerId || "—"}`,
+        header: "Contracts / Customer",
+        render: (row: Sender) =>
+          `COD: ${row.contractIdCod || "—"} | Prepaid: ${row.contractIdPrepaid || "—"} | Customer: ${row.customerId || "—"}`,
       },
       {
         key: "isDefault",
@@ -274,7 +279,8 @@ function SenderManagementPage() {
           <Input label="State" value={draft.state} onChange={(e) => updateField("state", e.target.value)} />
           <Input label="Phone" value={draft.phone} onChange={(e) => updateField("phone", e.target.value)} />
           <Input label="Email" value={draft.email} onChange={(e) => updateField("email", e.target.value)} />
-          <Input label="Contract ID" value={draft.contractId} onChange={(e) => updateField("contractId", e.target.value)} />
+          <Input label="Contract ID (COD)" value={draft.contractIdCod} onChange={(e) => updateField("contractIdCod", e.target.value)} />
+          <Input label="Contract ID (Prepaid)" value={draft.contractIdPrepaid} onChange={(e) => updateField("contractIdPrepaid", e.target.value)} />
           <Input label="Customer ID" value={draft.customerId} onChange={(e) => updateField("customerId", e.target.value)} />
           <label className="flex items-center gap-2 text-sm text-text-muted sm:col-span-2">
             <input

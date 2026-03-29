@@ -106,20 +106,20 @@ function StaffDashboardPage() {
           <CardHeader title="Bonus Progress" />
           <div className="flex justify-between">
             <p className="mb-2 text-sm text-text-muted">
-              Orders: {stats.orderCount}
+              Quantity: {stats.orderCount}
             </p>
             <p className="mb-2 text-sm text-text-muted">
               Today&apos;s Earnings: {formatCurrency(stats.totalEarnings)}
             </p>
           </div>
-          <p className="mb-2 text-sm text-text-muted">
-            Reach {nextMilestone.orders} orders for ₹{nextMilestone.bonus} bonus
-          </p>
+          <div className="mb-3 rounded-lg bg-gradient-to-r from-fuchsia-500 via-violet-500 to-indigo-500 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm">
+            Reach {nextMilestone.orders} quantity for ₹{nextMilestone.bonus} bonus
+          </div>
 
           <ProgressBar
             value={stats.orderCount}
             max={nextMilestone.orders}
-            label="Orders"
+            label="Quantity"
           />
         </Card>
       )}

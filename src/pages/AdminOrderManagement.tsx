@@ -201,7 +201,7 @@ function AdminOrderManagementPage() {
 
   const confirmDelivered = useCallback(async () => {
     if (!orderDetail || orderDetail.status !== "dispatch") return;
-    const tid = trackingDraft.trim();
+    const tid = trackingDraft.trim() || orderDetail.trackingId?.trim() || "";
     if (!tid) {
       toast.error("Enter a tracking ID");
       return;
@@ -224,7 +224,12 @@ function AdminOrderManagementPage() {
   }, [orderDetail, trackingDraft, dispatch]);
 
   const handleReturn = useCallback(async () => {
-    if (!orderDetail || orderDetail.status !== "delivered") return;
+    if (
+      !orderDetail ||
+      (orderDetail.status !== "dispatch" && orderDetail.status !== "delivered")
+    ) {
+      return;
+    }
     setReturning(true);
     try {
       await dispatch(
@@ -883,8 +888,7 @@ function AdminOrderManagementPage() {
                 Close
               </Button>
               {orderDetail.status === "pending" ||
-              orderDetail.status === "packed" ||
-              orderDetail.status === "dispatch" ? (
+              orderDetail.status === "packed" ? (
                 <Button
                   variant="danger"
                   size="sm"
@@ -896,7 +900,8 @@ function AdminOrderManagementPage() {
                   Cancel Order
                 </Button>
               ) : null}
-              {orderDetail.status === "delivered" ? (
+              {(orderDetail.status === "dispatch" ||
+                orderDetail.status === "delivered") ? (
                 <Button
                   type="button"
                   variant="secondary"
@@ -929,7 +934,7 @@ function AdminOrderManagementPage() {
                   Mark dispatched
                 </Button>
               ) : null}
-              {orderDetail.status === "dispatch" && trackingDraft.trim() ? (
+              {orderDetail.status === "dispatch" ? (
                 <Button
                   type="button"
                   variant="primary"

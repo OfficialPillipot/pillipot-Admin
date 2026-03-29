@@ -203,7 +203,7 @@ function StaffProfilePage() {
             </dd>
           </div>
           <div>
-            <dt className="text-sm text-text-muted">Total orders</dt>
+            <dt className="text-sm text-text-muted">Total quantity</dt>
             <dd className="font-medium">{stats?.orderCount ?? 0}</dd>
           </div>
           <div>

@@ -69,7 +69,7 @@ function AdminDashboardPage() {
     () => [
       { key: "name", header: "Staff" },
       { key: "joinedDate", header: "Joined", render: (r: { joinedDate: string }) => formatDate(r.joinedDate) },
-      { key: "orderCount", header: "Orders (week)" },
+      { key: "orderCount", header: "Quantity (week)" },
       {
         key: "weeklyEarnings",
         header: "Weekly earnings",

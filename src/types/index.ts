@@ -99,6 +99,8 @@ export interface Sender {
   phone?: string | null;
   email?: string | null;
   contractId?: string | null;
+  contractIdPrepaid?: string | null;
+  contractIdCod?: string | null;
   customerId?: string | null;
   isDefault: boolean;
   createdAt: string;

@@ -151,7 +151,7 @@ function SalaryManagementPage() {
                 <div className="font-medium">{r.staffName}</div>
               ),
             },
-            { key: "orderCount", header: "Orders" },
+            { key: "orderCount", header: "Quantity" },
             {
               key: "orderEarnings",
               header: "Base amount",

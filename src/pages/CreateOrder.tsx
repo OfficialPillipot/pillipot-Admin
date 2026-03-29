@@ -103,7 +103,6 @@ function CreateOrderPage() {
   useEffect(() => {
     if (phoneTrim.length === 10) return;
     lookupGen.current += 1;
-    setOrderCategory("");
     setProductRows([]);
     setForm((f) => ({
       ...f,
@@ -168,7 +167,7 @@ function CreateOrderPage() {
 
   const toggleProductSelection = useCallback(
     (product: { id: string; name: string }) => {
-      if (!detailsEnabled || !orderCategory) return;
+      if (!detailsEnabled) return;
       setProductRows((current) => {
         const exists = current.some((r) => r.productId === product.id);
         if (exists) {
@@ -186,7 +185,7 @@ function CreateOrderPage() {
       });
       setErrors((e) => ({ ...e, products: "" }));
     },
-    [detailsEnabled, orderCategory]
+    [detailsEnabled]
   );
 
   const lineSubtotal = useCallback(
@@ -230,7 +229,7 @@ function CreateOrderPage() {
     const opts: SelectOption[] = [
       {
         value: "",
-        label: detailsEnabled ? "Select category…" : disabledHint,
+        label: detailsEnabled ? "All categories" : disabledHint,
       },
       ...sorted.map((c) => ({ value: c.id, label: c.name })),
     ];
@@ -244,22 +243,9 @@ function CreateOrderPage() {
   }, [categories, products, detailsEnabled]);
 
   const productsInCategory = useMemo(() => {
-    if (!orderCategory) return [];
+    if (!orderCategory) return products;
     return products.filter((p) => productCategoryKey(p) === orderCategory);
   }, [products, orderCategory]);
-
-  useEffect(() => {
-    if (!orderCategory) {
-      setProductRows([]);
-      return;
-    }
-    setProductRows((rows) =>
-      rows.filter((r) => {
-        const p = products.find((x) => x.id === r.productId);
-        return p != null && productCategoryKey(p) === orderCategory;
-      })
-    );
-  }, [orderCategory, products]);
 
   const validate = useCallback((): boolean => {
     const e: Record<string, string> = {};
@@ -290,36 +276,32 @@ function CreateOrderPage() {
     if (!form.district.trim()) e.district = "Required";
     if (!form.orderType) e.orderType = "Select order type";
 
-    if (!orderCategory) {
-      e.orderCategory = "Select a product category first";
+    const selected = productRows.filter((r) => r.quantity > 0);
+    if (selected.length === 0) {
+      e.products = "Select at least one product with quantity > 0";
     } else {
-      const selected = productRows.filter((r) => r.quantity > 0);
-      if (selected.length === 0) {
-        e.products = "Select at least one product with quantity > 0";
-      } else {
-        for (const r of selected) {
-          const up = unitPrice(r.productId);
-          if (up <= 0) {
-            e.products = `Product "${r.name}" has no catalog price. Ask admin to set price.`;
-            break;
-          }
-          const gross = up * r.quantity;
-          const disc = parseFloat(r.discount) || 0;
-          if (disc < 0) {
-            e.products = "Discount cannot be negative";
-            break;
-          }
-          if (disc > gross) {
-            e.products = `Discount for "${r.name}" cannot exceed ₹${gross.toFixed(2)}`;
-            break;
-          }
+      for (const r of selected) {
+        const up = unitPrice(r.productId);
+        if (up <= 0) {
+          e.products = `Product "${r.name}" has no catalog price. Ask admin to set price.`;
+          break;
+        }
+        const gross = up * r.quantity;
+        const disc = parseFloat(r.discount) || 0;
+        if (disc < 0) {
+          e.products = "Discount cannot be negative";
+          break;
+        }
+        if (disc > gross) {
+          e.products = `Discount for "${r.name}" cannot exceed ₹${gross.toFixed(2)}`;
+          break;
         }
       }
     }
 
     setErrors(e);
     return Object.keys(e).length === 0;
-  }, [form, productRows, detailsEnabled, unitPrice, orderCategory]);
+  }, [form, productRows, detailsEnabled, unitPrice]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -374,7 +356,7 @@ function CreateOrderPage() {
       <Card>
         <CardHeader
           title="Create Order"
-          subtitle="Pick a category, then add products from that category only. Prices come from the catalog; optional line discounts apply per product."
+          subtitle="Add one or more products (including from different categories). Prices come from the catalog; optional line discounts apply per product."
         />
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -481,17 +463,16 @@ function CreateOrderPage() {
             <h3 className="border-b pb-2 text-lg font-bold text-gray-800">Products</h3>
 
             <Select
-              label="Category *"
+              label="Category filter (optional)"
               options={categoryOptions}
               value={orderCategory}
               onChange={(e) => {
                 setOrderCategory(e.target.value);
-                setErrors((er) => ({ ...er, orderCategory: "", products: "" }));
+                setErrors((er) => ({ ...er, products: "" }));
                 setIsDropdownOpen(false);
                 setProductSearch("");
               }}
-              placeholder={!detailsEnabled ? disabledHint : "Select category…"}
-              error={errors.orderCategory}
+              placeholder={!detailsEnabled ? disabledHint : "All categories"}
               disabled={!detailsEnabled}
             />
 
@@ -505,13 +486,11 @@ function CreateOrderPage() {
                   errors.products && productRows.length === 0
                     ? "border-red-500"
                     : "border-border",
-                  !detailsEnabled || !orderCategory
+                  !detailsEnabled
                     ? "cursor-not-allowed opacity-50"
                     : "cursor-pointer hover:border-gray-400",
                 ].join(" ")}
-                onClick={() =>
-                  detailsEnabled && orderCategory && setIsDropdownOpen(!isDropdownOpen)
-                }
+                onClick={() => detailsEnabled && setIsDropdownOpen(!isDropdownOpen)}
               >
                 <span
                   className={
@@ -520,16 +499,14 @@ function CreateOrderPage() {
                 >
                   {!detailsEnabled
                     ? disabledHint
-                    : !orderCategory
-                      ? "Select a category first"
-                      : productRows.length > 0
+                    : productRows.length > 0
                         ? `${productRows.length} product(s) selected`
                         : "Search & select products…"}
                 </span>
                 <span className="text-xs text-gray-400">▼</span>
               </div>
 
-              {isDropdownOpen && detailsEnabled && orderCategory && (
+              {isDropdownOpen && detailsEnabled && (
                 <>
                   <div
                     className="fixed inset-0 z-10"
