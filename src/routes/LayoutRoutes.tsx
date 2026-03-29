@@ -17,6 +17,9 @@ import CategoryManagement from "../pages/CategoryManagement";
 import ExportData from "../pages/ExportData";
 import CustomerManagement from "../pages/CustomerManagement";
 import ChangePassword from "../pages/ChangePassword";
+import SenderManagement from "../pages/SenderManagement";
+import AdminSettings from "../pages/AdminSettings";
+import SalaryManagement from "../pages/SalaryManagement";
 
 interface LayoutRoutesProps {
   user: User;
@@ -144,6 +147,30 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         element={
           <ProtectedRoute allowedRoles={["super_admin"]}>
             <ExportData />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/senders"
+        element={
+          <ProtectedRoute allowedRoles={["super_admin"]}>
+            <SenderManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/salary"
+        element={
+          <ProtectedRoute allowedRoles={["super_admin"]}>
+            <SalaryManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/settings"
+        element={
+          <ProtectedRoute allowedRoles={["super_admin"]}>
+            <AdminSettings />
           </ProtectedRoute>
         }
       />

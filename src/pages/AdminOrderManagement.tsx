@@ -13,9 +13,10 @@ import { selectOrders } from "../store/ordersSlice";
 import { fetchOrders, updateOrder } from "../store/ordersSlice";
 import { selectStaff } from "../store/staffSlice";
 import { selectProducts, fetchProducts } from "../store/productsSlice";
+import { fetchSettings, selectSettings } from "../store/settingsSlice";
 import { Card, CardHeader, Button, Table, Badge, Modal } from "../components/ui";
 import { toast } from "../lib/toast";
-import { downloadOrderPdf } from "../lib/download-order-pdf";
+import { downloadBulkOrdersPdf, downloadOrderPdf } from "../lib/download-order-pdf";
 import type { Order } from "../types";
 import { formatDate } from "../lib/orderUtils";
 
@@ -35,6 +36,7 @@ function AdminOrderManagementPage() {
   const orders = useAppSelector(selectOrders);
   const staff = useAppSelector(selectStaff);
   const products = useAppSelector(selectProducts);
+  const settings = useAppSelector(selectSettings);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [productFilter, setProductFilter] = useState("");
   const [staffFilter, setStaffFilter] = useState("");
@@ -46,6 +48,12 @@ function AdminOrderManagementPage() {
   const [appliedDateTo, setAppliedDateTo] = useState("");
   const [filtersLoading, setFiltersLoading] = useState(false);
   const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
+  const [bulkPdfLoading, setBulkPdfLoading] = useState(false);
+  const [pdfDialogOrder, setPdfDialogOrder] = useState<{
+    id: string;
+    orderId: string;
+  } | null>(null);
+  const [pdfSizeDraft, setPdfSizeDraft] = useState<"thermal" | "a4">("thermal");
   const [discountDraft, setDiscountDraft] = useState("");
   const [savingDiscount, setSavingDiscount] = useState(false);
   const [trackingDraft, setTrackingDraft] = useState("");
@@ -113,6 +121,10 @@ function AdminOrderManagementPage() {
     orderDetail?.status === "pending" || orderDetail?.status === "packed";
 
   /** Only when switching orders — do not depend on `orders` or the draft resets on every list refresh while typing. */
+  useEffect(() => {
+    void dispatch(fetchSettings());
+  }, [dispatch]);
+
   useEffect(() => {
     if (!detailId) {
       setDiscountDraft("");
@@ -312,17 +324,28 @@ function AdminOrderManagementPage() {
     }
   }, [dispatch]);
 
-  const downloadPdf = useCallback(async (internalId: string, displayOrderId: string) => {
+  const downloadPdf = useCallback(async (
+    internalId: string,
+    displayOrderId: string,
+    sizeOverride?: "thermal" | "a4"
+  ) => {
     setPdfLoadingId(internalId);
     try {
-      await downloadOrderPdf(internalId, `${displayOrderId}.pdf`);
+      await downloadOrderPdf(internalId, `${displayOrderId}.pdf`, {
+        size: sizeOverride ?? settings?.defaultPdfSize ?? "thermal",
+      });
       toast.success("PDF downloaded");
     } catch {
       toast.error("Failed to download PDF");
     } finally {
       setPdfLoadingId(null);
     }
-  }, []);
+  }, [settings?.defaultPdfSize]);
+
+  const openPdfDialog = useCallback((id: string, orderId: string) => {
+    setPdfSizeDraft(settings?.defaultPdfSize ?? "thermal");
+    setPdfDialogOrder({ id, orderId });
+  }, [settings?.defaultPdfSize]);
 
   const clearTableFilters = useCallback(() => {
     setStaffFilter("");
@@ -330,6 +353,22 @@ function AdminOrderManagementPage() {
     setProductFilter("");
     setTypeFilter("");
   }, []);
+
+  const downloadSelectedPdf = useCallback(async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkPdfLoading(true);
+    try {
+      await downloadBulkOrdersPdf(ids, `orders-${Date.now()}.pdf`, {
+        size: settings?.defaultPdfSize ?? "thermal",
+      });
+      toast.success("Selected orders PDF downloaded");
+    } catch {
+      toast.error("Failed to download selected orders PDF");
+    } finally {
+      setBulkPdfLoading(false);
+    }
+  }, [selectedIds, settings?.defaultPdfSize]);
 
   const productOptions = useMemo(
     () => [
@@ -494,7 +533,7 @@ function AdminOrderManagementPage() {
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              void downloadPdf(row.id, row.orderId);
+              openPdfDialog(row.id, row.orderId);
             }}
             disabled={pdfLoadingId === row.id}
             className="inline-flex items-center justify-center rounded-[var(--radius-sm)] p-1.5 text-primary hover:bg-primary-muted disabled:opacity-50"
@@ -510,11 +549,11 @@ function AdminOrderManagementPage() {
       staff,
       products,
       pdfLoadingId,
-      downloadPdf,
       selectedIds,
       allVisibleSelected,
       toggleRowSelected,
       toggleAllVisibleSelected,
+      openPdfDialog,
     ]
   );
 
@@ -636,8 +675,18 @@ function AdminOrderManagementPage() {
           </div>
         </div>
         {selectedIds.size > 0 && (
-          <p className="mb-2 text-sm text-text-muted">
-            {selectedIds.size} order{selectedIds.size === 1 ? "" : "s"} selected.{" "}
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-sm text-text-muted">
+            <span>
+              {selectedIds.size} order{selectedIds.size === 1 ? "" : "s"} selected.
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void downloadSelectedPdf()}
+              loading={bulkPdfLoading}
+            >
+              Download selected PDF
+            </Button>
             <button
               type="button"
               className="font-medium text-primary underline hover:no-underline"
@@ -645,7 +694,7 @@ function AdminOrderManagementPage() {
             >
               Clear selection
             </button>
-          </p>
+          </div>
         )}
         <Table
           columns={columns}
@@ -839,9 +888,7 @@ function AdminOrderManagementPage() {
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() =>
-                  void downloadPdf(orderDetail.id, orderDetail.orderId)
-                }
+                onClick={() => openPdfDialog(orderDetail.id, orderDetail.orderId)}
                 loading={pdfLoadingId === orderDetail.id}
               >
                 Download PDF
@@ -914,6 +961,56 @@ function AdminOrderManagementPage() {
             </div>
           </div>
         )}
+      </Modal>
+      <Modal
+        isOpen={!!pdfDialogOrder}
+        onClose={() => setPdfDialogOrder(null)}
+        title="Download PDF"
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-text-muted">
+            Default size:{" "}
+            <span className="font-medium text-text">
+              {(settings?.defaultPdfSize ?? "thermal").toUpperCase()}
+            </span>
+          </p>
+          <label className="grid gap-1 text-sm">
+            <span className="text-text-muted">Override size (optional)</span>
+            <select
+              value={pdfSizeDraft}
+              onChange={(e) => setPdfSizeDraft(e.target.value as "thermal" | "a4")}
+              className="rounded-[var(--radius-md)] border border-border px-3 py-2"
+            >
+              <option value="thermal">Thermal label</option>
+              <option value="a4">A4 (2 labels)</option>
+            </select>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (!pdfDialogOrder) return;
+                void downloadPdf(pdfDialogOrder.id, pdfDialogOrder.orderId);
+                setPdfDialogOrder(null);
+              }}
+            >
+              Download default
+            </Button>
+            <Button
+              onClick={() => {
+                if (!pdfDialogOrder) return;
+                void downloadPdf(
+                  pdfDialogOrder.id,
+                  pdfDialogOrder.orderId,
+                  pdfSizeDraft
+                );
+                setPdfDialogOrder(null);
+              }}
+            >
+              Download selected
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

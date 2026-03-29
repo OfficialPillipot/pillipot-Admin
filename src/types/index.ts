@@ -1,6 +1,7 @@
 export type UserRole = "super_admin" | "staff";
 
 export type OrderType = "cod" | "prepaid";
+export type PdfSize = "thermal" | "a4";
 
 export type OrderStatus =
   | "pending"
@@ -70,6 +71,54 @@ export interface Staff {
     id: string;
     createdAt: string;
   } | null;
+}
+
+export interface StaffEarnings {
+  staffId: string;
+  staffName: string;
+  payoutPerOrder: number;
+  bonusMilestones: { orders: number; bonus: number }[];
+  orderCount: number;
+  orderEarnings: number;
+  bonus: number;
+  total: number;
+}
+
+export interface Sender {
+  id: string;
+  name: string;
+  buildingHouse?: string | null;
+  streetLine1: string;
+  streetLine2?: string | null;
+  area?: string | null;
+  cityState?: string | null;
+  postOffice?: string | null;
+  pincode?: string | null;
+  district?: string | null;
+  state?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  contractId?: string | null;
+  customerId?: string | null;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AppSettings {
+  id: string;
+  defaultPdfSize: PdfSize;
+  defaultSenderId: string | null;
+  defaultSender:
+    | {
+        id: string;
+        name: string;
+        contractId?: string | null;
+        customerId?: string | null;
+      }
+    | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Customer {

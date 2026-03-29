@@ -6,6 +6,8 @@ import { staffReducer, fetchStaff, fetchStaffMe } from "./staffSlice";
 import { customersReducer, fetchCustomers } from "./customersSlice";
 import { staffPositionsReducer } from "./staffPositionsSlice";
 import { assignedNumbersReducer } from "./assignedNumbersSlice";
+import { sendersReducer, fetchSenders } from "./sendersSlice";
+import { settingsReducer, fetchSettings } from "./settingsSlice";
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +18,8 @@ export const store = configureStore({
     staffPositions: staffPositionsReducer,
     assignedNumbers: assignedNumbersReducer,
     customers: customersReducer,
+    senders: sendersReducer,
+    settings: settingsReducer,
   },
 });
 
@@ -29,4 +33,6 @@ export {
   fetchStaff,
   fetchStaffMe,
   fetchCustomers,
+  fetchSenders,
+  fetchSettings,
 };

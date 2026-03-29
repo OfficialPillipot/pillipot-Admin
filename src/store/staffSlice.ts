@@ -194,7 +194,8 @@ const staffSlice = createSlice({
         }
       })
       .addCase(fulfillPasswordResetRequest.fulfilled, (s, a) => {
-        const { requestId: _rid, ...staff } = a.payload;
+        const { requestId, ...staff } = a.payload;
+        void requestId;
         const normalized = normalizeStaff(staff);
         const si = s.list.findIndex((st) => st.id === staff.id);
         if (si !== -1) s.list[si] = normalized;

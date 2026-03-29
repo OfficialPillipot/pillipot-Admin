@@ -1,0 +1,228 @@
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { Card, CardHeader, Button, Table, Input } from "../components/ui";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { selectStaff, updateStaff, fetchStaff } from "../store/staffSlice";
+import { api } from "../api/client";
+import { endpoints } from "../api/endpoints";
+import type { StaffEarnings } from "../types";
+import { toast } from "../lib/toast";
+import { formatCurrency } from "../lib/orderUtils";
+
+function parseMilestones(text: string): { orders: number; bonus: number }[] {
+  const out: { orders: number; bonus: number }[] = [];
+  for (const raw of text.split(",")) {
+    const part = raw.trim();
+    if (!part) continue;
+    const [o, b] = part.split(":").map((x) => Number(x.trim()));
+    if (!Number.isFinite(o) || !Number.isFinite(b) || o < 0 || b < 0) {
+      throw new Error("Use milestone format like 5:50, 10:100, 15:150");
+    }
+    out.push({ orders: o, bonus: b });
+  }
+  return out.sort((a, b) => a.orders - b.orders);
+}
+
+function milestoneText(list: { orders: number; bonus: number }[]): string {
+  return list
+    .slice()
+    .sort((a, b) => a.orders - b.orders)
+    .map((x) => `${x.orders}:${x.bonus}`)
+    .join(", ");
+}
+
+function SalaryManagementPage() {
+  const dispatch = useAppDispatch();
+  const staff = useAppSelector(selectStaff);
+  const [rows, setRows] = useState<StaffEarnings[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [draftPayout, setDraftPayout] = useState<Record<string, string>>({});
+  const [draftMilestones, setDraftMilestones] = useState<Record<string, string>>(
+    {}
+  );
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const loadRows = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
+      const qs = params.toString();
+      const path = qs ? `${endpoints.staffEarnings}?${qs}` : endpoints.staffEarnings;
+      const data = await api.get<StaffEarnings[]>(path);
+      setRows(data);
+    } catch {
+      toast.error("Failed to load salary data");
+    } finally {
+      setLoading(false);
+    }
+  }, [dateFrom, dateTo]);
+
+  useEffect(() => {
+    void dispatch(fetchStaff());
+    void loadRows();
+  }, [dispatch, loadRows]);
+
+  useEffect(() => {
+    const payout: Record<string, string> = {};
+    const milestones: Record<string, string> = {};
+    for (const s of staff) {
+      payout[s.id] = String(s.payoutPerOrder ?? 30);
+      milestones[s.id] = milestoneText(s.bonusMilestones ?? []);
+    }
+    setDraftPayout(payout);
+    setDraftMilestones(milestones);
+  }, [staff]);
+
+  const staffById = useMemo(
+    () => new Map(staff.map((s) => [s.id, s])),
+    [staff]
+  );
+
+  const saveStaffRule = useCallback(
+    async (staffId: string) => {
+      const payout = Number(draftPayout[staffId] ?? "30");
+      if (!Number.isFinite(payout) || payout < 0) {
+        toast.error("Enter a valid payout amount");
+        return;
+      }
+      let milestones: { orders: number; bonus: number }[] = [];
+      try {
+        milestones = parseMilestones(draftMilestones[staffId] ?? "");
+      } catch (e) {
+        toast.error((e as Error).message);
+        return;
+      }
+      setSavingId(staffId);
+      try {
+        await dispatch(
+          updateStaff({
+            id: staffId,
+            patch: {
+              payoutPerOrder: payout,
+              bonusMilestones: milestones,
+            },
+          })
+        ).unwrap();
+        await loadRows();
+        toast.success("Salary rule updated");
+      } catch {
+        toast.error("Failed to update salary rule");
+      } finally {
+        setSavingId(null);
+      }
+    },
+    [dispatch, draftMilestones, draftPayout, loadRows]
+  );
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader
+          title="Salary Management"
+          subtitle="Base payout + highest milestone bonus for each staff."
+        />
+        <div className="mb-4 flex flex-wrap items-end gap-3">
+          <Input
+            label="From date"
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+          <Input
+            label="To date"
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+          <Button onClick={() => void loadRows()} loading={loading}>
+            Apply period
+          </Button>
+        </div>
+
+        <Table
+          columns={[
+            {
+              key: "staffName",
+              header: "Staff",
+              render: (r: StaffEarnings) => (
+                <div className="font-medium">{r.staffName}</div>
+              ),
+            },
+            { key: "orderCount", header: "Orders" },
+            {
+              key: "orderEarnings",
+              header: "Base amount",
+              render: (r: StaffEarnings) => formatCurrency(r.orderEarnings),
+            },
+            {
+              key: "bonus",
+              header: "Bonus",
+              render: (r: StaffEarnings) => formatCurrency(r.bonus),
+            },
+            {
+              key: "total",
+              header: "Total salary",
+              render: (r: StaffEarnings) => (
+                <span className="font-semibold text-earnings">
+                  {formatCurrency(r.total)}
+                </span>
+              ),
+            },
+            {
+              key: "rules",
+              header: "Rules",
+              render: (r: StaffEarnings) => (
+                <div className="grid min-w-[20rem] gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={draftPayout[r.staffId] ?? String(r.payoutPerOrder)}
+                    onChange={(e) =>
+                      setDraftPayout((prev) => ({
+                        ...prev,
+                        [r.staffId]: e.target.value,
+                      }))
+                    }
+                    className="rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-sm"
+                    placeholder="Payout per order"
+                  />
+                  <input
+                    type="text"
+                    value={
+                      draftMilestones[r.staffId] ??
+                      milestoneText(staffById.get(r.staffId)?.bonusMilestones ?? [])
+                    }
+                    onChange={(e) =>
+                      setDraftMilestones((prev) => ({
+                        ...prev,
+                        [r.staffId]: e.target.value,
+                      }))
+                    }
+                    className="rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-sm"
+                    placeholder="5:50, 10:100, 15:150"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => void saveStaffRule(r.staffId)}
+                    loading={savingId === r.staffId}
+                  >
+                    Save rule
+                  </Button>
+                </div>
+              ),
+            },
+          ]}
+          data={rows}
+          keyExtractor={(r) => r.staffId}
+          emptyMessage="No salary rows for this period."
+        />
+      </Card>
+    </div>
+  );
+}
+
+export default memo(SalaryManagementPage);
