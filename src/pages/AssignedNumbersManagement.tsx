@@ -41,6 +41,10 @@ function AssignedNumbersManagementPage() {
       toast.error("Number is required");
       return;
     }
+    if (v.length !== 10) {
+      toast.error("Number must be exactly 10 digits");
+      return;
+    }
     try {
       if (editingId) {
         await dispatch(
@@ -125,7 +129,6 @@ function AssignedNumbersManagementPage() {
       <Card>
         <CardHeader
           title="Assigned numbers"
-          subtitle="Add numbers here, then link each to a staff member from Staff management. Each number can belong to at most one staff member."
           action={
             <Button type="button" onClick={openAdd}>
               Add number
@@ -150,8 +153,10 @@ function AssignedNumbersManagementPage() {
           <Input
             label="Number"
             value={numberVal}
-            onChange={(e) => setNumberVal(e.target.value)}
-            placeholder="e.g. 1001 or ADN-42"
+            onChange={(e) => setNumberVal(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            placeholder="e.g. 9876543210"
+            inputMode="numeric"
+            maxLength={10}
           />
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={() => void handleSave()}>

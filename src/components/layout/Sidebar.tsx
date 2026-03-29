@@ -44,18 +44,19 @@ const STAFF_NAV: NavItem[] = [
 
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin", label: "Dashboard", roles: ["super_admin"], end: true, icon: HomeIcon },
-  { to: "/admin/staff", label: "Staff", roles: ["super_admin"], end: true, icon: UsersIcon },
-  { to: "/admin/staff/roles", label: "Staff roles", roles: ["super_admin"], end: true, icon: BriefcaseIcon },
-  { to: "/admin/staff/assigned-numbers", label: "Assigned numbers", roles: ["super_admin"], end: true, icon: HashtagIcon },
   { to: "/admin/orders", label: "Orders", roles: ["super_admin"], end: true, icon: CubeIcon },
-  { to: "/admin/customers", label: "Customers", roles: ["super_admin"], end: true, icon: UserGroupIcon },
-  { to: "/admin/categories", label: "Categories", roles: ["super_admin"], end: true, icon: TagIcon },
-  { to: "/admin/products", label: "Products", roles: ["super_admin"], end: true, icon: Squares2X2Icon },
-  { to: "/admin/export", label: "Export Data", roles: ["super_admin"], end: true, icon: ArrowDownTrayIcon },
-  { to: "/admin/senders", label: "Senders", roles: ["super_admin"], end: true, icon: TruckIcon },
   { to: "/admin/salary", label: "Salary", roles: ["super_admin"], end: true, icon: CurrencyRupeeIcon },
-  { to: "/admin/settings", label: "Settings", roles: ["super_admin"], end: true, icon: Cog6ToothIcon },
+  { to: "/admin/staff", label: "Staff", roles: ["super_admin"], end: true, icon: UsersIcon },
+  { to: "/admin/products", label: "Products", roles: ["super_admin"], end: true, icon: Squares2X2Icon },
+  { to: "/admin/customers", label: "Customers", roles: ["super_admin"], end: true, icon: UserGroupIcon },
+  { to: "/admin/staff/assigned-numbers", label: "Assigned numbers", roles: ["super_admin"], end: true, icon: HashtagIcon },
+  { to: "/admin/categories", label: "Categories", roles: ["super_admin"], end: true, icon: TagIcon },
+  { to: "/admin/senders", label: "Senders", roles: ["super_admin"], end: true, icon: TruckIcon },
+  { to: "/admin/staff/roles", label: "Staff roles", roles: ["super_admin"], end: true, icon: BriefcaseIcon },
   { to: "/account/password", label: "Change password", roles: ["super_admin"], end: true, icon: KeyIcon },
+  { to: "/admin/export", label: "Export Data", roles: ["super_admin"], end: true, icon: ArrowDownTrayIcon },
+  { to: "/admin/settings", label: "Settings", roles: ["super_admin"], end: true, icon: Cog6ToothIcon },
+
 ];
 
 function getStoredCollapsed(): boolean {
@@ -148,8 +149,8 @@ function SidebarComponent({ role, onLogout, mobileOpen, setMobileOpen }: Sidebar
               onClick={handleMobileNavClick}
               title={collapsed ? item.label : undefined} // Fallback title
               className={({ isActive }: { isActive: boolean }) =>
-                linkBase + 
-                (isActive ? linkActive : linkInactive) + 
+                linkBase +
+                (isActive ? linkActive : linkInactive) +
                 (collapsed ? " md:justify-center md:px-2" : "")
               }
             >
