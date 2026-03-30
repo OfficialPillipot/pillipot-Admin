@@ -35,10 +35,11 @@ function OrdersListPage() {
 
   const staffId = user?.role === "staff" ? user.staffId : null;
 
-  const filteredOrders = useMemo(() => {
+  const groupedOrders = useMemo(() => {
     let list = staffId
       ? orders.filter((o) => o.staffId === staffId)
       : [...orders];
+    
     if (productFilter) {
       list = list.filter((o) => o.productId === productFilter);
     }
@@ -51,11 +52,37 @@ function OrdersListPage() {
     if (toDate) {
       list = list.filter((o) => o.createdAt <= `${toDate}T23:59:59.999Z`);
     }
-    return list.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [orders, staffId, productFilter, typeFilter, fromDate, toDate]);
+
+    const groups: Record<string, Order[]> = {};
+    for (const o of list) {
+      if (!groups[o.orderId]) groups[o.orderId] = [];
+      groups[o.orderId].push(o);
+    }
+
+    return Object.values(groups)
+      .map((items) => {
+        const representative = items[0];
+        const total = items.reduce(
+          (sum, i) => sum + Number(i.sellingAmount),
+          0
+        );
+        const totalDiscount = items.reduce(
+          (sum, i) => sum + (i.discountAmount ? Number(i.discountAmount) : 0),
+          0
+        );
+        return {
+          ...representative,
+          id: representative.id, // for keyExtractor
+          sellingAmount: total,
+          discountAmount: totalDiscount,
+          _lineCount: items.length,
+          _products: items.map(
+            (i) => products.find((p) => p.id === i.productId)?.name || i.productId
+          ),
+        };
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [orders, staffId, productFilter, typeFilter, fromDate, toDate, products]);
 
   const productOptions: SelectOption[] = useMemo(
     () => [
@@ -101,8 +128,19 @@ function OrdersListPage() {
       { key: "customerName", header: "Customer" },
       {
         key: "product",
-        header: "Product",
-        render: (row: Order) => products.find((p) => p.id === row.productId)?.name ?? row.productId,
+        header: "Products",
+        render: (row: any) => {
+          const names = row._products as string[];
+          if (names.length === 1) return names[0];
+          return (
+            <div className="flex flex-col gap-0.5">
+              <span className="font-semibold text-xs text-indigo-600">{names.length} items</span>
+              <span className="text-[10px] text-text-muted truncate max-w-[12rem]">
+                {names.join(", ")}
+              </span>
+            </div>
+          );
+        },
       },
       {
         key: "orderType",
@@ -188,7 +226,7 @@ function OrdersListPage() {
         </div>
         <Table
           columns={columns}
-          data={filteredOrders}
+          data={groupedOrders}
           keyExtractor={(row) => row.id}
           emptyMessage="No orders found."
         />

@@ -1,5 +1,6 @@
 import { memo, useCallback, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api/client";
 import { endpoints } from "../api/endpoints";
@@ -12,6 +13,9 @@ function ChangePasswordPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -70,28 +74,70 @@ function ChangePasswordPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="Current password"
-            type="password"
+            type={showCurrent ? "text" : "password"}
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             autoComplete="current-password"
             required
+            endNode={
+              <button
+                type="button"
+                onClick={() => setShowCurrent(!showCurrent)}
+                className="focus:outline-none"
+                aria-label={showCurrent ? "Hide password" : "Show password"}
+              >
+                {showCurrent ? (
+                  <EyeSlashIcon className="h-5 w-5 hover:text-text" />
+                ) : (
+                  <EyeIcon className="h-5 w-5 hover:text-text" />
+                )}
+              </button>
+            }
           />
           <Input
             label="New password"
-            type="password"
+            type={showNew ? "text" : "password"}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             autoComplete="new-password"
             required
             minLength={8}
+            endNode={
+              <button
+                type="button"
+                onClick={() => setShowNew(!showNew)}
+                className="focus:outline-none"
+                aria-label={showNew ? "Hide password" : "Show password"}
+              >
+                {showNew ? (
+                  <EyeSlashIcon className="h-5 w-5 hover:text-text" />
+                ) : (
+                  <EyeIcon className="h-5 w-5 hover:text-text" />
+                )}
+              </button>
+            }
           />
           <Input
             label="Confirm new password"
-            type="password"
+            type={showConfirmPass ? "text" : "password"}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             autoComplete="new-password"
             required
+            endNode={
+              <button
+                type="button"
+                onClick={() => setShowConfirmPass(!showConfirmPass)}
+                className="focus:outline-none"
+                aria-label={showConfirmPass ? "Hide password" : "Show password"}
+              >
+                {showConfirmPass ? (
+                  <EyeSlashIcon className="h-5 w-5 hover:text-text" />
+                ) : (
+                  <EyeIcon className="h-5 w-5 hover:text-text" />
+                )}
+              </button>
+            }
           />
           {error && <p className="text-sm text-error">{error}</p>}
           <div className="flex flex-wrap gap-2">

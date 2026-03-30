@@ -60,17 +60,39 @@ function AdminOrderManagementPage() {
   const ordersRef = useRef(orders);
   ordersRef.current = orders;
 
-  const filteredOrders = useMemo(() => {
+  const groupedOrders = useMemo(() => {
     let list = [...orders].sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
+
     if (productFilter) list = list.filter((o) => o.productId === productFilter);
     if (staffFilter) list = list.filter((o) => o.staffId === staffFilter);
     if (statusFilter) list = list.filter((o) => o.status === statusFilter);
     if (typeFilter) list = list.filter((o) => o.orderType === typeFilter);
-    return list;
+
+    const groups = new Map<string, Order[]>();
+    for (const o of list) {
+      if (!groups.has(o.orderId)) groups.set(o.orderId, []);
+      groups.get(o.orderId)!.push(o);
+    }
+
+    return Array.from(groups.values()).map((items) => {
+      const o = items[0];
+      const totalSelling = items.reduce((sum, item) => sum + safeMoney(item.sellingAmount), 0);
+      const totalDiscount = items.reduce((sum, item) => sum + (item.discountAmount ? safeMoney(item.discountAmount) : 0), 0);
+
+      // Return a "summary" order object
+      return {
+        ...o,
+        sellingAmount: totalSelling,
+        discountAmount: totalDiscount > 0 ? totalDiscount : null,
+        items, // Keep all items for the details modal
+      };
+    });
   }, [orders, productFilter, staffFilter, statusFilter, typeFilter]);
+
+  const filteredOrders = groupedOrders;
 
   const allVisibleSelected =
     filteredOrders.length > 0 &&
@@ -107,10 +129,10 @@ function AdminOrderManagementPage() {
     setSelectedIds(new Set());
   }, []);
 
-  const orderDetail = useMemo(
-    () => (detailId ? orders.find((o) => o.id === detailId) : null),
-    [orders, detailId]
-  );
+  const orderDetail = useMemo(() => {
+    if (!detailId) return null;
+    return (groupedOrders.find((o) => o.id === detailId) as any) || null;
+  }, [groupedOrders, detailId]);
 
   const discountEditable =
     orderDetail?.status === "pending" || orderDetail?.status === "packed";
@@ -125,11 +147,12 @@ function AdminOrderManagementPage() {
       setDiscountDraft("");
       return;
     }
-    const o = ordersRef.current.find((x) => x.id === detailId);
-    if (!o) return;
-    const d = o.discountAmount;
+    // Find the grouped order to get the TOTAL discount
+    const groupedOrder = groupedOrders.find((o) => o.id === detailId);
+    if (!groupedOrder) return;
+    const d = groupedOrder.discountAmount;
     setDiscountDraft(d != null && safeMoney(d) > 0 ? String(safeMoney(d)) : "");
-  }, [detailId]);
+  }, [detailId, groupedOrders]);
 
   useEffect(() => {
     if (!detailId) {
@@ -259,14 +282,20 @@ function AdminOrderManagementPage() {
     }
     setSavingDiscount(true);
     try {
-      const updated = await dispatch(
-        updateOrder({
-          id: orderDetail.id,
-          patch: { discountAmount: amount },
+      const items = (orderDetail as any).items || [orderDetail];
+      // We apply the full discount to the first item and set others to 0
+      // This ensures the total discount for the "order" (group) is exactly 'amount'
+      await Promise.all(
+        items.map((item: any, idx: number) => {
+          const itemDiscount = idx === 0 ? amount : 0;
+          return dispatch(
+            updateOrder({
+              id: item.id,
+              patch: { discountAmount: itemDiscount },
+            })
+          ).unwrap();
         })
-      ).unwrap();
-      const ud = updated.discountAmount;
-      setDiscountDraft(ud != null && safeMoney(ud) > 0 ? String(safeMoney(ud)) : "");
+      );
       toast.success("Discount updated");
     } catch (err) {
       toast.fromError(err, "Failed to update discount");
@@ -454,8 +483,24 @@ function AdminOrderManagementPage() {
       { key: "customerName", header: "Customer" },
       {
         key: "productId",
-        header: "Product",
-        render: (row: Order) => products.find((p) => p.id === row.productId)?.name ?? row.productId,
+        header: "Products",
+        render: (row: any) => {
+          const names = row.items?.map((i: any) =>
+            products.find((p) => p.id === i.productId)?.name || i.productId
+          ) || [];
+
+          if (names.length === 0) return "—";
+          if (names.length === 1) return names[0];
+
+          return (
+            <div>
+              <span className="text-xs font-bold text-primary">{names.length} items</span>
+              <div className="text-[10px] text-text-muted mt-0.5 line-clamp-1 italic">
+                {names.join(", ")}
+              </div>
+            </div>
+          );
+        }
       },
       {
         key: "discountAmount",
@@ -736,13 +781,60 @@ function AdminOrderManagementPage() {
                 <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Pincode</dt>
                 <dd>{orderDetail.pincode}</dd>
               </div>
-              <div>
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Product</dt>
-                <dd className="font-medium">{products.find((p) => p.id === orderDetail.productId)?.name || orderDetail.productId}</dd>
-              </div>
-              <div>
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Quantity</dt>
-                <dd>{orderDetail.quantity}</dd>
+              <div className="sm:col-span-2 border-t pt-4 mt-2">
+                <dt className="text-text-muted mb-2 text-xs uppercase tracking-wider font-bold">Order Items</dt>
+                <dd className="rounded-lg border border-gray-100 overflow-hidden shadow-sm">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50 text-gray-500 font-bold">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Product</th>
+                        <th className="px-3 py-2 text-center">Qty</th>
+                        <th className="px-3 py-2 text-right">Price</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {(orderDetail as any).items?.map((item: any) => (
+                        <tr key={item.id}>
+                          <td className="px-3 py-2 font-medium">
+                            <div>{products.find((p) => p.id === item.productId)?.name || item.productId}</div>
+                            {(item.addOnAmount || item.addOnNote) && (
+                              <div className="mt-1 text-[10px] text-earnings font-normal flex items-center gap-1.5">
+                                <span className="inline-block px-1 py-0.5 bg-earnings/10 rounded text-earnings uppercase tracking-tighter font-bold">Add-on</span>
+                                <span>{item.addOnNote || "Extra"} ({discountDisplay(item.addOnAmount)})</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-center font-bold text-gray-600">{item.quantity}</td>
+                          <td className="px-3 py-2 text-right font-black text-indigo-600">
+                            ₹{safeMoney(item.sellingAmount).toFixed(2)}
+                          </td>
+                        </tr>
+                      )) || (
+                          <tr>
+                            <td className="px-3 py-2 font-medium">
+                              <div>{products.find((p) => p.id === (orderDetail as any).productId)?.name || (orderDetail as any).productId}</div>
+                              {((orderDetail as any).addOnAmount || (orderDetail as any).addOnNote) && (
+                                <div className="mt-1 text-[10px] text-earnings font-normal flex items-center gap-1.5">
+                                  <span className="inline-block px-1 py-0.5 bg-earnings/10 rounded text-earnings uppercase tracking-tighter font-bold">Add-on</span>
+                                  <span>{(orderDetail as any).addOnNote || "Extra"} ({discountDisplay((orderDetail as any).addOnAmount)})</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-center font-bold text-gray-600">{(orderDetail as any).quantity}</td>
+                            <td className="px-3 py-2 text-right font-black text-indigo-600">
+                              ₹{safeMoney((orderDetail as any).sellingAmount).toFixed(2)}
+                            </td>
+                          </tr>
+                        )}
+                    </tbody>
+                    <tfoot className="bg-gray-50/60 border-t border-gray-100">
+                      <tr>
+                        <td colSpan={2} className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Items Amount</td>
+                        <td className="px-3 py-2 text-right font-black text-indigo-700">₹{safeMoney((orderDetail as any).sellingAmount).toFixed(2)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </dd>
               </div>
               <div>
                 <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Order Type</dt>
@@ -815,7 +907,7 @@ function AdminOrderManagementPage() {
               {(orderDetail.status === "delivered" ||
                 orderDetail.status === "cancelled" ||
                 orderDetail.status === "returned") &&
-              orderDetail.trackingId?.trim() ? (
+                orderDetail.trackingId?.trim() ? (
                 <div>
                   <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Tracking ID</dt>
                   <dd className="font-mono text-sm">{orderDetail.trackingId.trim()}</dd>
@@ -829,18 +921,18 @@ function AdminOrderManagementPage() {
               </div>
               <div className="sm:col-span-2">
                 <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Staff Details</dt>
-                <dd>{staff.find(s => s.id === orderDetail.staffId)?.name || orderDetail.staffId}</dd>
+                <dd>{staff.find(s => s.id === (orderDetail as any).staffId)?.name || (orderDetail as any).staffId}</dd>
               </div>
-              {orderDetail.notes && (
+              {(orderDetail as any).notes && (
                 <div className="sm:col-span-2">
                   <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Notes</dt>
                   <dd className="bg-surface-alt p-2 rounded-[var(--radius-sm)] border border-border text-text-muted">
-                    {orderDetail.notes}
+                    {(orderDetail as any).notes}
                   </dd>
                 </div>
               )}
             </dl>
-            {orderDetail.status === "pending" || orderDetail.status === "packed" ? (
+            {(orderDetail as any).status === "pending" || (orderDetail as any).status === "packed" ? (
               <div className="rounded-[var(--radius-md)] border border-border bg-surface-alt p-3">
                 <label
                   htmlFor="order-tracking-id"
@@ -860,7 +952,7 @@ function AdminOrderManagementPage() {
                   className="w-full max-w-md rounded-[var(--radius-sm)] border border-border bg-surface px-3 py-2 text-sm"
                 />
                 <p className="mt-2 text-xs text-text-muted">
-                  {orderDetail.status === "pending"
+                  {(orderDetail as any).status === "pending"
                     ? "You can set tracking before or after packing. Packed means ready for courier; use Mark dispatched only after you have a final tracking ID."
                     : trackingDraft.trim()
                       ? "Click Mark dispatched when the parcel is with the courier."
@@ -868,12 +960,12 @@ function AdminOrderManagementPage() {
                 </p>
               </div>
             ) : null}
-            {orderDetail.status === "dispatch" && orderDetail.trackingId?.trim() ? (
+            {(orderDetail as any).status === "dispatch" && (orderDetail as any).trackingId?.trim() ? (
               <div className="rounded-[var(--radius-md)] border border-border bg-surface-alt p-3">
                 <p className="text-text-muted mb-1 text-xs font-medium uppercase tracking-wider">
                   Tracking ID
                 </p>
-                <p className="font-mono text-sm">{orderDetail.trackingId.trim()}</p>
+                <p className="font-mono text-sm">{(orderDetail as any).trackingId.trim()}</p>
                 <p className="mt-2 text-xs text-text-muted">
                   Tracking cannot be edited after dispatch. Use Mark delivered when appropriate.
                 </p>
@@ -888,12 +980,12 @@ function AdminOrderManagementPage() {
                 Close
               </Button>
               {orderDetail.status === "pending" ||
-              orderDetail.status === "packed" ? (
+                orderDetail.status === "packed" ? (
                 <Button
                   variant="danger"
                   size="sm"
                   onClick={() => {
-                    handleStatusChange(orderDetail.id, "cancelled");
+                    handleStatusChange((orderDetail as any).id, "cancelled");
                     setDetailId(null);
                   }}
                 >

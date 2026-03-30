@@ -1,5 +1,6 @@
 import { memo, useState, useCallback } from "react";
 import { Navigate, useLocation } from "react-router";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../context/AuthContext";
 import { Button, Input, Card, Modal } from "../components/ui";
 import { api } from "../api/client";
@@ -11,6 +12,7 @@ function LoginPage() {
   const location = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -86,11 +88,11 @@ function LoginPage() {
       <Card className="w-full max-w-md shadow-[var(--shadow-card-lg)]" padding="lg">
         <div className="mb-8 text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            Edenecart
+            Eden E Cart
           </p>
-          <h1 className="mt-2 text-xl font-semibold tracking-tight text-text-heading sm:text-2xl">
+          {/* <h1 className="mt-2 text-xl font-semibold tracking-tight text-text-heading sm:text-2xl">
             Order management
-          </h1>
+          </h1> */}
           <p className="mt-2 text-sm text-text-muted">
             Sign in to your account
           </p>

@@ -1,5 +1,5 @@
 import { memo, useState, useCallback, useMemo, useEffect } from "react";
-import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, TrashIcon, UserMinusIcon } from "@heroicons/react/24/outline";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   selectAssignedNumbers,
@@ -8,6 +8,7 @@ import {
   updateAssignedNumber,
   deleteAssignedNumber,
 } from "../store/assignedNumbersSlice";
+import { selectStaff, fetchStaff, updateStaff } from "../store/staffSlice";
 import { Card, CardHeader, Button, Table, Modal, Input, Tooltip } from "../components/ui";
 import { toast } from "../lib/toast";
 import type { AssignedNumber } from "../types";
@@ -15,12 +16,14 @@ import type { AssignedNumber } from "../types";
 function AssignedNumbersManagementPage() {
   const dispatch = useAppDispatch();
   const numbers = useAppSelector(selectAssignedNumbers);
+  const staff = useAppSelector(selectStaff);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [numberVal, setNumberVal] = useState("");
 
   useEffect(() => {
     void dispatch(fetchAssignedNumbers());
+    void dispatch(fetchStaff());
   }, [dispatch]);
 
   const openAdd = useCallback(() => {
@@ -39,6 +42,10 @@ function AssignedNumbersManagementPage() {
     const v = numberVal.trim();
     if (!v) {
       toast.error("Number is required");
+      return;
+    }
+    if (v.length !== 10) {
+      toast.error("Number must be exactly 10 digits");
       return;
     }
     try {
@@ -75,6 +82,24 @@ function AssignedNumbersManagementPage() {
     [dispatch, editingId]
   );
 
+  const handleUnassign = useCallback(
+    async (row: AssignedNumber) => {
+      if (!row.assignedToStaffProfileId) return;
+      if (!window.confirm(`Unassign number “${row.number}” from staff?`)) return;
+      try {
+        await dispatch(
+          updateStaff({ id: row.assignedToStaffProfileId, patch: { assignedNumberId: null } })
+        ).unwrap();
+        toast.success("Number unassigned");
+        void dispatch(fetchAssignedNumbers());
+        void dispatch(fetchStaff());
+      } catch {
+        toast.error("Failed to unassign number");
+      }
+    },
+    [dispatch]
+  );
+
   const columns = useMemo(
     () => [
       { key: "number", header: "Assigned number" },
@@ -89,10 +114,34 @@ function AssignedNumbersManagementPage() {
           ),
       },
       {
+        key: "username",
+        header: "Username",
+        render: (row: AssignedNumber) =>
+          row.assignedToStaffProfileId ? (
+            <span className="text-sm text-text-heading">
+              {staff.find((s) => s.id === row.assignedToStaffProfileId)?.name ?? "Unknown"}
+            </span>
+          ) : (
+            <span className="text-sm text-text-muted">-</span>
+          ),
+      },
+      {
         key: "actions",
         header: "",
         render: (row: AssignedNumber) => (
           <div className="flex items-center gap-1">
+            {row.assignedToStaffProfileId && (
+              <Tooltip content="Unassign" side="top">
+                <button
+                  type="button"
+                  onClick={() => void handleUnassign(row)}
+                  className="rounded p-1.5 text-warning hover:bg-warning/10"
+                  aria-label={`Unassign ${row.number}`}
+                >
+                  <UserMinusIcon className="h-5 w-5" />
+                </button>
+              </Tooltip>
+            )}
             <Tooltip content="Edit" side="top">
               <button
                 type="button"
@@ -117,7 +166,7 @@ function AssignedNumbersManagementPage() {
         ),
       },
     ],
-    [openEdit, handleDelete]
+    [openEdit, handleDelete, handleUnassign, staff]
   );
 
   return (
@@ -125,7 +174,6 @@ function AssignedNumbersManagementPage() {
       <Card>
         <CardHeader
           title="Assigned numbers"
-          subtitle="Add numbers here, then link each to a staff member from Staff management. Each number can belong to at most one staff member."
           action={
             <Button type="button" onClick={openAdd}>
               Add number
@@ -150,8 +198,10 @@ function AssignedNumbersManagementPage() {
           <Input
             label="Number"
             value={numberVal}
-            onChange={(e) => setNumberVal(e.target.value)}
-            placeholder="e.g. 1001 or ADN-42"
+            onChange={(e) => setNumberVal(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            placeholder="e.g. 9876543210"
+            inputMode="numeric"
+            maxLength={10}
           />
           <div className="flex flex-wrap gap-2">
             <Button type="button" onClick={() => void handleSave()}>

@@ -3,9 +3,10 @@ import { useParams, Link } from "react-router";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { selectStaff, updateStaff } from "../store/staffSlice";
 import { selectStaffPositions, fetchStaffPositions } from "../store/staffPositionsSlice";
+import { selectAssignedNumbers, fetchAssignedNumbers } from "../store/assignedNumbersSlice";
 import { selectOrders } from "../store/ordersSlice";
 import { selectProducts } from "../store/productsSlice";
-import { Card, CardHeader, Table, Select, Button } from "../components/ui";
+import { Card, CardHeader, Table, Select, Button, Modal } from "../components/ui";
 import { staffJobRoleLabel } from "../lib/staffJobRoles";
 import { toast } from "../lib/toast";
 import {
@@ -29,6 +30,11 @@ function StaffProfilePage() {
   const [positionDraft, setPositionDraft] = useState("");
   const [positionSaving, setPositionSaving] = useState(false);
 
+  const assignedNumbers = useAppSelector(selectAssignedNumbers);
+  const [numberModalOpen, setNumberModalOpen] = useState(false);
+  const [selectedNumberId, setSelectedNumberId] = useState("");
+  const [numberSaving, setNumberSaving] = useState(false);
+
   const staffProfile = useMemo(
     () => staff.find((s) => s.id === id),
     [staff, id]
@@ -36,6 +42,7 @@ function StaffProfilePage() {
 
   useEffect(() => {
     void dispatch(fetchStaffPositions());
+    void dispatch(fetchAssignedNumbers());
   }, [dispatch]);
 
   useEffect(() => {
@@ -66,16 +73,91 @@ function StaffProfilePage() {
     [positions]
   );
 
+  const openNumberModal = useCallback(() => {
+    setSelectedNumberId(staffProfile?.assignedNumberId || "");
+    setNumberModalOpen(true);
+  }, [staffProfile?.assignedNumberId]);
+
+  const handleAssignNumber = useCallback(async () => {
+    if (!id || !selectedNumberId) return;
+    setNumberSaving(true);
+    try {
+      await dispatch(
+        updateStaff({ id, patch: { assignedNumberId: selectedNumberId } })
+      ).unwrap();
+      toast.success("Assigned number updated");
+      setNumberModalOpen(false);
+      void dispatch(fetchAssignedNumbers());
+    } catch {
+      toast.error("Failed to assign number");
+    } finally {
+      setNumberSaving(false);
+    }
+  }, [dispatch, id, selectedNumberId]);
+
+  const handleUnassignNumber = useCallback(async () => {
+    if (!id) return;
+    if (!window.confirm("Unassign this number?")) return;
+    setNumberSaving(true);
+    try {
+      await dispatch(
+        updateStaff({ id, patch: { assignedNumberId: null } })
+      ).unwrap();
+      toast.success("Number unassigned");
+      void dispatch(fetchAssignedNumbers());
+    } catch {
+      toast.error("Failed to unassign number");
+    } finally {
+      setNumberSaving(false);
+    }
+  }, [dispatch, id]);
+
+  const availableOptions: SelectOption[] = useMemo(
+    () => [
+      { value: "", label: "Select number..." },
+      ...assignedNumbers
+        .filter((an) => !an.assignedToStaffProfileId || an.assignedToStaffProfileId === id)
+        .map((an) => ({ value: an.id, label: an.number })),
+    ],
+    [assignedNumbers, id]
+  );
+
   const staffOrders = useMemo(() => {
     if (!id) return [];
     let list = orders.filter((o) => o.staffId === id);
     if (productFilter) list = list.filter((o) => o.productId === productFilter);
     if (typeFilter) list = list.filter((o) => o.orderType === typeFilter);
-    if (dateFilter) list = list.filter((o) => o.createdAt.startsWith(dateFilter));
-    return list.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    if (dateFilter)
+      list = list.filter((o) => o.createdAt.startsWith(dateFilter));
+
+    const groups = new Map<string, Order[]>();
+    for (const o of list) {
+      if (!groups.has(o.orderId)) groups.set(o.orderId, []);
+      groups.get(o.orderId)!.push(o);
+    }
+
+    return Array.from(groups.values())
+      .map((items) => {
+        const o = items[0];
+        const totalSelling = items.reduce(
+          (sum, i) => sum + Number(i.sellingAmount),
+          0
+        );
+        const totalDiscount = items.reduce(
+          (sum, i) => sum + (i.discountAmount ? Number(i.discountAmount) : 0),
+          0
+        );
+        return {
+          ...o,
+          sellingAmount: totalSelling,
+          discountAmount: totalDiscount,
+          _items: items,
+        };
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
   }, [id, orders, productFilter, typeFilter, dateFilter]);
 
   const stats = useMemo(() => {
@@ -112,7 +194,19 @@ function StaffProfilePage() {
       {
         key: "productId",
         header: "Product",
-        render: (o: Order) => products.find((p) => p.id === o.productId)?.name ?? o.productId,
+        render: (o: any) => {
+          const items = o._items as Order[];
+          if (items && items.length > 1) {
+            return (
+              <span className="font-bold text-primary">
+                {items.length} items
+              </span>
+            );
+          }
+          return (
+            products.find((p) => p.id === o.productId)?.name ?? o.productId
+          );
+        },
       },
       {
         key: "orderType",
@@ -175,14 +269,30 @@ function StaffProfilePage() {
           </div>
           <div>
             <dt className="text-sm text-text-muted">Assigned number</dt>
-            <dd className="font-mono font-medium">
-              {staffProfile.assignedNumber?.trim() || "—"}
+            <dd className="mt-1 flex flex-wrap items-center gap-2">
+              <span className="font-mono font-medium">
+                {staffProfile.assignedNumber?.trim() || "—"}
+              </span>
+              <Button size="sm" variant="outline" onClick={openNumberModal}>
+                Edit
+              </Button>
+              {staffProfile.assignedNumber && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-error/50 text-error hover:bg-error/10"
+                  onClick={() => void handleUnassignNumber()}
+                  disabled={numberSaving}
+                >
+                  Unassign
+                </Button>
+              )}
             </dd>
           </div>
           <div className="sm:col-span-3">
             <dt className="text-sm text-text-muted">Change role</dt>
             <dd className="mt-2 flex flex-wrap items-end gap-2">
-              <div className="min-w-[12rem] flex-1">
+              <div className="w-64 max-w-full">
                 <Select
                   label=""
                   options={positionOptions}
@@ -250,6 +360,39 @@ function StaffProfilePage() {
           emptyMessage="No orders."
         />
       </Card>
+
+      <Modal
+        isOpen={numberModalOpen}
+        onClose={() => setNumberModalOpen(false)}
+        title="Assign Number"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <Select
+            label="Available Numbers"
+            options={availableOptions}
+            value={selectedNumberId}
+            onChange={(e) => setSelectedNumberId(e.target.value)}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              disabled={!selectedNumberId}
+              loading={numberSaving}
+              onClick={() => void handleAssignNumber()}
+            >
+              Save
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setNumberModalOpen(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

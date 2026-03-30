@@ -563,7 +563,7 @@ function StaffManagementPage() {
       <Card>
         <CardHeader
           title="Staff Management"
-          subtitle="Use Role management and Assigned numbers in the sidebar first. A pending forgot-password request shows below; use Reset to issue a temporary password."
+          // subtitle="Use Role management and Assigned numbers in the sidebar first. A pending forgot-password request shows below; use Reset to issue a temporary password."
           action={
             <Button onClick={openAdd} disabled={!positions.length}>
               Add Staff

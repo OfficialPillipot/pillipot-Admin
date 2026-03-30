@@ -160,6 +160,8 @@ export interface Order {
   /** Line discount in ₹; omitted or null when none */
   discountAmount?: number | null;
   notes?: string;
+  addOnAmount?: number | null;
+  addOnNote?: string | null;
   status: OrderStatus;
   /** Courier / shipment tracking reference when set */
   trackingId?: string | null;
@@ -170,9 +172,12 @@ export interface Order {
 /** Payload for POST /orders; total is computed from product price on the server. */
 export type CreateOrderPayload = Omit<
   Order,
-  "id" | "orderId" | "createdAt" | "sellingAmount" | "discountAmount"
+  "id" | "orderId" | "createdAt" | "sellingAmount" | "discountAmount" | "addOnAmount" | "addOnNote"
 > & {
   discountAmount?: number;
+  addOnAmount?: number;
+  addOnNote?: string;
+  orderId?: string;
 };
 
 export interface User {

@@ -4,6 +4,7 @@ import { useAppSelector } from "../store/hooks";
 import { selectOrders } from "../store/ordersSlice";
 import { selectStaffMe, selectStaffMeLoading } from "../store/staffSlice";
 import { selectProducts } from "../store/productsSlice";
+import type { Order } from "../types";
 import {
   Card,
   CardHeader,
@@ -148,33 +149,47 @@ function StaffDashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {orders
-                .filter((o) => o.staffId === staffId)
-                .slice(-5)
-                .reverse()
-                .map((o) => (
-                  <tr key={o.id} className="border-b border-border last:border-0">
-                    <td className="py-2 pr-4">
-                      <Link
-                        to={`/orders/${o.id}`}
-                        className="font-medium text-primary hover:underline"
-                      >
-                        {o.orderId}
-                      </Link>
-                    </td>
-                    <td className="py-2 pr-4">{formatDate(o.createdAt)}</td>
-                    <td className="py-2 pr-4">{o.customerName}</td>
-                    <td className="py-2 pr-4">
-                      {products.find((p) => p.id === o.productId)?.name ?? o.productId}
-                    </td>
-                    <td className="py-2 pr-4">
-                      <Badge variant="default">{o.orderType.toUpperCase()}</Badge>
-                    </td>
-                    <td className="py-2 font-mono text-xs">
-                      {o.trackingId?.trim() ?? "—"}
-                    </td>
-                  </tr>
-                ))}
+              {(() => {
+                const myOrders = orders.filter((o) => o.staffId === staffId);
+                const groups = new Map<string, Order[]>();
+                for (const o of myOrders) {
+                  if (!groups.has(o.orderId)) groups.set(o.orderId, []);
+                  groups.get(o.orderId)!.push(o);
+                }
+                return Array.from(groups.values())
+                  .slice(-5)
+                  .reverse()
+                  .map((items) => {
+                    const o = items[0];
+                    return (
+                      <tr key={o.id} className="border-b border-border last:border-0">
+                        <td className="py-2 pr-4">
+                          <Link
+                            to={`/orders/${o.id}`}
+                            className="font-medium text-primary hover:underline"
+                          >
+                            {o.orderId}
+                          </Link>
+                        </td>
+                        <td className="py-2 pr-4">{formatDate(o.createdAt)}</td>
+                        <td className="py-2 pr-4">{o.customerName}</td>
+                        <td className="py-2 pr-4 italic">
+                          {items.length > 1 ? (
+                            <span className="font-bold text-primary">{items.length} items</span>
+                          ) : (
+                            products.find((p) => p.id === o.productId)?.name ?? o.productId
+                          )}
+                        </td>
+                        <td className="py-2 pr-4">
+                          <Badge variant="default">{o.orderType.toUpperCase()}</Badge>
+                        </td>
+                        <td className="py-2 font-mono text-xs">
+                          {o.trackingId?.trim() ?? "—"}
+                        </td>
+                      </tr>
+                    );
+                  });
+              })()}
             </tbody>
           </table>
         </div>

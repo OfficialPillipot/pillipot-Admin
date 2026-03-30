@@ -5,7 +5,7 @@ import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { selectProducts, fetchProducts } from "../store/productsSlice";
 import { selectCategories, fetchCategories } from "../store/categoriesSlice";
 import { createOrder } from "../store/ordersSlice";
-import { Card, CardHeader, Button, Input, Select, Textarea } from "../components/ui";
+import { Card, CardHeader, Button, Input, Modal, Select, Textarea } from "../components/ui";
 import { toast } from "../lib/toast";
 import { api } from "../api/client";
 import { endpoints } from "../api/endpoints";
@@ -82,6 +82,9 @@ function CreateOrderPage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [orderCategory, setOrderCategory] = useState("");
+  const [addOn, setAddOn] = useState<{ amount: string; note: string } | null>(null);
+  const [isAddOnModalOpen, setIsAddOnModalOpen] = useState(false);
+  const [tempAddOn, setTempAddOn] = useState({ amount: "", note: "" });
 
   const phoneTrim = form.phone.trim();
   const detailsEnabled = phoneTrim.length === 10;
@@ -199,8 +202,9 @@ function CreateOrderPage() {
   );
 
   const grandTotal = useMemo(() => {
-    return productRows.reduce((sum, row) => sum + lineSubtotal(row), 0);
-  }, [productRows, lineSubtotal]);
+    const productsSum = productRows.reduce((sum, row) => sum + lineSubtotal(row), 0);
+    return productsSum + (parseFloat(addOn?.amount || "0") || 0);
+  }, [productRows, lineSubtotal, addOn]);
 
   const updateProductRow = (
     productId: string,
@@ -312,11 +316,18 @@ function CreateOrderPage() {
         const fullAddress = `${form.flatBuilding.trim()}, ${form.areaSector.trim()}`;
         const selectedProducts = productRows.filter((r) => r.quantity > 0);
 
-        for (const item of selectedProducts) {
+        // Fetch a single order ID to share across all items (Single Order support)
+        const { orderId: commonOrderId } = await api.get<{ orderId: string }>(endpoints.orderNextDisplayId);
+
+        for (let i = 0; i < selectedProducts.length; i++) {
+          const item = selectedProducts[i];
           const disc = parseFloat(item.discount) || 0;
+          const isFirst = i === 0;
+
           await dispatch(
             createOrder({
               staffId: user.staffId!,
+              orderId: commonOrderId, // Pass shared ID
               customerName: form.customerName.trim(),
               deliveryAddress: fullAddress,
               phone: form.phone.trim(),
@@ -329,6 +340,12 @@ function CreateOrderPage() {
               productId: item.productId,
               quantity: item.quantity,
               ...(disc > 0 ? { discountAmount: disc } : {}),
+              ...(isFirst && addOn
+                ? {
+                  addOnAmount: parseFloat(addOn.amount),
+                  addOnNote: addOn.note.trim(),
+                }
+                : {}),
               notes: form.notes.trim() || undefined,
               status: "pending",
             })
@@ -500,8 +517,8 @@ function CreateOrderPage() {
                   {!detailsEnabled
                     ? disabledHint
                     : productRows.length > 0
-                        ? `${productRows.length} product(s) selected`
-                        : "Search & select products…"}
+                      ? `${productRows.length} product(s) selected`
+                      : "Search & select products…"}
                 </span>
                 <span className="text-xs text-gray-400">▼</span>
               </div>
@@ -563,12 +580,12 @@ function CreateOrderPage() {
                       {productsInCategory.filter((p) =>
                         p.name.toLowerCase().includes(productSearch.toLowerCase())
                       ).length === 0 && (
-                        <div className="px-3 py-4 text-center text-sm text-gray-500">
-                          {productsInCategory.length === 0
-                            ? "No products in this category."
-                            : "No products match your search."}
-                        </div>
-                      )}
+                          <div className="px-3 py-4 text-center text-sm text-gray-500">
+                            {productsInCategory.length === 0
+                              ? "No products in this category."
+                              : "No products match your search."}
+                          </div>
+                        )}
                     </div>
                   </div>
                 </>
@@ -677,15 +694,47 @@ function CreateOrderPage() {
                 })}
 
                 <div className="mt-2 flex items-center justify-between border-t border-gray-300 px-2 pt-4">
-                  <span className="text-xl font-bold uppercase tracking-wide text-gray-800">
-                    Grand Total
-                  </span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xl font-bold uppercase tracking-wide text-gray-800">
+                      Grand Total
+                    </span>
+                    {addOn && (
+                      <span className="text-xs font-medium text-indigo-600">
+                        Incl. Add-on: {addOn.note} (+{formatRupee(parseFloat(addOn.amount))})
+                      </span>
+                    )}
+                  </div>
                   <span className="text-2xl font-black tabular-nums text-green-600">
                     {formatRupee(grandTotal)}
                   </span>
                 </div>
               </div>
             )}
+            <div className="flex justify-start">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={!detailsEnabled}
+                onClick={() => {
+                  setTempAddOn(addOn || { amount: "", note: "" });
+                  setIsAddOnModalOpen(true);
+                }}
+              >
+                {addOn ? "Edit Add-on" : "+ Add-on (Gift Wrap, etc.)"}
+              </Button>
+              {addOn && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="ml-2 text-red-500 hover:text-red-700"
+                  onClick={() => setAddOn(null)}
+                >
+                  Remove Add-on
+                </Button>
+              )}
+            </div>
             {errors.products && (
               <p className="text-sm font-medium text-red-500">{errors.products}</p>
             )}
@@ -708,6 +757,46 @@ function CreateOrderPage() {
           </div>
         </form>
       </Card>
+
+      <Modal
+        isOpen={isAddOnModalOpen}
+        onClose={() => setIsAddOnModalOpen(false)}
+        title="Add-on Details"
+      >
+        <div className="space-y-4 pt-2">
+          <Input
+            label="Add-on Amount (₹) *"
+            type="number"
+            value={tempAddOn.amount}
+            onChange={(e) => setTempAddOn({ ...tempAddOn, amount: e.target.value })}
+            placeholder="0.00"
+          />
+          <Textarea
+            label="Add-on Note (Gift Wrap, Chocolate, etc.) *"
+            value={tempAddOn.note}
+            onChange={(e) => setTempAddOn({ ...tempAddOn, note: e.target.value })}
+            placeholder="Mandatory note for the add-on"
+            rows={2}
+          />
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setIsAddOnModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!tempAddOn.note.trim() || !tempAddOn.amount}
+              onClick={() => {
+                setAddOn({
+                  amount: tempAddOn.amount,
+                  note: tempAddOn.note.trim(),
+                });
+                setIsAddOnModalOpen(false);
+              }}
+            >
+              Save Add-on
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
