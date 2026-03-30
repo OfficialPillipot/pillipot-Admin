@@ -36,7 +36,8 @@ export function computeEarningsForStaff(
     const { start, end } = getWeekRange(new Date());
     list = list.filter((o) => isInWeek(o.createdAt, start, end));
   }
-  const orderCount = list.length;
+  const uniqueOrderIds = new Set(list.map((o) => o.orderId));
+  const orderCount = uniqueOrderIds.size;
   const orderEarnings = orderCount * staff.payoutPerOrder;
   let bonus = 0;
   for (const m of staff.bonusMilestones) {
