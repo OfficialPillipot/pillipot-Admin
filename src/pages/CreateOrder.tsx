@@ -411,7 +411,7 @@ function CreateOrderPage() {
               onChange={(e) => update("flatBuilding", e.target.value)}
               error={errors.flatBuilding}
               disabled={!detailsEnabled}
-              placeholder={!detailsEnabled ? disabledHint : undefined}
+              placeholder="Flat/House/Building Name"
             />
             <Input
               label="Area/Sector/Locality *"
@@ -419,7 +419,7 @@ function CreateOrderPage() {
               onChange={(e) => update("areaSector", e.target.value)}
               error={errors.areaSector}
               disabled={!detailsEnabled}
-              placeholder={!detailsEnabled ? disabledHint : undefined}
+              placeholder="Area/Sector/Locality"
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -429,7 +429,7 @@ function CreateOrderPage() {
               onChange={(e) => update("pincode", e.target.value.replace(/\D/g, "").slice(0, 6))}
               error={errors.pincode}
               disabled={!detailsEnabled}
-              placeholder={!detailsEnabled ? disabledHint : "6 digits"}
+              placeholder="Pincode"
             />
             <Input
               label="Post Office *"
@@ -437,7 +437,7 @@ function CreateOrderPage() {
               onChange={(e) => update("postOffice", e.target.value)}
               error={errors.postOffice}
               disabled={!detailsEnabled}
-              placeholder={!detailsEnabled ? disabledHint : undefined}
+              placeholder="Post Office"
             />
           </div>
           <Input
@@ -447,7 +447,7 @@ function CreateOrderPage() {
             onChange={(e) => update("email", e.target.value)}
             error={errors.email}
             disabled={!detailsEnabled}
-            placeholder={!detailsEnabled ? disabledHint : undefined}
+            placeholder="Email "
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
@@ -456,7 +456,7 @@ function CreateOrderPage() {
               onChange={(e) => update("state", e.target.value)}
               error={errors.state}
               disabled={!detailsEnabled}
-              placeholder={!detailsEnabled ? disabledHint : undefined}
+              placeholder="State"
             />
             <Input
               label="District *"
@@ -464,7 +464,7 @@ function CreateOrderPage() {
               onChange={(e) => update("district", e.target.value)}
               error={errors.district}
               disabled={!detailsEnabled}
-              placeholder={!detailsEnabled ? disabledHint : undefined}
+              placeholder="District"
             />
           </div>
           <Select
@@ -472,7 +472,7 @@ function CreateOrderPage() {
             options={orderTypeOptions}
             value={form.orderType}
             onChange={(e) => update("orderType", e.target.value)}
-            placeholder={!detailsEnabled ? disabledHint : "Select type"}
+            placeholder="Order Type "
             error={errors.orderType}
             disabled={!detailsEnabled}
           />

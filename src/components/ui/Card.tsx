@@ -43,20 +43,15 @@ interface CardHeaderProps {
 
 export const CardHeader = memo(function CardHeader({
   title,
-  subtitle,
   action,
 }: CardHeaderProps) {
   return (
     <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-2">
       <div className="min-w-0 flex-1">
-        <h2 className="text-base font-semibold tracking-tight text-text-heading sm:text-lg">
+        <h2 className="text-base font-semibold h-15 tracking-tight text-text-heading sm:text-lg">
           {title}
         </h2>
-        {subtitle && (
-          <p className="mt-1 text-sm leading-relaxed text-text-muted sm:mt-0.5">
-            {subtitle}
-          </p>
-        )}
+
       </div>
       {action && <div className="shrink-0 sm:self-start">{action}</div>}
     </div>

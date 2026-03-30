@@ -108,11 +108,25 @@ function LoginPage() {
           />
           <Input
             label="Password"
-            type="password"
+            type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
             autoComplete="current-password"
+            endNode={
+              <button
+                type="button"
+                className="text-text-muted focus:outline-none hover:text-text-heading"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeSlashIcon className="h-5 w-5" />
+                ) : (
+                  <EyeIcon className="h-5 w-5" />
+                )}
+              </button>
+            }
           />
           {error && (
             <p className="text-sm text-error">{error}</p>
