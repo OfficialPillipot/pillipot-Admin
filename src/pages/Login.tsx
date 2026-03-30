@@ -115,30 +115,25 @@ function LoginPage() {
           {error && (
             <p className="text-sm text-error">{error}</p>
           )}
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+          <div className="flex flex-col gap-2  sm:items-stretch">
             <Button
               type="submit"
               size="lg"
               loading={submitting}
-              className="sm:flex-1"
+              className="sm:flex-1 sm:flex-row cursor-pointer"
             >
               Sign in
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="lg"
-              className="sm:flex-1"
+            <div
               onClick={handleForgotOpen}
-            >
-              Forgot password
-            </Button>
+              className="w-full text-right "
+            ><span className="cursor-pointer hover:text-blue-500">
+                Forgot password
+              </span>
+            </div>
           </div>
         </form>
-        <p className="mt-6 text-pretty text-center text-xs leading-relaxed text-text-muted">
-          Use the account created by your admin. First-time staff: use the temporary password, then change it when prompted.
-          Forgot password uses your username; an admin will see the request in Staff Management. If you are already signed in, you can also use Profile → Request password reset.
-        </p>
+
       </Card>
 
       <Modal
