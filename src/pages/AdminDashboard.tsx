@@ -14,6 +14,7 @@ import type { Order } from "../types";
 import {
   computeEarningsForStaff,
   getWeekRange,
+  getNextWeekRange,
   formatCurrency,
   formatDate,
   orderLineProductLabel,
@@ -34,7 +35,9 @@ function AdminDashboardPage() {
       .sort((a, b) => (a.stockQuantity ?? 0) - (b.stockQuantity ?? 0) || a.name.localeCompare(b.name));
   }, [products, lowStockThreshold]);
 
-  const [dateFilter, setDateFilter] = useState<"week" | "month" | "year" | "custom">("week");
+  const [dateFilter, setDateFilter] = useState<
+    "today" | "week" | "next_week" | "month" | "year" | "custom"
+  >("week");
   const [customStart, setCustomStart] = useState<string>("");
   const [customEnd, setCustomEnd] = useState<string>("");
 
@@ -43,8 +46,17 @@ function AdminDashboardPage() {
     let start = new Date(now);
     let end = new Date(now);
 
-    if (dateFilter === "week") {
+    if (dateFilter === "today") {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      start.setHours(0, 0, 0, 0);
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      end.setHours(23, 59, 59, 999);
+    } else if (dateFilter === "week") {
       const r = getWeekRange(now);
+      start = r.start;
+      end = r.end;
+    } else if (dateFilter === "next_week") {
+      const r = getNextWeekRange(now);
       start = r.start;
       end = r.end;
     } else if (dateFilter === "month") {
@@ -89,14 +101,19 @@ function AdminDashboardPage() {
     return uniqueIds.size;
   }, [filteredOrders]);
 
+  const periodRange = useMemo(
+    () => ({ start: activeStart, end: activeEnd }),
+    [activeStart, activeEnd],
+  );
+
   const totalSalaryPayable = useMemo(() => {
     return staff
       .filter((s) => s.isActive)
       .reduce((sum, s) => {
-        const { total } = computeEarningsForStaff(orders, s, { weekOnly: true });
+        const { total } = computeEarningsForStaff(orders, s, { range: periodRange });
         return sum + total;
       }, 0);
-  }, [orders, staff]);
+  }, [orders, staff, periodRange]);
 
   const recentOrders = useMemo(() => {
     const sorted = [...orders].sort(
@@ -135,29 +152,29 @@ function AdminDashboardPage() {
     () =>
       staff.map((s) => {
         const { total, orderCount } = computeEarningsForStaff(orders, s, {
-          weekOnly: true,
+          range: periodRange,
         });
         return {
           id: s.id,
           name: s.name,
           joinedDate: s.joinedDate,
           orderCount,
-          weeklyEarnings: total,
+          periodEarnings: total,
           isActive: s.isActive,
         };
       }),
-    [orders, staff]
+    [orders, staff, periodRange],
   );
 
   const columns = useMemo(
     () => [
       { key: "name", header: "Staff" },
       { key: "joinedDate", header: "Joined", render: (r: { joinedDate: string }) => formatDate(r.joinedDate) },
-      { key: "orderCount", header: "Quantity (week)" },
+      { key: "orderCount", header: "Quantity" },
       {
-        key: "weeklyEarnings",
-        header: "Weekly earnings",
-        render: (r: { weeklyEarnings: number }) => formatCurrency(r.weeklyEarnings),
+        key: "periodEarnings",
+        header: "Earnings",
+        render: (r: { periodEarnings: number }) => formatCurrency(r.periodEarnings),
       },
       {
         key: "action",
@@ -185,10 +202,22 @@ function AdminDashboardPage() {
         }
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center rounded-md border border-border overflow-hidden bg-surface">
+            <div className="flex flex-wrap items-center rounded-md border border-border overflow-hidden bg-surface">
               <button
+                type="button"
+                onClick={() => setDateFilter("today")}
+                className={`px-2.5 py-1.5 text-sm transition-colors md:px-3 ${
+                  dateFilter === "today"
+                    ? "bg-primary text-white font-medium"
+                    : "text-text-muted hover:text-text-heading"
+                }`}
+              >
+                Today
+              </button>
+              <button
+                type="button"
                 onClick={() => setDateFilter("week")}
-                className={`px-3 py-1.5 text-sm transition-colors ${
+                className={`px-2.5 py-1.5 text-sm border-l border-border transition-colors md:px-3 ${
                   dateFilter === "week"
                     ? "bg-primary text-white font-medium"
                     : "text-text-muted hover:text-text-heading"
@@ -197,8 +226,20 @@ function AdminDashboardPage() {
                 Week
               </button>
               <button
+                type="button"
+                onClick={() => setDateFilter("next_week")}
+                className={`px-2.5 py-1.5 text-sm border-l border-border transition-colors md:px-3 ${
+                  dateFilter === "next_week"
+                    ? "bg-primary text-white font-medium"
+                    : "text-text-muted hover:text-text-heading"
+                }`}
+              >
+                Next week
+              </button>
+              <button
+                type="button"
                 onClick={() => setDateFilter("month")}
-                className={`px-3 py-1.5 text-sm border-l border-border transition-colors ${
+                className={`px-2.5 py-1.5 text-sm border-l border-border transition-colors md:px-3 ${
                   dateFilter === "month"
                     ? "bg-primary text-white font-medium"
                     : "text-text-muted hover:text-text-heading"
@@ -207,8 +248,9 @@ function AdminDashboardPage() {
                 Month
               </button>
               <button
+                type="button"
                 onClick={() => setDateFilter("year")}
-                className={`px-3 py-1.5 text-sm border-l border-border transition-colors ${
+                className={`px-2.5 py-1.5 text-sm border-l border-border transition-colors md:px-3 ${
                   dateFilter === "year"
                     ? "bg-primary text-white font-medium"
                     : "text-text-muted hover:text-text-heading"
@@ -217,8 +259,9 @@ function AdminDashboardPage() {
                 Year
               </button>
               <button
+                type="button"
                 onClick={() => setDateFilter("custom")}
-                className={`px-3 py-1.5 text-sm border-l border-border transition-colors ${
+                className={`px-2.5 py-1.5 text-sm border-l border-border transition-colors md:px-3 ${
                   dateFilter === "custom"
                     ? "bg-primary text-white font-medium"
                     : "text-text-muted hover:text-text-heading"
@@ -262,7 +305,7 @@ function AdminDashboardPage() {
           </p>
         </Card> */}
         <Card>
-          <p className="text-sm text-text-muted">Total Salary (this week)</p>
+          <p className="text-sm text-text-muted">Total salary (period)</p>
           <p className="mt-1 text-2xl font-semibold text-earnings">
             {formatCurrency(totalSalaryPayable)}
           </p>
@@ -350,7 +393,7 @@ function AdminDashboardPage() {
 
       <Card>
         <CardHeader
-          title="Staff summary (this week)"
+          title="Staff summary"
           action={
             <Link to="/admin/staff">
               <Button variant="outline" size="sm">

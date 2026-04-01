@@ -15,6 +15,15 @@ export function getWeekRange(date: Date): { start: Date; end: Date } {
   return { start, end };
 }
 
+/** Calendar week immediately after the week containing `date` (Mon–Sun). */
+export function getNextWeekRange(date: Date): { start: Date; end: Date } {
+  const thisWeek = getWeekRange(date);
+  const anchor = new Date(thisWeek.end);
+  anchor.setDate(anchor.getDate() + 1);
+  anchor.setHours(12, 0, 0, 0);
+  return getWeekRange(anchor);
+}
+
 export function isInWeek(orderDate: string, weekStart: Date, weekEnd: Date): boolean {
   const d = new Date(orderDate);
   return d >= weekStart && d <= weekEnd;
@@ -23,16 +32,21 @@ export function isInWeek(orderDate: string, weekStart: Date, weekEnd: Date): boo
 export function computeEarningsForStaff(
   orders: Order[],
   staff: Staff,
-  options?: { weekOnly?: boolean }
+  options?: { weekOnly?: boolean; range?: { start: Date; end: Date } }
 ): { orderEarnings: number; bonus: number; total: number; orderCount: number } {
-  const { weekOnly } = options ?? {};
+  const { weekOnly, range } = options ?? {};
   let list = orders.filter(
     (o) =>
       o.staffId === staff.id &&
       o.status !== "cancelled" &&
       o.status !== "returned"
   );
-  if (weekOnly) {
+  if (range) {
+    list = list.filter((o) => {
+      const d = new Date(o.createdAt);
+      return d >= range.start && d <= range.end;
+    });
+  } else if (weekOnly) {
     const { start, end } = getWeekRange(new Date());
     list = list.filter((o) => isInWeek(o.createdAt, start, end));
   }
