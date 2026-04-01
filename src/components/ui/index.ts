@@ -8,3 +8,8 @@ export { Select, type SelectOption } from "./Select";
 export { Table, type Column, type TableProps } from "./Table";
 export { Textarea } from "./Textarea";
 export { Tooltip } from "./Tooltip";
+export {
+  ManagementFilterPanel,
+  ManagementFilterField,
+  MANAGEMENT_NATIVE_CONTROL_CLASS,
+} from "./ManagementFilterPanel";

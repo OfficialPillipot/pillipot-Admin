@@ -13,6 +13,8 @@ import {
   Input,
   Tooltip,
   Select,
+  ManagementFilterPanel,
+  ManagementFilterField,
 } from "../components/ui";
 import type { SelectOption } from "../components/ui/Select";
 import { toast } from "../lib/toast";
@@ -314,13 +316,19 @@ function ProductManagementPage() {
             <Button onClick={openAdd}>Add Product</Button>
           }
         />
-        <div className="mb-4 max-w-xs">
-          <Select
-            label="Filter by category"
-            options={categoryFilterOptions}
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-          />
+        <div className="mb-4">
+          <ManagementFilterPanel>
+            <ManagementFilterField label="Category" className="lg:col-span-2 xl:col-span-2">
+              <Select
+                label=""
+                fullWidth
+                options={categoryFilterOptions}
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                aria-label="Filter by category"
+              />
+            </ManagementFilterField>
+          </ManagementFilterPanel>
         </div>
         <Table
           columns={columns}

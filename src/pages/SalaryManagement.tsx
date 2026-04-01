@@ -1,5 +1,13 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardHeader, Button, Table, Input } from "../components/ui";
+import {
+  Card,
+  CardHeader,
+  Button,
+  Table,
+  ManagementFilterPanel,
+  ManagementFilterField,
+  MANAGEMENT_NATIVE_CONTROL_CLASS,
+} from "../components/ui";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { selectStaff, updateStaff, fetchStaff } from "../store/staffSlice";
 import { api } from "../api/client";
@@ -124,22 +132,32 @@ function SalaryManagementPage() {
           title="Salary Management"
         // subtitle="Base payout + cumulative milestone bonuses for each staff."
         />
-        <div className="mb-4 flex flex-wrap items-end gap-3">
-          <Input
-            label="From date"
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-          />
-          <Input
-            label="To date"
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-          />
-          <Button onClick={() => void loadRows()} loading={loading}>
-            Apply period
-          </Button>
+        <div className="mb-4">
+          <ManagementFilterPanel>
+            <ManagementFilterField label="From date">
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                aria-label="From date"
+              />
+            </ManagementFilterField>
+            <ManagementFilterField label="To date">
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                aria-label="To date"
+              />
+            </ManagementFilterField>
+            <ManagementFilterField label="Period">
+              <Button type="button" onClick={() => void loadRows()} loading={loading}>
+                Apply period
+              </Button>
+            </ManagementFilterField>
+          </ManagementFilterPanel>
         </div>
 
         <Table

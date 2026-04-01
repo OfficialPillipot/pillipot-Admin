@@ -14,7 +14,17 @@ import { fetchOrders, updateOrder } from "../store/ordersSlice";
 import { selectStaff } from "../store/staffSlice";
 import { selectProducts, fetchProducts } from "../store/productsSlice";
 import { fetchSettings, selectSettings } from "../store/settingsSlice";
-import { Card, CardHeader, Button, Table, Badge, Modal } from "../components/ui";
+import {
+  Card,
+  CardHeader,
+  Button,
+  Table,
+  Badge,
+  Modal,
+  ManagementFilterPanel,
+  ManagementFilterField,
+  MANAGEMENT_NATIVE_CONTROL_CLASS,
+} from "../components/ui";
 import { toast } from "../lib/toast";
 import { downloadBulkOrdersPdf, downloadOrderPdf } from "../lib/download-order-pdf";
 import type { Order, OrderStatus } from "../types";
@@ -784,48 +794,116 @@ function AdminOrderManagementPage() {
           title="Order Management"
         // subtitle="Filter by date (server), staff, status, product, and order type. Staff-entered discounts appear in the Discount column."
         />
-        <div className="mb-4 flex flex-col gap-3">
-          <div className="flex flex-wrap items-end gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-muted">
-                From date
-              </label>
+        <div className="mb-4 space-y-2">
+          <ManagementFilterPanel>
+            <ManagementFilterField label="From date">
               <input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="rounded-[var(--radius-md)] border border-border px-3 py-2 text-sm"
+                className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                aria-label="From date"
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-muted">
-                To date
-              </label>
+            </ManagementFilterField>
+            <ManagementFilterField label="To date">
               <input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="rounded-[var(--radius-md)] border border-border px-3 py-2 text-sm"
+                className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                aria-label="To date"
               />
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => void applyDateFilters()}
-              loading={filtersLoading}
-            >
-              Apply dates
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => void clearDateFilters()}
-              disabled={filtersLoading}
-            >
-              Clear dates
-            </Button>
-          </div>
+            </ManagementFilterField>
+            <ManagementFilterField label="Server date range">
+              <div className="flex w-full flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void applyDateFilters()}
+                  loading={filtersLoading}
+                >
+                  Apply dates
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void clearDateFilters()}
+                  disabled={filtersLoading}
+                >
+                  Clear dates
+                </Button>
+              </div>
+            </ManagementFilterField>
+            <ManagementFilterField label="Staff">
+              <select
+                value={staffFilter}
+                onChange={(e) => setStaffFilter(e.target.value)}
+                className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                aria-label="Filter by staff"
+              >
+                {staffOptions.map((opt) => (
+                  <option key={opt.value || "all-staff"} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </ManagementFilterField>
+            <ManagementFilterField label="Status">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                aria-label="Filter by order status"
+              >
+                {statusOptions.map((opt) => (
+                  <option key={opt.value || "all-status"} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </ManagementFilterField>
+            <ManagementFilterField label="Product">
+              <select
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+                className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                aria-label="Filter by product"
+              >
+                {productOptions.map((opt) => (
+                  <option key={opt.value || "all-products"} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </ManagementFilterField>
+            <ManagementFilterField label="Order type">
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                aria-label="Filter by order type"
+              >
+                {typeOptions.map((opt) => (
+                  <option key={opt.value || "all-types"} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </ManagementFilterField>
+            <ManagementFilterField label="Table filters">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full sm:w-auto"
+                onClick={clearTableFilters}
+                aria-label="Reset staff, status, product, and type filters to show all"
+              >
+                Reset table filters
+              </Button>
+            </ManagementFilterField>
+          </ManagementFilterPanel>
           {(appliedDateFrom || appliedDateTo) && (
             <p className="text-xs text-text-muted">
               Showing orders
@@ -834,65 +912,6 @@ function AdminOrderManagementPage() {
               {" "}(UTC day boundaries).
             </p>
           )}
-          <div className="flex flex-wrap items-end gap-3">
-            <select
-              value={staffFilter}
-              onChange={(e) => setStaffFilter(e.target.value)}
-              className="rounded-[var(--radius-md)] border border-border px-3 py-2 text-sm"
-              aria-label="Filter by staff"
-            >
-              {staffOptions.map((opt) => (
-                <option key={opt.value || "all-staff"} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-[var(--radius-md)] border border-border px-3 py-2 text-sm"
-              aria-label="Filter by order status"
-            >
-              {statusOptions.map((opt) => (
-                <option key={opt.value || "all-status"} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={productFilter}
-              onChange={(e) => setProductFilter(e.target.value)}
-              className="rounded-[var(--radius-md)] border border-border px-3 py-2 text-sm"
-              aria-label="Filter by product"
-            >
-              {productOptions.map((opt) => (
-                <option key={opt.value || "all-products"} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="rounded-[var(--radius-md)] border border-border px-3 py-2 text-sm"
-              aria-label="Filter by order type"
-            >
-              {typeOptions.map((opt) => (
-                <option key={opt.value || "all-types"} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={clearTableFilters}
-              aria-label="Reset staff, status, product, and type filters to show all"
-            >
-              Select all
-            </Button>
-          </div>
         </div>
         {selectedIds.size > 0 && (
           <div className="mb-2 flex flex-col gap-2 rounded-[var(--radius-md)] border border-border bg-surface-alt/50 p-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">

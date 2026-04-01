@@ -12,7 +12,15 @@ import type { TooltipItem } from "chart.js";
 import { Bar, Doughnut } from "react-chartjs-2";
 import { api } from "../api/client";
 import { endpoints } from "../api/endpoints";
-import { Card, CardHeader, Button, Select } from "../components/ui";
+import {
+  Card,
+  CardHeader,
+  Button,
+  Select,
+  ManagementFilterPanel,
+  ManagementFilterField,
+  MANAGEMENT_NATIVE_CONTROL_CLASS,
+} from "../components/ui";
 import type { SelectOption } from "../components/ui/Select";
 import { getWeekRange, formatCurrency } from "../lib/orderUtils";
 import { toast } from "../lib/toast";
@@ -234,40 +242,42 @@ function ProfitAnalyticsPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader title="Profit analytics" />
-        <div className="flex flex-wrap items-end gap-3 border-b border-border-subtle pb-4">
-          <div className="flex flex-wrap gap-2">
-            {(
-              [
-                ["today", "Today"],
-                ["week", "This week"],
-                ["month", "This month"],
-                ["year", "This year"],
-              ] as const
-            ).map(([key, label]) => (
-              <Button
-                key={key}
-                type="button"
-                variant={preset === key ? "primary" : "secondary"}
-                size="sm"
-                onClick={() => applyPreset(key)}
-              >
-                {label}
-              </Button>
-            ))}
-            <Button
-              type="button"
-              variant={preset === "custom" ? "primary" : "secondary"}
-              size="sm"
-              onClick={() => setPreset("custom")}
+        <div className="border-b border-border-subtle pb-4">
+          <ManagementFilterPanel>
+            <ManagementFilterField
+              label="Quick presets"
+              className="sm:col-span-2 lg:col-span-full"
             >
-              Custom range
-            </Button>
-          </div>
-          <div className="flex flex-wrap items-end gap-2">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-muted">
-                From
-              </label>
+              <div className="flex w-full flex-wrap gap-2">
+                {(
+                  [
+                    ["today", "Today"],
+                    ["week", "This week"],
+                    ["month", "This month"],
+                    ["year", "This year"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <Button
+                    key={key}
+                    type="button"
+                    variant={preset === key ? "primary" : "secondary"}
+                    size="sm"
+                    onClick={() => applyPreset(key)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+                <Button
+                  type="button"
+                  variant={preset === "custom" ? "primary" : "secondary"}
+                  size="sm"
+                  onClick={() => setPreset("custom")}
+                >
+                  Custom range
+                </Button>
+              </div>
+            </ManagementFilterField>
+            <ManagementFilterField label="From">
               <input
                 type="date"
                 value={dateFrom}
@@ -275,13 +285,11 @@ function ProfitAnalyticsPage() {
                   setPreset("custom");
                   setDateFrom(e.target.value);
                 }}
-                className="rounded-[var(--radius-md)] border border-border-default bg-surface px-2 py-1.5 text-sm"
+                className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                aria-label="From date"
               />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-text-muted">
-                To
-              </label>
+            </ManagementFilterField>
+            <ManagementFilterField label="To">
               <input
                 type="date"
                 value={dateTo}
@@ -289,23 +297,28 @@ function ProfitAnalyticsPage() {
                   setPreset("custom");
                   setDateTo(e.target.value);
                 }}
-                className="rounded-[var(--radius-md)] border border-border-default bg-surface px-2 py-1.5 text-sm"
+                className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                aria-label="To date"
               />
-            </div>
-            <div className="min-w-[10rem]">
+            </ManagementFilterField>
+            <ManagementFilterField label="Chart buckets">
               <Select
-                label="Chart buckets"
+                label=""
+                fullWidth
                 options={GRANULARITY_OPTIONS}
                 value={granularity}
                 onChange={(e) =>
                   setGranularity(e.target.value as ProfitGranularity)
                 }
+                aria-label="Chart bucket size"
               />
-            </div>
-            <Button type="button" onClick={() => void load()} loading={loading}>
-              Refresh
-            </Button>
-          </div>
+            </ManagementFilterField>
+            <ManagementFilterField label="Data">
+              <Button type="button" onClick={() => void load()} loading={loading}>
+                Refresh
+              </Button>
+            </ManagementFilterField>
+          </ManagementFilterPanel>
         </div>
 
         {loading && !data ? (
