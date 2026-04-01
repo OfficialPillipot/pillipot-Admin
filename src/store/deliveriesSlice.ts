@@ -1,9 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import type {
-  DeliveryMethod,
-  DeliveryMethodAppliesTo,
-  ProductDeliveryFee,
-} from "../types";
+import type { DeliveryMethod, ProductDeliveryFee } from "../types";
 import { api } from "../api/client";
 import { endpoints } from "../api/endpoints";
 
@@ -21,12 +17,7 @@ export const fetchDeliveryMethods = createAsyncThunk(
 export const createDeliveryMethod = createAsyncThunk(
   "deliveries/createMethod",
   async (
-    payload: {
-      name: string;
-      description?: string;
-      sortOrder?: number;
-      appliesToOrderType?: DeliveryMethodAppliesTo;
-    },
+    payload: { name: string; description?: string; sortOrder?: number },
     { rejectWithValue }
   ) => {
     try {
@@ -45,9 +36,7 @@ export const updateDeliveryMethod = createAsyncThunk(
       patch,
     }: {
       id: string;
-      patch: Partial<
-        Pick<DeliveryMethod, "name" | "description" | "sortOrder" | "appliesToOrderType">
-      >;
+      patch: Partial<Pick<DeliveryMethod, "name" | "description" | "sortOrder">>;
     },
     { rejectWithValue }
   ) => {
@@ -88,7 +77,8 @@ export const createProductDeliveryFee = createAsyncThunk(
     payload: {
       productId: string;
       deliveryMethodId: string;
-      feeAmount: number;
+      feePrepaid: number;
+      feeCod: number;
     },
     { rejectWithValue }
   ) => {
@@ -111,7 +101,8 @@ export const updateProductDeliveryFee = createAsyncThunk(
       patch: Partial<{
         productId: string;
         deliveryMethodId: string;
-        feeAmount: number;
+        feePrepaid: number;
+        feeCod: number;
       }>;
     },
     { rejectWithValue }

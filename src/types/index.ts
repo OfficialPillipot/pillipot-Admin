@@ -17,15 +17,11 @@ export interface Category {
   description?: string;
 }
 
-export type DeliveryMethodAppliesTo = "prepaid" | "cod" | "both";
-
 export interface DeliveryMethod {
   id: string;
   name: string;
   description?: string;
   sortOrder: number;
-  /** Prepaid-only, COD-only, or both (default when omitted from older APIs). */
-  appliesToOrderType?: DeliveryMethodAppliesTo;
 }
 
 export interface ProductDeliveryFee {
@@ -34,7 +30,8 @@ export interface ProductDeliveryFee {
   productName?: string;
   deliveryMethodId: string;
   deliveryMethodName?: string;
-  feeAmount: number;
+  feePrepaid: number;
+  feeCod: number;
 }
 
 /** From GET product-delivery-fees/for-cart */
@@ -75,6 +72,7 @@ export interface ProfitSeriesPoint {
   label: string;
   revenue: number;
   costOfGoods: number;
+  grossMargin: number;
   staffVariable: number;
   deliveryFees: number;
   netBeforeBonus: number;
@@ -89,6 +87,7 @@ export interface ProfitAnalyticsResponse {
     quantity: number;
     revenue: number;
     costOfGoods: number;
+    grossMargin: number;
     staffVariable: number;
     staffMilestoneBonuses: number;
     deliveryFees: number;

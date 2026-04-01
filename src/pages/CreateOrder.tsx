@@ -869,8 +869,8 @@ function CreateOrderPage() {
                   : form.orderType !== "prepaid" && form.orderType !== "cod"
                     ? "Choose Prepaid or COD above — only matching delivery types are listed."
                     : deliveryOptions.length === 0
-                      ? "No delivery options for this payment type: add fees under Admin → Delivery (each type can be Prepaid-only, COD-only, or both)."
-                      : "Delivery is calculated based on selected product quantities."}
+                      ? "No delivery options: add product fees under Admin → Delivery (set prepaid and COD amounts per carrier)."
+                      : "Delivery total uses the prepaid or COD fee you configured for each product × quantity."}
             </p>
           </section>
           <section>

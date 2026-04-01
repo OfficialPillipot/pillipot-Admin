@@ -18,26 +18,30 @@ import { selectCategories, fetchCategories } from "../store/categoriesSlice";
 import { Card, CardHeader, Button, Table, Modal, Input, Tooltip, Select } from "../components/ui";
 import type { SelectOption } from "../components/ui/Select";
 import { toast } from "../lib/toast";
-import type {
-  DeliveryMethod,
-  DeliveryMethodAppliesTo,
-  Product,
-  ProductDeliveryFee,
-} from "../types";
-
-const APPLIES_LABEL: Record<DeliveryMethodAppliesTo, string> = {
-  both: "Prepaid & COD",
-  prepaid: "Prepaid only",
-  cod: "COD only",
-};
-
-const appliesToSelectOptions: SelectOption[] = [
-  { value: "both", label: "Prepaid and COD" },
-  { value: "prepaid", label: "Prepaid only" },
-  { value: "cod", label: "COD only" },
-];
+import type { DeliveryMethod, Product, ProductDeliveryFee } from "../types";
 
 const UNCATEGORIZED_KEY = "__uncategorized__";
+
+/** API may omit prepaid/COD during rollout; older payloads used `feeAmount` only. */
+type ProductDeliveryFeeRow = ProductDeliveryFee & { feeAmount?: number };
+
+function parseProductFeeAmounts(r: ProductDeliveryFeeRow): {
+  prepaid: number;
+  cod: number;
+} {
+  const num = (v: unknown): number | null => {
+    if (v == null || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  const prepaidRaw = num(r.feePrepaid);
+  const codRaw = num(r.feeCod);
+  const legacy = num(r.feeAmount);
+  if (prepaidRaw === null && codRaw === null && legacy !== null) {
+    return { prepaid: legacy, cod: legacy };
+  }
+  return { prepaid: prepaidRaw ?? 0, cod: codRaw ?? 0 };
+}
 
 function productCategoryKey(p: Product): string {
   return p.categoryId ?? UNCATEGORIZED_KEY;
@@ -55,15 +59,14 @@ function DeliveryManagementPage() {
   const [methodName, setMethodName] = useState("");
   const [methodDesc, setMethodDesc] = useState("");
   const [methodSort, setMethodSort] = useState("0");
-  const [methodAppliesTo, setMethodAppliesTo] =
-    useState<DeliveryMethodAppliesTo>("both");
 
   const [feeModal, setFeeModal] = useState(false);
   const [feeEditingId, setFeeEditingId] = useState<string | null>(null);
   const [feeCategoryId, setFeeCategoryId] = useState("");
   const [feeProductId, setFeeProductId] = useState("");
   const [feeMethodId, setFeeMethodId] = useState("");
-  const [feeAmount, setFeeAmount] = useState("");
+  const [feePrepaid, setFeePrepaid] = useState("");
+  const [feeCod, setFeeCod] = useState("");
 
   useEffect(() => {
     void dispatch(fetchDeliveryMethods());
@@ -126,7 +129,6 @@ function DeliveryManagementPage() {
     setMethodName("");
     setMethodDesc("");
     setMethodSort("0");
-    setMethodAppliesTo("both");
     setMethodModal(true);
   }, []);
 
@@ -135,7 +137,6 @@ function DeliveryManagementPage() {
     setMethodName(m.name);
     setMethodDesc(m.description ?? "");
     setMethodSort(String(m.sortOrder ?? 0));
-    setMethodAppliesTo(m.appliesToOrderType ?? "both");
     setMethodModal(true);
   }, []);
 
@@ -158,7 +159,6 @@ function DeliveryManagementPage() {
               name: methodName.trim(),
               description: methodDesc.trim() || undefined,
               sortOrder: sort,
-              appliesToOrderType: methodAppliesTo,
             },
           })
         ).unwrap();
@@ -169,7 +169,6 @@ function DeliveryManagementPage() {
             name: methodName.trim(),
             description: methodDesc.trim() || undefined,
             sortOrder: sort,
-            appliesToOrderType: methodAppliesTo,
           })
         ).unwrap();
         toast.success("Delivery type created");
@@ -178,14 +177,7 @@ function DeliveryManagementPage() {
     } catch (err) {
       toast.fromError(err, "Failed to save");
     }
-  }, [
-    methodEditingId,
-    methodName,
-    methodDesc,
-    methodSort,
-    methodAppliesTo,
-    dispatch,
-  ]);
+  }, [methodEditingId, methodName, methodDesc, methodSort, dispatch]);
 
   const removeMethod = useCallback(
     async (id: string) => {
@@ -206,18 +198,21 @@ function DeliveryManagementPage() {
     setFeeCategoryId("");
     setFeeProductId("");
     setFeeMethodId("");
-    setFeeAmount("");
+    setFeePrepaid("");
+    setFeeCod("");
     setFeeModal(true);
   }, []);
 
   const openEditFee = useCallback(
-    (f: ProductDeliveryFee) => {
+    (f: ProductDeliveryFeeRow) => {
       const p = products.find((x) => x.id === f.productId);
+      const { prepaid, cod } = parseProductFeeAmounts(f);
       setFeeEditingId(f.id);
       setFeeCategoryId(p ? productCategoryKey(p) : "");
       setFeeProductId(f.productId);
       setFeeMethodId(f.deliveryMethodId);
-      setFeeAmount(String(f.feeAmount));
+      setFeePrepaid(String(prepaid));
+      setFeeCod(String(cod));
       setFeeModal(true);
     },
     [products]
@@ -237,9 +232,10 @@ function DeliveryManagementPage() {
       toast.error("Choose product and delivery type");
       return;
     }
-    const amt = parseFloat(feeAmount);
-    if (Number.isNaN(amt) || amt < 0) {
-      toast.error("Enter a valid fee (₹)");
+    const prepaid = parseFloat(feePrepaid);
+    const cod = parseFloat(feeCod);
+    if (Number.isNaN(prepaid) || prepaid < 0 || Number.isNaN(cod) || cod < 0) {
+      toast.error("Enter valid prepaid and COD fees (₹)");
       return;
     }
     try {
@@ -250,7 +246,8 @@ function DeliveryManagementPage() {
             patch: {
               productId: feeProductId,
               deliveryMethodId: feeMethodId,
-              feeAmount: amt,
+              feePrepaid: prepaid,
+              feeCod: cod,
             },
           })
         ).unwrap();
@@ -260,7 +257,8 @@ function DeliveryManagementPage() {
           createProductDeliveryFee({
             productId: feeProductId,
             deliveryMethodId: feeMethodId,
-            feeAmount: amt,
+            feePrepaid: prepaid,
+            feeCod: cod,
           })
         ).unwrap();
         toast.success("Fee added");
@@ -274,7 +272,8 @@ function DeliveryManagementPage() {
     feeCategoryId,
     feeProductId,
     feeMethodId,
-    feeAmount,
+    feePrepaid,
+    feeCod,
     dispatch,
     closeFeeModal,
   ]);
@@ -296,12 +295,6 @@ function DeliveryManagementPage() {
     () => [
       { key: "sortOrder", header: "Order", render: (r: DeliveryMethod) => r.sortOrder },
       { key: "name", header: "Name" },
-      {
-        key: "appliesToOrderType",
-        header: "Order type",
-        render: (r: DeliveryMethod) =>
-          APPLIES_LABEL[r.appliesToOrderType ?? "both"],
-      },
       {
         key: "description",
         header: "Description",
@@ -358,18 +351,22 @@ function DeliveryManagementPage() {
       {
         key: "method",
         header: "Delivery",
-        render: (r: ProductDeliveryFee) => {
-          const m = methods.find((x) => x.id === r.deliveryMethodId);
-          const name = r.deliveryMethodName ?? m?.name ?? r.deliveryMethodId;
-          const applies = m?.appliesToOrderType ?? "both";
-          if (applies === "both") return name;
-          return `${name} (${APPLIES_LABEL[applies]})`;
-        },
+        render: (r: ProductDeliveryFee) =>
+          r.deliveryMethodName ??
+          methods.find((x) => x.id === r.deliveryMethodId)?.name ??
+          r.deliveryMethodId,
       },
       {
-        key: "fee",
-        header: "Fee (₹)",
-        render: (r: ProductDeliveryFee) => r.feeAmount.toFixed(2),
+        key: "feePrepaid",
+        header: "Prepaid (₹)",
+        render: (r: ProductDeliveryFee) =>
+          parseProductFeeAmounts(r as ProductDeliveryFeeRow).prepaid.toFixed(2),
+      },
+      {
+        key: "feeCod",
+        header: "COD (₹)",
+        render: (r: ProductDeliveryFee) =>
+          parseProductFeeAmounts(r as ProductDeliveryFeeRow).cod.toFixed(2),
       },
       {
         key: "actions",
@@ -467,17 +464,6 @@ function DeliveryManagementPage() {
             value={methodSort}
             onChange={(e) => setMethodSort(e.target.value)}
           />
-          <Select
-            label="Applies to"
-            options={appliesToSelectOptions}
-            value={methodAppliesTo}
-            onChange={(e) =>
-              setMethodAppliesTo(e.target.value as DeliveryMethodAppliesTo)
-            }
-          />
-          <p className="text-[11px] text-text-muted leading-relaxed">
-            Create Order only lists delivery options that match the selected payment type (Prepaid vs COD).
-          </p>
           <div className="flex gap-2">
             <Button type="button" onClick={() => void saveMethod()}>
               Save
@@ -518,17 +504,26 @@ function DeliveryManagementPage() {
             onChange={(e) => setFeeMethodId(e.target.value)}
           />
           <Input
-            label="Fee (₹) *"
+            label="Fee — Prepaid orders (₹) *"
             type="number"
             min={0}
             step="0.01"
-            value={feeAmount}
-            onChange={(e) => setFeeAmount(e.target.value)}
-            placeholder="Amount added to order when staff picks this delivery"
+            value={feePrepaid}
+            onChange={(e) => setFeePrepaid(e.target.value)}
+            placeholder="0"
+          />
+          <Input
+            label="Fee — COD orders (₹) *"
+            type="number"
+            min={0}
+            step="0.01"
+            value={feeCod}
+            onChange={(e) => setFeeCod(e.target.value)}
+            placeholder="0"
           />
           <p className="text-[11px] text-text-muted leading-relaxed">
-            On Create Order, this fee is included in the total for the first line (same idea as add-ons),
-            for each product that should incur a charge; leave others without a row for that type (they count as ₹0).
+            On Create Order, the total uses the prepaid column when the order is Prepaid and the COD column when it is
+            COD. Quantity multiplies per unit the same way as before.
           </p>
           <div className="flex gap-2">
             <Button type="button" onClick={() => void saveFee()}>

@@ -122,17 +122,17 @@ function ProfitAnalyticsPage() {
       labels: data.series.map((s) => s.label),
       datasets: [
         {
-          label: "Net (per bucket, excl. milestone bonuses)",
+          label: "Net after staff & delivery (bonuses are period-wide)",
           data: data.series.map((s) => s.netBeforeBonus),
           backgroundColor: "rgba(13, 148, 136, 0.75)",
           borderColor: "rgb(13, 148, 136)",
           borderWidth: 1,
         },
         {
-          label: "Revenue",
-          data: data.series.map((s) => s.revenue),
-          backgroundColor: "rgba(148, 163, 184, 0.5)",
-          borderColor: "rgb(148, 163, 184)",
+          label: "Gross margin (selling − buying cost)",
+          data: data.series.map((s) => s.grossMargin),
+          backgroundColor: "rgba(59, 130, 246, 0.45)",
+          borderColor: "rgb(59, 130, 246)",
           borderWidth: 1,
         },
       ],
@@ -142,24 +142,31 @@ function ProfitAnalyticsPage() {
   const doughnutData = useMemo(() => {
     if (!data) return null;
     const d = data.delivered;
-    const parts = [
-      { label: "Cost of goods", value: d.costOfGoods, color: "#64748b" },
-      { label: "Staff (per qty × payout)", value: d.staffVariable, color: "#6366f1" },
+    /** When net ≥ 0, slices sum to gross margin. If net is negative, chart shows only operating costs. */
+    const parts: { label: string; value: number; color: string }[] = [
+      { label: "Staff (qty × payout)", value: d.staffVariable, color: "#6366f1" },
       { label: "Courier / delivery", value: d.deliveryFees, color: "#d97706" },
       {
         label: "Staff milestone bonuses",
         value: d.staffMilestoneBonuses,
         color: "#db2777",
       },
-      { label: "Net profit", value: Math.max(0, d.netProfit), color: "#059669" },
-    ].filter((x) => x.value > 0);
-    if (parts.length === 0) return null;
+    ];
+    if (d.netProfit >= 0) {
+      parts.push({
+        label: "Net profit (after deductions)",
+        value: d.netProfit,
+        color: "#059669",
+      });
+    }
+    const visible = parts.filter((x) => x.value > 0);
+    if (visible.length === 0) return null;
     return {
-      labels: parts.map((p) => p.label),
+      labels: visible.map((p) => p.label),
       datasets: [
         {
-          data: parts.map((p) => p.value),
-          backgroundColor: parts.map((p) => p.color),
+          data: visible.map((p) => p.value),
+          backgroundColor: visible.map((p) => p.color),
           borderWidth: 0,
         },
       ],
@@ -226,10 +233,7 @@ function ProfitAnalyticsPage() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader
-          title="Profit analytics"
-        // subtitle="Delivered orders only: revenue minus buying cost, staff payout (per quantity × rate), courier fees, and milestone bonuses. Cancelled / returned are listed separately."
-        />
+        <CardHeader title="Profit analytics" />
         <div className="flex flex-wrap items-end gap-3 border-b border-border-subtle pb-4">
           <div className="flex flex-wrap gap-2">
             {(
@@ -308,27 +312,34 @@ function ProfitAnalyticsPage() {
           <p className="py-8 text-center text-text-muted">Loading…</p>
         ) : d ? (
           <>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
               <Kpi
                 label="Net profit"
                 value={d.netProfit}
                 emphasize={d.netProfit >= 0 ? "positive" : "negative"}
               />
-              <Kpi label="Revenue (delivered)" value={d.revenue} />
-              <Kpi label="Buying cost" value={d.costOfGoods} />
+              <Kpi
+                label="Gross margin"
+                value={d.grossMargin}
+                subtitle="Selling − buying"
+              />
+              <Kpi label="Revenue (lines)" value={d.revenue} />
+              <Kpi label="Buying cost (COGS)" value={d.costOfGoods} />
               <Kpi label="Staff (qty × payout)" value={d.staffVariable} />
               <Kpi label="Delivery fees" value={d.deliveryFees} />
               <Kpi label="Milestone bonuses" value={d.staffMilestoneBonuses} />
             </div>
             <p className="mt-2 text-xs text-text-muted">
-              Lines: {d.lineCount} · Units: {d.quantity} · Range: {data.dateFrom}{" "}
-              → {data.dateTo}
+              <span className="font-medium text-text-secondary">Formula:</span> gross margin = revenue
+              − buying cost (line selling amounts already include discounts). Net profit = gross margin −
+              staff − delivery − milestone bonuses. Lines: {d.lineCount} · Units: {d.quantity} · Range:{" "}
+              {data.dateFrom} → {data.dateTo}
             </p>
 
             <div className="mt-6 grid gap-6 lg:grid-cols-2">
               <div>
                 <h3 className="mb-2 text-sm font-semibold text-text-heading">
-                  Net vs revenue by period
+                  Gross margin vs net (by period)
                 </h3>
                 <div className="h-72 rounded-[var(--radius-md)] border border-border-subtle bg-surface-muted/30 p-2">
                   {barData ? (
@@ -342,7 +353,7 @@ function ProfitAnalyticsPage() {
               </div>
               <div>
                 <h3 className="mb-2 text-sm font-semibold text-text-heading">
-                  Where revenue went (delivered)
+                  Gross margin split (delivered)
                 </h3>
                 <div className="h-72 rounded-[var(--radius-md)] border border-border-subtle bg-surface-muted/30 p-2">
                   {doughnutData ? (
@@ -355,8 +366,8 @@ function ProfitAnalyticsPage() {
                 </div>
                 {d.netProfit < 0 ? (
                   <p className="mt-1 text-xs text-error">
-                    Net loss {formatCurrency(d.netProfit)} — chart slices show
-                    costs only; profit wedge is omitted when negative.
+                    Net loss {formatCurrency(d.netProfit)} — staff, delivery, and bonuses exceed gross
+                    margin for this range.
                   </p>
                 ) : null}
               </div>
@@ -388,10 +399,12 @@ function ProfitAnalyticsPage() {
 function Kpi({
   label,
   value,
+  subtitle,
   emphasize,
 }: {
   label: string;
   value: number;
+  subtitle?: string;
   emphasize?: "positive" | "negative";
 }) {
   const cls =
@@ -403,6 +416,9 @@ function Kpi({
   return (
     <div className="rounded-[var(--radius-md)] border border-border-subtle bg-surface px-3 py-2">
       <div className="text-xs font-medium text-text-muted">{label}</div>
+      {subtitle ? (
+        <div className="text-[10px] leading-tight text-text-muted/90">{subtitle}</div>
+      ) : null}
       <div className={`mt-0.5 font-mono text-lg font-semibold tabular-nums ${cls}`}>
         {formatCurrency(value)}
       </div>
