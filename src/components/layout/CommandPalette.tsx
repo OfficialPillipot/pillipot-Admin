@@ -35,6 +35,13 @@ const ITEMS: CommandItem[] = [
     keywords: ["order management"],
   },
   {
+    to: "/admin/tracking-scan",
+    label: "Tracking scan",
+    roles: ["super_admin", "guest"],
+    permission: "orders.update",
+    keywords: ["barcode", "qr", "courier", "post", "ems"],
+  },
+  {
     to: "/admin/salary",
     label: "Salary",
     roles: ["super_admin", "guest"],

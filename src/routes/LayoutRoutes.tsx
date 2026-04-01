@@ -26,6 +26,7 @@ import ProfitAnalytics from "../pages/ProfitAnalytics";
 import DeliveryManagement from "../pages/DeliveryManagement";
 import RolePermissions from "../pages/RolePermissions";
 import UserManagement from "../pages/UserManagement";
+import TrackingScanner from "../pages/TrackingScanner";
 
 interface LayoutRoutesProps {
   user: User;
@@ -152,6 +153,17 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             requiredPermissions={["orders.view"]}
           >
             <AdminOrderManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/tracking-scan"
+        element={
+          <ProtectedRoute
+            allowedRoles={["super_admin", "guest"]}
+            requiredPermissions={["orders.update"]}
+          >
+            <TrackingScanner />
           </ProtectedRoute>
         }
       />

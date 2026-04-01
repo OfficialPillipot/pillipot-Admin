@@ -26,6 +26,7 @@ import {
   PresentationChartLineIcon,
   ShieldCheckIcon,
   IdentificationIcon,
+  QrCodeIcon,
 } from "@heroicons/react/24/outline";
 import { Tooltip } from "../ui";
 import type { User } from "../../types";
@@ -64,6 +65,13 @@ const STAFF_NAV: StaffNavItem[] = [
 const ADMIN_NAV: AdminNavItem[] = [
   { to: "/admin", label: "Dashboard", end: true, icon: HomeIcon },
   { to: "/admin/orders", label: "Orders", end: true, icon: CubeIcon, permission: "orders.view" },
+  {
+    to: "/admin/tracking-scan",
+    label: "Tracking scan",
+    end: true,
+    icon: QrCodeIcon,
+    permission: "orders.update",
+  },
   { to: "/admin/salary", label: "Salary", end: true, icon: CurrencyRupeeIcon, permission: "staff.view" },
   { to: "/admin/profit", label: "Profit", end: true, icon: PresentationChartLineIcon, permission: "profit.view" },
   { to: "/admin/staff", label: "Staff", end: true, icon: UsersIcon, permission: "staff.view" },
