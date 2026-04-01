@@ -192,7 +192,7 @@ function SalaryManagementPage() {
                         [r.staffId]: e.target.value,
                       }))
                     }
-                    className="box-border w-full min-w-0 max-w-full rounded-[var(--radius-sm)] border border-amber-300/80 bg-white px-2 py-1.5 text-sm"
+                    className="box-border w-full min-w-0 max-w-full rounded-[var(--radius-sm)] border border-amber-300/80 bg-white px-2 py-1.5 text-sm text-amber-950 placeholder:text-amber-900/45"
                     placeholder="Payout per order"
                   />
 
@@ -211,7 +211,7 @@ function SalaryManagementPage() {
                         [r.staffId]: e.target.value,
                       }))
                     }
-                    className="box-border w-full min-w-0 max-w-full rounded-[var(--radius-sm)] border border-amber-300/80 bg-white px-2 py-1.5 text-sm"
+                    className="box-border w-full min-w-0 max-w-full rounded-[var(--radius-sm)] border border-amber-300/80 bg-white px-2 py-1.5 text-sm text-amber-950 placeholder:text-amber-900/45"
                     placeholder="5:50, 10:100, 15:150"
                   />
 
