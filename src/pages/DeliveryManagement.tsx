@@ -366,7 +366,7 @@ function DeliveryManagementPage() {
       <Card>
         <CardHeader
           title="Delivery types"
-          subtitle="Carriers or modes (e.g. Professional, DTDC, Post office, Cash on delivery, KSRTC). Used in the order form when fees exist per product."
+          // subtitle="Carriers or modes (e.g. Professional, DTDC, Post office, Cash on delivery, KSRTC). Used in the order form when fees exist per product."
           action={
             <Button type="button" onClick={openAddMethod}>
               Add type
@@ -384,7 +384,7 @@ function DeliveryManagementPage() {
       <Card>
         <CardHeader
           title="Fees by product"
-          subtitle="For each product, set the delivery charge per type. A carrier appears on the order if at least one cart product has a fee; other products add ₹0 for that carrier."
+          // subtitle="For each product, set the delivery charge per type. A carrier appears on the order if at least one cart product has a fee; other products add ₹0 for that carrier."
           action={
             <Button type="button" onClick={openAddFee}>
               Add fee

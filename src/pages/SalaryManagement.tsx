@@ -122,7 +122,7 @@ function SalaryManagementPage() {
       <Card>
         <CardHeader
           title="Salary Management"
-          subtitle="Base payout + cumulative milestone bonuses for each staff."
+        // subtitle="Base payout + cumulative milestone bonuses for each staff."
         />
         <div className="mb-4 flex flex-wrap items-end gap-3">
           <Input
@@ -178,86 +178,86 @@ function SalaryManagementPage() {
               render: (r: StaffEarnings) => (
                 <div className="w-full min-w-0 max-w-full text-left">
                   <div className="grid w-full min-w-0 gap-2 rounded-xl border border-amber-200/70 bg-gradient-to-br from-amber-50 via-orange-50/60 to-yellow-50 p-3 shadow-sm">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-amber-900/80">
-                    Payout per qty
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={draftPayout[r.staffId] ?? String(r.payoutPerOrder)}
-                    onChange={(e) =>
-                      setDraftPayout((prev) => ({
-                        ...prev,
-                        [r.staffId]: e.target.value,
-                      }))
-                    }
-                    className="box-border w-full min-w-0 max-w-full rounded-[var(--radius-sm)] border border-amber-300/80 bg-white px-2 py-1.5 text-sm text-amber-950 placeholder:text-amber-900/45"
-                    placeholder="Payout per order"
-                  />
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-amber-900/80">
+                      Payout per qty
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={draftPayout[r.staffId] ?? String(r.payoutPerOrder)}
+                      onChange={(e) =>
+                        setDraftPayout((prev) => ({
+                          ...prev,
+                          [r.staffId]: e.target.value,
+                        }))
+                      }
+                      className="box-border w-full min-w-0 max-w-full rounded-[var(--radius-sm)] border border-amber-300/80 bg-white px-2 py-1.5 text-sm text-amber-950 placeholder:text-amber-900/45"
+                      placeholder="Payout per order"
+                    />
 
-                  <label className="mt-1 text-[11px] font-bold uppercase tracking-wider text-amber-900/80">
-                    Bonus tiers
-                  </label>
-                  <input
-                    type="text"
-                    value={
-                      draftMilestones[r.staffId] ??
-                      milestoneText(staffById.get(r.staffId)?.bonusMilestones ?? [])
-                    }
-                    onChange={(e) =>
-                      setDraftMilestones((prev) => ({
-                        ...prev,
-                        [r.staffId]: e.target.value,
-                      }))
-                    }
-                    className="box-border w-full min-w-0 max-w-full rounded-[var(--radius-sm)] border border-amber-300/80 bg-white px-2 py-1.5 text-sm text-amber-950 placeholder:text-amber-900/45"
-                    placeholder="5:50, 10:100, 15:150"
-                  />
+                    <label className="mt-1 text-[11px] font-bold uppercase tracking-wider text-amber-900/80">
+                      Bonus tiers
+                    </label>
+                    <input
+                      type="text"
+                      value={
+                        draftMilestones[r.staffId] ??
+                        milestoneText(staffById.get(r.staffId)?.bonusMilestones ?? [])
+                      }
+                      onChange={(e) =>
+                        setDraftMilestones((prev) => ({
+                          ...prev,
+                          [r.staffId]: e.target.value,
+                        }))
+                      }
+                      className="box-border w-full min-w-0 max-w-full rounded-[var(--radius-sm)] border border-amber-300/80 bg-white px-2 py-1.5 text-sm text-amber-950 placeholder:text-amber-900/45"
+                      placeholder="5:50, 10:100, 15:150"
+                    />
 
-                  <div className="flex min-w-0 flex-wrap gap-1.5">
-                    {(() => {
-                      try {
-                        const tiers = parseMilestones(
-                          draftMilestones[r.staffId] ??
+                    <div className="flex min-w-0 flex-wrap gap-1.5">
+                      {(() => {
+                        try {
+                          const tiers = parseMilestones(
+                            draftMilestones[r.staffId] ??
                             milestoneText(staffById.get(r.staffId)?.bonusMilestones ?? [])
-                        );
-                        if (tiers.length === 0) {
+                          );
+                          if (tiers.length === 0) {
+                            return (
+                              <span className="text-xs text-amber-900/70">
+                                No bonus tiers set.
+                              </span>
+                            );
+                          }
+                          return tiers.map((m) => (
+                            <span
+                              key={`${r.staffId}-${m.orders}-${m.bonus}`}
+                              className="rounded-full border border-amber-300/80 bg-white px-2 py-1 text-[11px] font-semibold text-amber-900"
+                            >
+                              {m.orders} → ₹{m.bonus}
+                            </span>
+                          ));
+                        } catch {
                           return (
-                            <span className="text-xs text-amber-900/70">
-                              No bonus tiers set.
+                            <span className="text-xs font-medium text-red-600">
+                              Invalid format. Use `5:50, 10:100, 15:150`
                             </span>
                           );
                         }
-                        return tiers.map((m) => (
-                          <span
-                            key={`${r.staffId}-${m.orders}-${m.bonus}`}
-                            className="rounded-full border border-amber-300/80 bg-white px-2 py-1 text-[11px] font-semibold text-amber-900"
-                          >
-                            {m.orders} → ₹{m.bonus}
-                          </span>
-                        ));
-                      } catch {
-                        return (
-                          <span className="text-xs font-medium text-red-600">
-                            Invalid format. Use `5:50, 10:100, 15:150`
-                          </span>
-                        );
-                      }
-                    })()}
-                  </div>
+                      })()}
+                    </div>
 
-                  <p className="text-[11px] text-amber-900/70">
-                    Bonus is cumulative across reached tiers.
-                  </p>
-                  <Button
-                    size="sm"
-                    className="w-full sm:w-auto"
-                    onClick={() => void saveStaffRule(r.staffId)}
-                    loading={savingId === r.staffId}
-                  >
-                    Save rule
-                  </Button>
+                    <p className="text-[11px] text-amber-900/70">
+                      Bonus is cumulative across reached tiers.
+                    </p>
+                    <Button
+                      size="sm"
+                      className="w-full sm:w-auto"
+                      onClick={() => void saveStaffRule(r.staffId)}
+                      loading={savingId === r.staffId}
+                    >
+                      Save rule
+                    </Button>
                   </div>
                 </div>
               ),

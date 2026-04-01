@@ -228,7 +228,7 @@ function ProfitAnalyticsPage() {
       <Card>
         <CardHeader
           title="Profit analytics"
-          subtitle="Delivered orders only: revenue minus buying cost, staff payout (per quantity × rate), courier fees, and milestone bonuses. Cancelled / returned are listed separately."
+        // subtitle="Delivered orders only: revenue minus buying cost, staff payout (per quantity × rate), courier fees, and milestone bonuses. Cancelled / returned are listed separately."
         />
         <div className="flex flex-wrap items-end gap-3 border-b border-border-subtle pb-4">
           <div className="flex flex-wrap gap-2">

@@ -326,8 +326,8 @@ function AdminOrderManagementPage() {
       const returnable =
         Array.isArray(items) && items.length > 0
           ? items.filter(
-              (i) => i.status === "dispatch" || i.status === "delivered"
-            )
+            (i) => i.status === "dispatch" || i.status === "delivered"
+          )
           : [orderDetail as Order];
       const ids = returnable.map((i) => i.id);
       if (ids.length === 0) {
@@ -781,7 +781,7 @@ function AdminOrderManagementPage() {
       <Card>
         <CardHeader
           title="Order Management"
-          subtitle="Filter by date (server), staff, status, product, and order type. Staff-entered discounts appear in the Discount column."
+        // subtitle="Filter by date (server), staff, status, product, and order type. Staff-entered discounts appear in the Discount column."
         />
         <div className="mb-4 flex flex-col gap-3">
           <div className="flex flex-wrap items-end gap-3">
@@ -1009,7 +1009,7 @@ function AdminOrderManagementPage() {
                     const itemRows =
                       od.items?.length ?
                         od.items
-                      : [
+                        : [
                           {
                             id: od.id,
                             productId: od.productId,
@@ -1049,76 +1049,76 @@ function AdminOrderManagementPage() {
                     );
                   })()}
                   <div className="hidden sm:block overflow-hidden rounded-lg border border-gray-100 shadow-sm">
-                  <table className="w-full text-xs">
-                    <thead className="bg-gray-50 text-gray-500 font-bold">
-                      <tr>
-                        <th className="px-3 py-2 text-left">Product</th>
-                        <th className="px-3 py-2 text-center">Qty</th>
-                        <th className="px-3 py-2 text-right">Price</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {(orderDetail as any).items?.map((item: any) => (
-                        <tr key={item.id}>
-                          <td className="px-3 py-2 font-medium">
-                            <div>
-                              {orderLineProductLabel(item as Order, products)}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 text-center font-bold text-gray-600">{item.quantity}</td>
-                          <td className="px-3 py-2 text-right font-black text-indigo-600">
-                            ₹{safeMoney(item.sellingAmount).toFixed(2)}
-                          </td>
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50 text-gray-500 font-bold">
+                        <tr>
+                          <th className="px-3 py-2 text-left">Product</th>
+                          <th className="px-3 py-2 text-center">Qty</th>
+                          <th className="px-3 py-2 text-right">Price</th>
                         </tr>
-                      )) || (
-                          <tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {(orderDetail as any).items?.map((item: any) => (
+                          <tr key={item.id}>
                             <td className="px-3 py-2 font-medium">
                               <div>
-                                {orderLineProductLabel(
-                                  orderDetail as Order,
-                                  products,
-                                )}
+                                {orderLineProductLabel(item as Order, products)}
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-center font-bold text-gray-600">{(orderDetail as any).quantity}</td>
+                            <td className="px-3 py-2 text-center font-bold text-gray-600">{item.quantity}</td>
                             <td className="px-3 py-2 text-right font-black text-indigo-600">
-                              ₹{safeMoney((orderDetail as any).sellingAmount).toFixed(2)}
+                              ₹{safeMoney(item.sellingAmount).toFixed(2)}
                             </td>
                           </tr>
-                        )}
-                    </tbody>
-                    <tfoot className="border-t border-gray-100">
-                      <tr className="bg-gray-50/90">
-                        <td colSpan={2} className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                          Items subtotal
-                        </td>
-                        <td className="px-3 py-2 text-right font-black text-indigo-700">
-                          ₹{safeMoney((orderDetail as any).sellingAmount).toFixed(2)}
-                        </td>
-                      </tr>
-                      {sortedOrderLines.some((l) => l.deliveryMethodId || l.deliveryMethodName) ? (
-                        <tr className="bg-teal-50 border-y border-teal-100">
-                          <td colSpan={2} className="px-3 py-2.5 text-right text-[10px] font-extrabold uppercase tracking-wider text-teal-900">
-                            Delivery (
-                            {sortedOrderLines.find((l) => l.deliveryMethodName)?.deliveryMethodName ??
-                              "carrier"}
-                            )
+                        )) || (
+                            <tr>
+                              <td className="px-3 py-2 font-medium">
+                                <div>
+                                  {orderLineProductLabel(
+                                    orderDetail as Order,
+                                    products,
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 text-center font-bold text-gray-600">{(orderDetail as any).quantity}</td>
+                              <td className="px-3 py-2 text-right font-black text-indigo-600">
+                                ₹{safeMoney((orderDetail as any).sellingAmount).toFixed(2)}
+                              </td>
+                            </tr>
+                          )}
+                      </tbody>
+                      <tfoot className="border-t border-gray-100">
+                        <tr className="bg-gray-50/90">
+                          <td colSpan={2} className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                            Items subtotal
                           </td>
-                          <td className="px-3 py-2.5 text-right text-sm font-black tabular-nums text-teal-800">
-                            ₹{safeMoney((orderDetail as any).deliveryFeesTotal).toFixed(2)}
+                          <td className="px-3 py-2 text-right font-black text-indigo-700">
+                            ₹{safeMoney((orderDetail as any).sellingAmount).toFixed(2)}
                           </td>
                         </tr>
-                      ) : null}
-                      <tr className="border-t-2 border-gray-200 bg-white">
-                        <td colSpan={2} className="px-3 py-2.5 text-right text-[10px] font-black uppercase tracking-wider text-gray-900">
-                          Grand total
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-black text-earnings">
-                          ₹{safeMoney((orderDetail as any).grandTotal ?? (orderDetail as any).sellingAmount).toFixed(2)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                        {sortedOrderLines.some((l) => l.deliveryMethodId || l.deliveryMethodName) ? (
+                          <tr className="bg-teal-50 border-y border-teal-100">
+                            <td colSpan={2} className="px-3 py-2.5 text-right text-[10px] font-extrabold uppercase tracking-wider text-teal-900">
+                              Delivery (
+                              {sortedOrderLines.find((l) => l.deliveryMethodName)?.deliveryMethodName ??
+                                "carrier"}
+                              )
+                            </td>
+                            <td className="px-3 py-2.5 text-right text-sm font-black tabular-nums text-teal-800">
+                              ₹{safeMoney((orderDetail as any).deliveryFeesTotal).toFixed(2)}
+                            </td>
+                          </tr>
+                        ) : null}
+                        <tr className="border-t-2 border-gray-200 bg-white">
+                          <td colSpan={2} className="px-3 py-2.5 text-right text-[10px] font-black uppercase tracking-wider text-gray-900">
+                            Grand total
+                          </td>
+                          <td className="px-3 py-2.5 text-right font-black text-earnings">
+                            ₹{safeMoney((orderDetail as any).grandTotal ?? (orderDetail as any).sellingAmount).toFixed(2)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
                   </div>
                 </dd>
               </div>
@@ -1151,7 +1151,7 @@ function AdminOrderManagementPage() {
                   ₹
                   {safeMoney(
                     (orderDetail as Order & { grandTotal?: number }).grandTotal ??
-                      orderDetail.sellingAmount,
+                    orderDetail.sellingAmount,
                   ).toFixed(2)}
                 </dd>
               </div>
@@ -1192,7 +1192,7 @@ function AdminOrderManagementPage() {
                 <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Current Status</dt>
                 <dd>
                   <span className="capitalize font-medium">{orderDetail.status}</span>
-                  {orderDetail.status === "dispatch" ? (
+                  {/* {orderDetail.status === "dispatch" ? (
                     <span className="mt-0.5 block text-xs font-normal text-text-muted">
                       Dispatched — tracking is locked. Use Mark delivered when the customer receives the order.
                     </span>
@@ -1206,7 +1206,7 @@ function AdminOrderManagementPage() {
                     <span className="mt-0.5 block text-xs font-normal text-text-muted">
                       Packed — finish the tracking ID, then Mark dispatched when handed to the courier.
                     </span>
-                  ) : null}
+                  ) : null} */}
                 </dd>
               </div>
               {(orderDetail.status === "delivered" ||
@@ -1256,13 +1256,13 @@ function AdminOrderManagementPage() {
                   autoComplete="off"
                   className="w-full max-w-md rounded-[var(--radius-sm)] border border-border bg-surface px-3 py-2 text-sm"
                 />
-                <p className="mt-2 text-xs text-text-muted">
+                {/* <p className="mt-2 text-xs text-text-muted">
                   {(orderDetail as any).status === "pending"
                     ? "You can set tracking before or after packing. Packed means ready for courier; use Mark dispatched only after you have a final tracking ID."
                     : trackingDraft.trim()
                       ? "Click Mark dispatched when the parcel is with the courier."
                       : "Enter the tracking ID, then Mark dispatched."}
-                </p>
+                </p> */}
               </div>
             ) : null}
             {(orderDetail as any).status === "dispatch" && (orderDetail as any).trackingId?.trim() ? (
@@ -1271,9 +1271,9 @@ function AdminOrderManagementPage() {
                   Tracking ID
                 </p>
                 <p className="font-mono text-sm">{(orderDetail as any).trackingId.trim()}</p>
-                <p className="mt-2 text-xs text-text-muted">
+                {/* <p className="mt-2 text-xs text-text-muted">
                   Tracking cannot be edited after dispatch. Use Mark delivered when appropriate.
-                </p>
+                </p> */}
               </div>
             ) : null}
             <div className="flex flex-wrap gap-2 border-t border-border mt-4 pt-4 justify-end">

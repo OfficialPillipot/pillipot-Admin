@@ -249,7 +249,7 @@ function SenderManagementPage() {
       <Card>
         <CardHeader
           title="Sender Management"
-          subtitle="Manage sender address details used in delivery label PDFs."
+          // subtitle="Manage sender address details used in delivery label PDFs."
           action={<Button onClick={openCreate}>Add sender</Button>}
         />
         <Table

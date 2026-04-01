@@ -45,7 +45,7 @@ function CustomerManagementPage() {
       <Card>
         <CardHeader
           title="Customers"
-          subtitle="Built from create-order details. Phone and email are unique; new orders update the same customer when phone or email matches."
+        // subtitle="Built from create-order details. Phone and email are unique; new orders update the same customer when phone or email matches."
         />
         <Table
           columns={columns}
