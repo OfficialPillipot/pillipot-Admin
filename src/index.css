@@ -44,6 +44,30 @@ body {
   min-height: 100dvh;
 }
 
+/* Thin scrollbars — Firefox + Chrome / Safari / Edge */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) var(--color-surface-alt);
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--color-surface-alt);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-strong);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-muted);
+}
+
 /*
  * Profile routes (staff “My profile”, admin staff detail).
  * Intentional readability on small screens — do not remove when tuning global
