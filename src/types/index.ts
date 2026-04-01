@@ -315,6 +315,19 @@ export interface GuestUserRow {
   isActive: boolean;
 }
 
+/** GET /rbac/users (super_admin) */
+export interface AdminUserRow {
+  id: string;
+  username: string;
+  name: string;
+  roleSlug: string;
+  roleName: string;
+  isActive: boolean;
+  mustChangePassword: boolean;
+  staffProfileId: string | null;
+  extraPermissionSlugs: string[];
+}
+
 export interface StaffWithStats extends Staff {
   todayOrders: number;
   totalEarnings: number;

@@ -113,6 +113,13 @@ const ITEMS: CommandItem[] = [
     permission: "settings.view",
   },
   {
+    to: "/admin/users",
+    label: "User management",
+    roles: ["super_admin", "guest"],
+    superAdminOnly: true,
+    keywords: ["users", "accounts", "logins"],
+  },
+  {
     to: "/admin/role-permissions",
     label: "Access control",
     roles: ["super_admin", "guest"],

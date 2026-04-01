@@ -25,6 +25,7 @@ import {
   ClockIcon,
   PresentationChartLineIcon,
   ShieldCheckIcon,
+  IdentificationIcon,
 } from "@heroicons/react/24/outline";
 import { Tooltip } from "../ui";
 import type { User } from "../../types";
@@ -76,6 +77,13 @@ const ADMIN_NAV: AdminNavItem[] = [
   { to: "/account/password", label: "Change password", end: true, icon: KeyIcon },
   { to: "/admin/export", label: "Export Data", end: true, icon: ArrowDownTrayIcon, permission: "customers.view" },
   { to: "/admin/settings", label: "Settings", end: true, icon: Cog6ToothIcon, permission: "settings.view" },
+  {
+    to: "/admin/users",
+    label: "Users",
+    end: true,
+    icon: IdentificationIcon,
+    superAdminOnly: true,
+  },
   {
     to: "/admin/role-permissions",
     label: "Access control",

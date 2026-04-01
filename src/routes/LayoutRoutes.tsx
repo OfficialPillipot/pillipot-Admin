@@ -25,6 +25,7 @@ import SalaryManagement from "../pages/SalaryManagement";
 import ProfitAnalytics from "../pages/ProfitAnalytics";
 import DeliveryManagement from "../pages/DeliveryManagement";
 import RolePermissions from "../pages/RolePermissions";
+import UserManagement from "../pages/UserManagement";
 
 interface LayoutRoutesProps {
   user: User;
@@ -258,6 +259,14 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         element={
           <ProtectedRoute allowedRoles={["super_admin"]}>
             <RolePermissions />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute allowedRoles={["super_admin"]}>
+            <UserManagement />
           </ProtectedRoute>
         }
       />
