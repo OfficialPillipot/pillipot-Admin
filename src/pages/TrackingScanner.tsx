@@ -9,6 +9,7 @@ import {
 import { Html5CameraScanner } from "../components/tracking/Html5CameraScanner";
 import { Button, Card, CardHeader, Table, type Column } from "../components/ui";
 import { toast } from "../lib/toast";
+import type { Order } from "../types";
 
 type QueueRow = {
   key: string;
@@ -28,14 +29,21 @@ function normalizeTrackingId(raw: string): string {
   return raw.replace(/\s+/g, " ").trim();
 }
 
-function lineIdsForDisplayOrderId(
-  displayId: string,
-  orders: { id: string; orderId: string }[]
-): string[] {
+function matchingLinesForDisplayOrderId(displayId: string, orders: Order[]): Order[] {
   const want = displayId.trim().toUpperCase();
-  return orders
-    .filter((o) => o.orderId.trim().toUpperCase() === want)
-    .map((o) => o.id);
+  return orders.filter((o) => o.orderId.trim().toUpperCase() === want);
+}
+
+/** Only pending lines may use this scanner; returns an error message or null if OK. */
+function pendingOnlyError(lines: Order[], displayLabel: string): string | null {
+  if (lines.length === 0) {
+    return `No order lines loaded for "${displayLabel}". Refresh orders.`;
+  }
+  const bad = lines.find((l) => l.status !== "pending");
+  if (bad) {
+    return `Only pending orders can be scanned. "${displayLabel}" includes a line that is ${bad.status} (not pending).`;
+  }
+  return null;
 }
 
 function useStableElementId(prefix: string): string {
@@ -58,6 +66,10 @@ function TrackingScannerPage() {
   const [draftOrderId, setDraftOrderId] = useState<string | null>(null);
   const [manualOrder, setManualOrder] = useState("");
   const [manualTracking, setManualTracking] = useState("");
+  /** Barcode-only: ZXing path; try if some phones mis-read native Code 128. */
+  const [barcodeSoftwareOnly, setBarcodeSoftwareOnly] = useState(false);
+  /** Barcode-only: scan nearly full preview for easier alignment. */
+  const [barcodeFullFrame, setBarcodeFullFrame] = useState(false);
 
   const orderBoxId = useStableElementId("h5-order");
   const trackingBoxId = useStableElementId("h5-tracking");
@@ -87,14 +99,14 @@ function TrackingScannerPage() {
         toast.error("Tracking id empty");
         return;
       }
-      const lineIds = lineIdsForDisplayOrderId(oid, orders);
-      if (lineIds.length === 0) {
-        toast.warning(
-          `No order lines loaded for "${oid}" — refresh orders or check the id.`
-        );
-      } else {
-        toast.success(`Queued ${oid}`);
+      const lines = matchingLinesForDisplayOrderId(oid, orders);
+      const pendErr = pendingOnlyError(lines, oid);
+      if (pendErr) {
+        toast.error(pendErr);
+        return;
       }
+      const lineIds = lines.map((o) => o.id);
+      toast.success(`Queued ${oid}`);
       setQueue((q) => [
         ...q,
         {
@@ -118,10 +130,16 @@ function TrackingScannerPage() {
         toast.error("Could not read order id from scan");
         return;
       }
+      const lines = matchingLinesForDisplayOrderId(oid, orders);
+      const pendErr = pendingOnlyError(lines, oid);
+      if (pendErr) {
+        toast.error(pendErr);
+        return;
+      }
       setDraftOrderId(oid);
       setScanPhase("tracking");
     },
-    [dedupeDecode]
+    [dedupeDecode, orders]
   );
 
   const onTrackingDecoded = useCallback(
@@ -166,16 +184,34 @@ function TrackingScannerPage() {
       toast.error("Nothing to save");
       return;
     }
+    const byId = new Map(orders.map((o) => [o.id, o]));
+    for (const row of queue) {
+      for (const id of row.lineIds) {
+        const o = byId.get(id);
+        if (!o || o.status !== "pending") {
+          toast.error(
+            `Cannot save "${row.orderId}": every line must still be pending. Refresh orders.`
+          );
+          return;
+        }
+      }
+    }
     setSaveBusy(true);
     try {
       for (const row of queue) {
         for (const id of row.lineIds) {
           await dispatch(
-            updateOrder({ id, patch: { trackingId: row.trackingId } })
+            updateOrder({
+              id,
+              patch: {
+                trackingId: row.trackingId,
+                status: "packed",
+              },
+            })
           ).unwrap();
         }
       }
-      toast.success("Tracking ids saved");
+      toast.success("Tracking saved and orders marked packed (picked up)");
       setQueue([]);
       await dispatch(fetchOrders()).unwrap();
     } catch (e) {
@@ -185,7 +221,7 @@ function TrackingScannerPage() {
     } finally {
       setSaveBusy(false);
     }
-  }, [dispatch, queue]);
+  }, [dispatch, queue, orders]);
 
   const queueColumns: Column<QueueRow>[] = useMemo(
     () => [
@@ -237,14 +273,36 @@ function TrackingScannerPage() {
       <Card>
         <CardHeader
           title="Tracking scan"
-          subtitle="1) Scan the order QR on the delivery PDF. 2) Scan the post-office barcode. Repeat, then Save. Camera needs HTTPS on phones (or localhost)."
+          subtitle="Only orders in Pending status can be scanned. After saving, each line gets the tracking id and moves to Packed (picked up for shipping). Camera needs HTTPS on phones (or localhost)."
         />
         <div className="space-y-4 px-4 pb-4 md:px-6 md:pb-6">
           {draftOrderId && scanPhase === "tracking" && (
-            <p className="rounded-[var(--radius-md)] bg-primary-muted px-3 py-2 text-sm text-text">
-              Order <span className="font-mono font-semibold">{draftOrderId}</span>{" "}
-              — now scan the tracking barcode
-            </p>
+            <div className="space-y-2 rounded-[var(--radius-md)] bg-primary-muted px-3 py-2 text-sm text-text">
+              <p>
+                Order{" "}
+                <span className="font-mono font-semibold">{draftOrderId}</span>{" "}
+                — scan the post label barcode in good light; hold steady and
+                include the full bars in the frame.
+              </p>
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-text-muted">
+                <input
+                  type="checkbox"
+                  className="rounded border-border"
+                  checked={barcodeSoftwareOnly}
+                  onChange={(e) => setBarcodeSoftwareOnly(e.target.checked)}
+                />
+                Software decoder only (if this phone mis-reads the barcode)
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-text-muted">
+                <input
+                  type="checkbox"
+                  className="rounded border-border"
+                  checked={barcodeFullFrame}
+                  onChange={(e) => setBarcodeFullFrame(e.target.checked)}
+                />
+                Use full camera area (easier to align; may be slower)
+              </label>
+            </div>
           )}
 
           <div className="flex flex-wrap gap-2">
@@ -296,11 +354,14 @@ function TrackingScannerPage() {
           )}
           {scanPhase === "tracking" && (
             <Html5CameraScanner
+              key={`${barcodeSoftwareOnly}-${barcodeFullFrame}`}
               elementId={trackingBoxId}
               active
               mode="barcode"
               onDecoded={onTrackingDecoded}
               onCameraError={onCameraError}
+              barcodeSoftwareDecoderOnly={barcodeSoftwareOnly}
+              barcodeFullFrame={barcodeFullFrame}
             />
           )}
 
@@ -340,7 +401,7 @@ function TrackingScannerPage() {
       <Card>
         <CardHeader
           title="Queue"
-          subtitle={`${queue.length} package(s) — Save updates every line for that display order id.`}
+          subtitle={`${queue.length} package(s). Save applies tracking and sets status to Packed for every matching line.`}
         />
         <div className="space-y-3 px-4 pb-4 md:px-6 md:pb-6">
           <Table<QueueRow>
@@ -356,7 +417,7 @@ function TrackingScannerPage() {
             disabled={queue.length === 0 || saveBusy}
             onClick={() => void saveAll()}
           >
-            Save all tracking ids
+            Save & mark packed (pickup)
           </Button>
         </div>
       </Card>
