@@ -27,6 +27,7 @@ export interface UpdateStaffPayload {
   payoutPerOrder?: number;
   bonusMilestones?: { orders: number; bonus: number }[];
   avatar?: string;
+  extraPermissionSlugs?: string[];
 }
 
 function normalizeStaff(row: Staff): Staff {
@@ -46,6 +47,9 @@ function normalizeStaff(row: Staff): Staff {
       row.pendingPasswordResetRequest === undefined
         ? null
         : row.pendingPasswordResetRequest,
+    extraPermissionSlugs: Array.isArray(row.extraPermissionSlugs)
+      ? row.extraPermissionSlugs
+      : [],
   };
 }
 

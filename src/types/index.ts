@@ -139,6 +139,8 @@ export interface Staff {
     id: string;
     createdAt: string;
   } | null;
+  /** Merged with staff role permissions at login (JWT). */
+  extraPermissionSlugs?: string[];
 }
 
 export interface StaffEarnings {

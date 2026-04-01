@@ -32,6 +32,7 @@ export const endpoints = {
   senderSetDefault: (id: string) => `${V1}/senders/${id}/default`,
   settings: `${V1}/settings`,
   staff: `${V1}/staff`,
+  staffPermissionCatalog: `${V1}/staff/permission-catalog`,
   staffEarnings: `${V1}/staff/earnings`,
   staffEarningsById: (id: string) => `${V1}/staff/${id}/earnings`,
   staffMe: `${V1}/staff/me`,

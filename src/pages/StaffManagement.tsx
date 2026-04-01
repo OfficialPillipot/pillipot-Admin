@@ -10,6 +10,7 @@ import {
   resetStaffPassword,
   fulfillPasswordResetRequest,
   deleteStaff,
+  type UpdateStaffPayload,
 } from "../store/staffSlice";
 import { selectStaffPositions, fetchStaffPositions } from "../store/staffPositionsSlice";
 import { selectAssignedNumbers, fetchAssignedNumbers } from "../store/assignedNumbersSlice";
@@ -27,8 +28,20 @@ import {
 import { staffJobRoleLabel } from "../lib/staffJobRoles";
 import { formatDate } from "../lib/orderUtils";
 import { toast } from "../lib/toast";
-import type { Staff } from "../types";
+import { useAuth } from "../context/AuthContext";
+import { api } from "../api/client";
+import { endpoints } from "../api/endpoints";
+import type { RbacMatrixResponse, Staff } from "../types";
 import type { SelectOption } from "../components/ui/Select";
+
+const EXTRA_PERM_ACTION_LABEL: Record<string, string> = {
+  view: "View",
+  create: "Create",
+  update: "Edit",
+  delete: "Delete",
+  lookup: "Lookup",
+  view_cost: "View cost",
+};
 
 const DEFAULT_BONUS_MILESTONES = [
   { orders: 5, bonus: 50 },
@@ -40,6 +53,9 @@ const PHONE_RE = /^[\d+\s().-]{7,25}$/;
 
 function StaffManagementPage() {
   const dispatch = useAppDispatch();
+  const { user: authUser } = useAuth();
+  const canEditStaffExtras =
+    authUser?.permissions?.includes("staff.update") ?? false;
   const staff = useAppSelector(selectStaff);
   const positions = useAppSelector(selectStaffPositions);
   const assignedNumbers = useAppSelector(selectAssignedNumbers);
@@ -63,6 +79,45 @@ function StaffManagementPage() {
   const [fulfillSubmitting, setFulfillSubmitting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Staff | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  const [permissionCatalog, setPermissionCatalog] = useState<
+    RbacMatrixResponse["catalog"]
+  >([]);
+  const [permCatalogLoaded, setPermCatalogLoaded] = useState(false);
+  const [draftExtraSlugs, setDraftExtraSlugs] = useState<Set<string>>(
+    () => new Set()
+  );
+
+  const loadPermissionCatalog = useCallback(async () => {
+    if (!canEditStaffExtras) return;
+    try {
+      const res = await api.get<RbacMatrixResponse>(endpoints.staffPermissionCatalog);
+      setPermissionCatalog(res.catalog ?? []);
+      setPermCatalogLoaded(true);
+    } catch {
+      setPermissionCatalog([]);
+      setPermCatalogLoaded(false);
+    }
+  }, [canEditStaffExtras]);
+
+  const byResourceForExtras = useMemo(() => {
+    const m = new Map<string, RbacMatrixResponse["catalog"]>();
+    for (const p of permissionCatalog) {
+      const arr = m.get(p.resource) ?? [];
+      arr.push(p);
+      m.set(p.resource, arr);
+    }
+    return m;
+  }, [permissionCatalog]);
+
+  const toggleExtraSlug = useCallback((slug: string) => {
+    setDraftExtraSlugs((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     void dispatch(fetchStaff());
@@ -123,13 +178,17 @@ function StaffManagementPage() {
       setJoinedDate(s.joinedDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
       setStaffPositionId(s.staffPositionId ?? positions[0]?.id ?? "");
       setAssignedNumberId(s.assignedNumberId ?? "");
+      setDraftExtraSlugs(new Set(s.extraPermissionSlugs ?? []));
+      setPermCatalogLoaded(false);
       setError("");
+      void loadPermissionCatalog();
     },
-    [positions]
+    [positions, loadPermissionCatalog]
   );
 
   const closeEdit = useCallback(() => {
     setEditStaff(null);
+    setPermCatalogLoaded(false);
     setError("");
   }, []);
 
@@ -229,16 +288,20 @@ function StaffManagementPage() {
       }
       setSubmitting(true);
       try {
+        const patch: UpdateStaffPayload = {
+          name: nameTrim,
+          phone: phoneTrim,
+          joinedDate: joinedDate || editStaff.joinedDate.slice(0, 10),
+          staffPositionId,
+          assignedNumberId: assignedNumberId || null,
+        };
+        if (permCatalogLoaded) {
+          patch.extraPermissionSlugs = [...draftExtraSlugs].sort();
+        }
         await dispatch(
           updateStaff({
             id: editStaff.id,
-            patch: {
-              name: nameTrim,
-              phone: phoneTrim,
-              joinedDate: joinedDate || editStaff.joinedDate.slice(0, 10),
-              staffPositionId,
-              assignedNumberId: assignedNumberId || null,
-            },
+            patch,
           })
         ).unwrap();
         toast.success("Staff updated");
@@ -259,6 +322,8 @@ function StaffManagementPage() {
       joinedDate,
       staffPositionId,
       assignedNumberId,
+      permCatalogLoaded,
+      draftExtraSlugs,
       dispatch,
       closeEdit,
     ]
@@ -751,7 +816,7 @@ function StaffManagementPage() {
         isOpen={!!editStaff}
         onClose={() => !submitting && closeEdit()}
         title="Edit Staff"
-        size="md"
+        size="lg"
       >
         {editStaff && (
           <form onSubmit={handleSaveEdit} className="space-y-4">
@@ -759,6 +824,52 @@ function StaffManagementPage() {
               Username <span className="font-mono text-text-heading">{editStaff.username}</span> cannot be changed.
             </p>
             {staffForm}
+            {editStaff && canEditStaffExtras ? (
+              <div className="rounded-[var(--radius-md)] border border-border-subtle bg-surface-alt/50 p-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Extra permissions
+                </h4>
+                <p className="mt-1 text-[11px] text-text-muted leading-relaxed">
+                  Checked items are added on top of the shared <strong>staff</strong> role. The staff member must sign
+                  out and sign back in for changes to apply.
+                </p>
+                {!permCatalogLoaded ? (
+                  <p className="mt-2 text-xs text-text-muted">Loading permission list…</p>
+                ) : permissionCatalog.length === 0 ? (
+                  <p className="mt-2 text-xs text-amber-800 dark:text-amber-200">
+                    Could not load the permission list. Save still updates name, role, and number.
+                  </p>
+                ) : (
+                  <div className="mt-3 max-h-[min(50vh,16rem)] space-y-3 overflow-y-auto pr-1">
+                    {[...byResourceForExtras.entries()]
+                      .sort(([a], [b]) => a.localeCompare(b))
+                      .map(([resource, perms]) => (
+                        <div key={resource}>
+                          <h5 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                            {resource.replace(/_/g, " ")}
+                          </h5>
+                          <div className="flex flex-wrap gap-3">
+                            {perms.map((p) => (
+                              <label
+                                key={p.slug}
+                                className="flex cursor-pointer items-center gap-2 text-sm text-text-heading"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={draftExtraSlugs.has(p.slug)}
+                                  onChange={() => toggleExtraSlug(p.slug)}
+                                  className="h-4 w-4 rounded border-border text-primary"
+                                />
+                                {EXTRA_PERM_ACTION_LABEL[p.action] ?? p.action}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
             {error && <p className="text-sm text-error">{error}</p>}
             <div className="flex gap-2">
               <Button type="submit" loading={submitting}>
