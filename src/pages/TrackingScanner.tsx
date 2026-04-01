@@ -7,6 +7,7 @@ import {
   updateOrder,
 } from "../store/ordersSlice";
 import { Html5CameraScanner } from "../components/tracking/Html5CameraScanner";
+import { ZxingOneDBarcodeScanner } from "../components/tracking/ZxingOneDBarcodeScanner";
 import { Button, Card, CardHeader, Table, type Column } from "../components/ui";
 import { toast } from "../lib/toast";
 import type { Order } from "../types";
@@ -66,10 +67,13 @@ function TrackingScannerPage() {
   const [draftOrderId, setDraftOrderId] = useState<string | null>(null);
   const [manualOrder, setManualOrder] = useState("");
   const [manualTracking, setManualTracking] = useState("");
-  /** Barcode-only: ZXing path; try if some phones mis-read native Code 128. */
+  /** Tracking step: ZXing 1D reader (default) or legacy html5-qrcode. */
+  const [barcodeEngine, setBarcodeEngine] = useState<"zxing" | "html5">(
+    "zxing"
+  );
+  /** Legacy html5-qrcode only. */
   const [barcodeSoftwareOnly, setBarcodeSoftwareOnly] = useState(false);
-  /** Barcode-only: scan nearly full preview for easier alignment. */
-  const [barcodeFullFrame, setBarcodeFullFrame] = useState(false);
+  const [barcodeFullFrame, setBarcodeFullFrame] = useState(true);
 
   const orderBoxId = useStableElementId("h5-order");
   const trackingBoxId = useStableElementId("h5-tracking");
@@ -281,27 +285,47 @@ function TrackingScannerPage() {
               <p>
                 Order{" "}
                 <span className="font-mono font-semibold">{draftOrderId}</span>{" "}
-                — scan the post label barcode in good light; hold steady and
-                include the full bars in the frame.
+                — aim the full barcode in frame (ZXing uses the whole preview).
+                Add light if the label is glossy or dark.
               </p>
-              <label className="flex cursor-pointer items-center gap-2 text-xs text-text-muted">
-                <input
-                  type="checkbox"
-                  className="rounded border-border"
-                  checked={barcodeSoftwareOnly}
-                  onChange={(e) => setBarcodeSoftwareOnly(e.target.checked)}
-                />
-                Software decoder only (if this phone mis-reads the barcode)
+              <label className="flex flex-col gap-1 text-xs text-text-muted">
+                <span className="font-medium text-text">Barcode engine</span>
+                <select
+                  className="max-w-md rounded-[var(--radius-md)] border border-border bg-surface px-2 py-1.5 text-sm text-text"
+                  value={barcodeEngine}
+                  onChange={(e) =>
+                    setBarcodeEngine(e.target.value as "zxing" | "html5")
+                  }
+                  aria-label="Barcode scanner engine"
+                >
+                  <option value="zxing">ZXing (recommended for post labels)</option>
+                  <option value="html5">Legacy html5-qrcode</option>
+                </select>
               </label>
-              <label className="flex cursor-pointer items-center gap-2 text-xs text-text-muted">
-                <input
-                  type="checkbox"
-                  className="rounded border-border"
-                  checked={barcodeFullFrame}
-                  onChange={(e) => setBarcodeFullFrame(e.target.checked)}
-                />
-                Use full camera area (easier to align; may be slower)
-              </label>
+              {barcodeEngine === "html5" && (
+                <>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-text-muted">
+                    <input
+                      type="checkbox"
+                      className="rounded border-border"
+                      checked={barcodeSoftwareOnly}
+                      onChange={(e) =>
+                        setBarcodeSoftwareOnly(e.target.checked)
+                      }
+                    />
+                    Software decoder only
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-text-muted">
+                    <input
+                      type="checkbox"
+                      className="rounded border-border"
+                      checked={barcodeFullFrame}
+                      onChange={(e) => setBarcodeFullFrame(e.target.checked)}
+                    />
+                    Full camera area (legacy)
+                  </label>
+                </>
+              )}
             </div>
           )}
 
@@ -352,18 +376,26 @@ function TrackingScannerPage() {
               onCameraError={onCameraError}
             />
           )}
-          {scanPhase === "tracking" && (
-            <Html5CameraScanner
-              key={`${barcodeSoftwareOnly}-${barcodeFullFrame}`}
-              elementId={trackingBoxId}
-              active
-              mode="barcode"
-              onDecoded={onTrackingDecoded}
-              onCameraError={onCameraError}
-              barcodeSoftwareDecoderOnly={barcodeSoftwareOnly}
-              barcodeFullFrame={barcodeFullFrame}
-            />
-          )}
+          {scanPhase === "tracking" &&
+            (barcodeEngine === "zxing" ? (
+              <ZxingOneDBarcodeScanner
+                key="zxing-barcode"
+                active
+                onDecoded={onTrackingDecoded}
+                onCameraError={onCameraError}
+              />
+            ) : (
+              <Html5CameraScanner
+                key={`html5-${barcodeSoftwareOnly}-${barcodeFullFrame}`}
+                elementId={trackingBoxId}
+                active
+                mode="barcode"
+                onDecoded={onTrackingDecoded}
+                onCameraError={onCameraError}
+                barcodeSoftwareDecoderOnly={barcodeSoftwareOnly}
+                barcodeFullFrame={barcodeFullFrame}
+              />
+            ))}
 
           <div className="border-t border-border pt-4">
             <p className="mb-2 text-sm font-medium text-text">Manual entry</p>
