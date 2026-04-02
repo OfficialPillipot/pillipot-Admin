@@ -407,6 +407,14 @@ function CreateOrderPage() {
           const isFirst = i === 0;
           const isLastLine = i === selectedProducts.length - 1;
 
+          console.log("[CreateOrder] posting line", {
+            index: i + 1,
+            of: selectedProducts.length,
+            orderId: commonOrderId,
+            productId: item.productId,
+            notifyCustomerEmail: isLastLine,
+          });
+
           await dispatch(
             createOrder({
               staffId: user.staffId!,
@@ -439,6 +447,13 @@ function CreateOrderPage() {
             })
           ).unwrap();
         }
+
+        console.log("[CreateOrder] all lines created", {
+          orderId: commonOrderId,
+          lines: selectedProducts.length,
+          customerEmail: form.email.trim(),
+          note: "Watch API terminal for [OrderEmail] SENT / NOT sent / FAILED",
+        });
 
         toast.success(`Created ${selectedProducts.length} order(s) successfully!`);
         navigate(`/orders`);
