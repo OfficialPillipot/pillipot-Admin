@@ -1,4 +1,13 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { TrashIcon } from "@heroicons/react/24/outline";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
@@ -6,9 +15,19 @@ import {
   selectOrders,
   updateOrder,
 } from "../store/ordersSlice";
-import { Html5CameraScanner } from "../components/tracking/Html5CameraScanner";
-import { ZxingOneDBarcodeScanner } from "../components/tracking/ZxingOneDBarcodeScanner";
 import { Button, Card, CardHeader, Table, type Column } from "../components/ui";
+
+const Html5CameraScanner = lazy(() =>
+  import("../components/tracking/Html5CameraScanner").then((m) => ({
+    default: m.Html5CameraScanner,
+  })),
+);
+
+const ZxingOneDBarcodeScanner = lazy(() =>
+  import("../components/tracking/ZxingOneDBarcodeScanner").then((m) => ({
+    default: m.ZxingOneDBarcodeScanner,
+  })),
+);
 import { toast } from "../lib/toast";
 import type { Order } from "../types";
 
@@ -453,34 +472,47 @@ function TrackingScannerPage() {
           </div>
 
           {scanPhase === "order" && (
-            <Html5CameraScanner
-              elementId={orderBoxId}
-              active
-              mode="qr"
-              onDecoded={onOrderDecoded}
-              onCameraError={onCameraError}
-            />
-          )}
-          {scanPhase === "tracking" &&
-            (barcodeEngine === "zxing" ? (
-              <ZxingOneDBarcodeScanner
-                key="zxing-barcode"
-                active
-                onDecoded={onTrackingDecoded}
-                onCameraError={onCameraError}
-              />
-            ) : (
+            <Suspense
+              fallback={
+                <p className="py-4 text-sm text-text-muted">Loading camera…</p>
+              }
+            >
               <Html5CameraScanner
-                key={`html5-${barcodeSoftwareOnly}-${barcodeFullFrame}`}
-                elementId={trackingBoxId}
+                elementId={orderBoxId}
                 active
-                mode="barcode"
-                onDecoded={onTrackingDecoded}
+                mode="qr"
+                onDecoded={onOrderDecoded}
                 onCameraError={onCameraError}
-                barcodeSoftwareDecoderOnly={barcodeSoftwareOnly}
-                barcodeFullFrame={barcodeFullFrame}
               />
-            ))}
+            </Suspense>
+          )}
+          {scanPhase === "tracking" && (
+            <Suspense
+              fallback={
+                <p className="py-4 text-sm text-text-muted">Loading scanner…</p>
+              }
+            >
+              {barcodeEngine === "zxing" ? (
+                <ZxingOneDBarcodeScanner
+                  key="zxing-barcode"
+                  active
+                  onDecoded={onTrackingDecoded}
+                  onCameraError={onCameraError}
+                />
+              ) : (
+                <Html5CameraScanner
+                  key={`html5-${barcodeSoftwareOnly}-${barcodeFullFrame}`}
+                  elementId={trackingBoxId}
+                  active
+                  mode="barcode"
+                  onDecoded={onTrackingDecoded}
+                  onCameraError={onCameraError}
+                  barcodeSoftwareDecoderOnly={barcodeSoftwareOnly}
+                  barcodeFullFrame={barcodeFullFrame}
+                />
+              )}
+            </Suspense>
+          )}
 
           <div className="border-t border-border pt-4">
             <p className="mb-2 text-sm font-medium text-text">Manual entry</p>

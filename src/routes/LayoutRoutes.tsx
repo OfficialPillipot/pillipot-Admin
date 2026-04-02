@@ -1,46 +1,31 @@
+import { Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router";
 import { ProtectedRoute } from "../components/auth";
 import type { User } from "../types";
-import StaffDashboard from "../pages/StaffDashboard";
-import StaffProductStock from "../pages/StaffProductStock";
-import StaffRecentOrders from "../pages/StaffRecentOrders";
-import StaffMyProfile from "../pages/StaffMyProfile";
-import CreateOrder from "../pages/CreateOrder";
-import OrdersList from "../pages/OrdersList";
-import OrderDetail from "../pages/OrderDetail";
-import AdminDashboard from "../pages/AdminDashboard";
-import StaffManagement from "../pages/StaffManagement";
-import StaffRoleManagement from "../pages/StaffRoleManagement";
-import AssignedNumbersManagement from "../pages/AssignedNumbersManagement";
-import StaffProfile from "../pages/StaffProfile";
-import AdminOrderManagement from "../pages/AdminOrderManagement";
-import ProductManagement from "../pages/ProductManagement";
-import CategoryManagement from "../pages/CategoryManagement";
-import ExportData from "../pages/ExportData";
-import CustomerManagement from "../pages/CustomerManagement";
-import ChangePassword from "../pages/ChangePassword";
-import SenderManagement from "../pages/SenderManagement";
-import AdminSettings from "../pages/AdminSettings";
-import SalaryManagement from "../pages/SalaryManagement";
-import ProfitAnalytics from "../pages/ProfitAnalytics";
-import DeliveryManagement from "../pages/DeliveryManagement";
-import RolePermissions from "../pages/RolePermissions";
-import UserManagement from "../pages/UserManagement";
-import TrackingScanner from "../pages/TrackingScanner";
+import * as Pages from "./lazyPages";
 
 interface LayoutRoutesProps {
   user: User;
 }
 
+function RouteFallback() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center text-sm text-text-muted">
+      Loading…
+    </div>
+  );
+}
+
 export function LayoutRoutes({ user }: LayoutRoutesProps) {
   return (
+    <Suspense fallback={<RouteFallback />}>
     <Routes>
       {/* Staff routes */}
       <Route
         path="/"
         element={
           <ProtectedRoute allowedRoles={["staff"]}>
-            <StaffDashboard />
+            <Pages.StaffDashboard />
           </ProtectedRoute>
         }
       />
@@ -48,7 +33,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         path="/stock"
         element={
           <ProtectedRoute allowedRoles={["staff"]}>
-            <StaffProductStock />
+            <Pages.StaffProductStock />
           </ProtectedRoute>
         }
       />
@@ -56,7 +41,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         path="/recent-orders"
         element={
           <ProtectedRoute allowedRoles={["staff"]}>
-            <StaffRecentOrders />
+            <Pages.StaffRecentOrders />
           </ProtectedRoute>
         }
       />
@@ -64,7 +49,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         path="/orders"
         element={
           <ProtectedRoute allowedRoles={["staff"]}>
-            <OrdersList />
+            <Pages.OrdersList />
           </ProtectedRoute>
         }
       />
@@ -72,7 +57,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         path="/orders/create"
         element={
           <ProtectedRoute allowedRoles={["staff"]}>
-            <CreateOrder />
+            <Pages.CreateOrder />
           </ProtectedRoute>
         }
       />
@@ -80,7 +65,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         path="/orders/:id"
         element={
           <ProtectedRoute allowedRoles={["staff"]}>
-            <OrderDetail />
+            <Pages.OrderDetail />
           </ProtectedRoute>
         }
       />
@@ -88,7 +73,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         path="/profile"
         element={
           <ProtectedRoute allowedRoles={["staff"]}>
-            <StaffMyProfile />
+            <Pages.StaffMyProfile />
           </ProtectedRoute>
         }
       />
@@ -97,7 +82,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         path="/admin"
         element={
           <ProtectedRoute allowedRoles={["super_admin", "guest"]}>
-            <AdminDashboard />
+            <Pages.AdminDashboard />
           </ProtectedRoute>
         }
       />
@@ -108,7 +93,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["staff.view"]}
           >
-            <StaffManagement />
+            <Pages.StaffManagement />
           </ProtectedRoute>
         }
       />
@@ -119,7 +104,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["staff_positions.view"]}
           >
-            <StaffRoleManagement />
+            <Pages.StaffRoleManagement />
           </ProtectedRoute>
         }
       />
@@ -130,7 +115,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["assigned_numbers.view"]}
           >
-            <AssignedNumbersManagement />
+            <Pages.AssignedNumbersManagement />
           </ProtectedRoute>
         }
       />
@@ -141,7 +126,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["staff.view"]}
           >
-            <StaffProfile />
+            <Pages.StaffProfile />
           </ProtectedRoute>
         }
       />
@@ -152,7 +137,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["orders.view"]}
           >
-            <AdminOrderManagement />
+            <Pages.AdminOrderManagement />
           </ProtectedRoute>
         }
       />
@@ -163,7 +148,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["orders.update"]}
           >
-            <TrackingScanner />
+            <Pages.TrackingScanner />
           </ProtectedRoute>
         }
       />
@@ -174,7 +159,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["customers.view"]}
           >
-            <CustomerManagement />
+            <Pages.CustomerManagement />
           </ProtectedRoute>
         }
       />
@@ -185,7 +170,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["categories.view"]}
           >
-            <CategoryManagement />
+            <Pages.CategoryManagement />
           </ProtectedRoute>
         }
       />
@@ -196,7 +181,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["deliveries.view"]}
           >
-            <DeliveryManagement />
+            <Pages.DeliveryManagement />
           </ProtectedRoute>
         }
       />
@@ -207,7 +192,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["products.view"]}
           >
-            <ProductManagement />
+            <Pages.ProductManagement />
           </ProtectedRoute>
         }
       />
@@ -218,7 +203,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["customers.view"]}
           >
-            <ExportData />
+            <Pages.ExportData />
           </ProtectedRoute>
         }
       />
@@ -229,7 +214,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["senders.view"]}
           >
-            <SenderManagement />
+            <Pages.SenderManagement />
           </ProtectedRoute>
         }
       />
@@ -240,7 +225,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["staff.view"]}
           >
-            <SalaryManagement />
+            <Pages.SalaryManagement />
           </ProtectedRoute>
         }
       />
@@ -251,7 +236,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["profit.view"]}
           >
-            <ProfitAnalytics />
+            <Pages.ProfitAnalytics />
           </ProtectedRoute>
         }
       />
@@ -262,7 +247,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             allowedRoles={["super_admin", "guest"]}
             requiredPermissions={["settings.view"]}
           >
-            <AdminSettings />
+            <Pages.AdminSettings />
           </ProtectedRoute>
         }
       />
@@ -270,7 +255,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         path="/admin/role-permissions"
         element={
           <ProtectedRoute allowedRoles={["super_admin"]}>
-            <RolePermissions />
+            <Pages.RolePermissions />
           </ProtectedRoute>
         }
       />
@@ -278,11 +263,11 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         path="/admin/users"
         element={
           <ProtectedRoute allowedRoles={["super_admin"]}>
-            <UserManagement />
+            <Pages.UserManagement />
           </ProtectedRoute>
         }
       />
-      <Route path="/account/password" element={<ChangePassword />} />
+      <Route path="/account/password" element={<Pages.ChangePassword />} />
       <Route
         path="*"
         element={
@@ -293,5 +278,6 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         }
       />
     </Routes>
+    </Suspense>
   );
 }
