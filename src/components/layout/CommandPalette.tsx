@@ -19,6 +19,12 @@ const ITEMS: CommandItem[] = [
   { to: "/orders", label: "My Orders", roles: ["staff"] },
   { to: "/stock", label: "Product stock", roles: ["staff"], keywords: ["inventory"] },
   { to: "/recent-orders", label: "Recent orders", roles: ["staff"] },
+  {
+    to: "/blog",
+    label: "Blog",
+    roles: ["staff"],
+    keywords: ["news", "posts", "announcements"],
+  },
   { to: "/profile", label: "Profile", roles: ["staff"] },
   {
     to: "/account/password",
@@ -43,10 +49,25 @@ const ITEMS: CommandItem[] = [
   },
   {
     to: "/admin/salary",
-    label: "Salary",
+    label: "Staff pay",
     roles: ["super_admin", "guest"],
     permission: "staff.view",
-    keywords: ["pay", "staff pay"],
+    keywords: ["pay", "staff pay", "salary", "milestones", "earnings", "payout"],
+  },
+  {
+    to: "/admin/payroll-ledger",
+    label: "Payroll",
+    roles: ["super_admin", "guest"],
+    permission: "staff.view",
+    keywords: [
+      "payroll",
+      "payment history",
+      "salary payments",
+      "ledger",
+      "payouts",
+      "pay button",
+      "earnings",
+    ],
   },
   {
     to: "/admin/profit",
@@ -112,6 +133,13 @@ const ITEMS: CommandItem[] = [
     roles: ["super_admin", "guest"],
     permission: "customers.view",
     keywords: ["export", "download"],
+  },
+  {
+    to: "/admin/blog",
+    label: "Staff blog",
+    roles: ["super_admin", "guest"],
+    permission: "blogs.view",
+    keywords: ["blog", "posts", "announcements", "rich text"],
   },
   {
     to: "/admin/settings",

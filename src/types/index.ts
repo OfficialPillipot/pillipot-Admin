@@ -154,6 +154,29 @@ export interface StaffEarnings {
   orderEarnings: number;
   bonus: number;
   total: number;
+  /** When earnings were loaded with both dateFrom and dateTo, and a payout exists for that period. */
+  periodPayment?: {
+    id: string;
+    paidAt: string;
+    totalAmount: number;
+    paidByName: string | null;
+  } | null;
+}
+
+/** Recorded payout from GET /staff/salary-payments */
+export interface StaffSalaryPaymentRow {
+  id: string;
+  staffId: string;
+  staffName: string;
+  periodStart: string;
+  periodEnd: string;
+  quantityCount: number;
+  baseAmount: number;
+  bonusAmount: number;
+  totalAmount: number;
+  paidAt: string;
+  paidByName: string | null;
+  note: string | null;
 }
 
 export interface Sender {
@@ -344,4 +367,66 @@ export interface StaffWithStats extends Staff {
   totalEarnings: number;
   undeliveredCount: number;
   weeklyEarnings: number;
+}
+
+export type BlogAudience =
+  | { kind: "all" }
+  | { kind: "staff"; staffIds: string[] }
+  | { kind: "positions"; positionIds: string[] };
+
+export interface BlogAdminListRow {
+  id: string;
+  title: string;
+  published: boolean;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  audience: BlogAudience;
+  authorName: string | null;
+  likeCount: number;
+  commentCount: number;
+}
+
+export interface BlogAdminDetail {
+  id: string;
+  title: string;
+  bodyHtml: string;
+  published: boolean;
+  publishedAt: string | null;
+  audience: BlogAudience;
+  authorName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BlogFeedItem {
+  id: string;
+  title: string;
+  excerpt: string;
+  publishedAt: string;
+  authorName: string;
+  likeCount: number;
+  commentCount: number;
+  likedByMe: boolean;
+}
+
+export interface BlogPostDetail {
+  id: string;
+  title: string;
+  bodyHtml: string;
+  publishedAt: string;
+  authorName: string;
+  likeCount: number;
+  likedByMe: boolean;
+  commentCount: number;
+}
+
+export interface BlogComment {
+  id: string;
+  body: string;
+  createdAt: string;
+  parentId: string | null;
+  authorKind: "staff" | "admin";
+  authorName: string;
+  staffProfileId: string | null;
 }

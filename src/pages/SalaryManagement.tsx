@@ -1,19 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Card,
-  CardHeader,
-  Button,
-  Table,
-  ManagementFilterPanel,
-  ManagementFilterField,
-  MANAGEMENT_NATIVE_CONTROL_CLASS,
-  ResponsiveManagementFilters,
-} from "../components/ui";
+import { Link } from "react-router";
+import { Card, CardHeader, Button, Table } from "../components/ui";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { selectStaff, updateStaff, fetchStaff } from "../store/staffSlice";
-import { api } from "../api/client";
-import { endpoints } from "../api/endpoints";
-import type { StaffEarnings } from "../types";
 import { toast } from "../lib/toast";
 import { formatCurrency } from "../lib/orderUtils";
 
@@ -42,37 +31,15 @@ function milestoneText(list: { orders: number; bonus: number }[]): string {
 function SalaryManagementPage() {
   const dispatch = useAppDispatch();
   const staff = useAppSelector(selectStaff);
-  const [rows, setRows] = useState<StaffEarnings[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
   const [draftPayout, setDraftPayout] = useState<Record<string, string>>({});
   const [draftMilestones, setDraftMilestones] = useState<Record<string, string>>(
-    {}
+    {},
   );
   const [savingId, setSavingId] = useState<string | null>(null);
 
-  const loadRows = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (dateFrom) params.set("dateFrom", dateFrom);
-      if (dateTo) params.set("dateTo", dateTo);
-      const qs = params.toString();
-      const path = qs ? `${endpoints.staffEarnings}?${qs}` : endpoints.staffEarnings;
-      const data = await api.get<StaffEarnings[]>(path);
-      setRows(data);
-    } catch (err) {
-      toast.fromError(err, "Failed to load salary data");
-    } finally {
-      setLoading(false);
-    }
-  }, [dateFrom, dateTo]);
-
   useEffect(() => {
     void dispatch(fetchStaff());
-    void loadRows();
-  }, [dispatch, loadRows]);
+  }, [dispatch]);
 
   useEffect(() => {
     const payout: Record<string, string> = {};
@@ -87,7 +54,12 @@ function SalaryManagementPage() {
 
   const staffById = useMemo(
     () => new Map(staff.map((s) => [s.id, s])),
-    [staff]
+    [staff],
+  );
+
+  const staffRows = useMemo(
+    () => [...staff].sort((a, b) => a.name.localeCompare(b.name)),
+    [staff],
   );
 
   const saveStaffRule = useCallback(
@@ -113,17 +85,16 @@ function SalaryManagementPage() {
               payoutPerOrder: payout,
               bonusMilestones: milestones,
             },
-          })
+          }),
         ).unwrap();
-        await loadRows();
-        toast.success("Salary rule updated");
+        toast.success("Pay rule updated");
       } catch (err) {
-        toast.fromError(err, "Failed to update salary rule");
+        toast.fromError(err, "Failed to update pay rule");
       } finally {
         setSavingId(null);
       }
     },
-    [dispatch, draftMilestones, draftPayout, loadRows]
+    [dispatch, draftMilestones, draftPayout],
   );
 
   return (
@@ -144,97 +115,60 @@ function SalaryManagementPage() {
           }
         }
       `}</style>
+
       <Card>
         <CardHeader
-          title="Salary Management"
-        // subtitle="Base payout + cumulative milestone bonuses for each staff."
+          title="Staff pay"
+          subtitle="Set amount per quantity and milestone bonuses for each staff member. To review earnings and record payouts, use Payroll."
+          action={
+            <Link
+              to="/admin/payroll-ledger"
+              className="inline-flex items-center rounded-md border-2 border-primary px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary-muted"
+            >
+              Payroll
+            </Link>
+          }
         />
-        <div className="mb-4">
-          <ResponsiveManagementFilters modalTitle="Salary period" triggerLabel="Filters">
-            <ManagementFilterPanel>
-              <ManagementFilterField label="From date">
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="From date"
-                />
-              </ManagementFilterField>
-              <ManagementFilterField label="To date">
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="To date"
-                />
-              </ManagementFilterField>
-              <ManagementFilterField label="Period">
-                <Button type="button" onClick={() => void loadRows()} loading={loading}>
-                  Apply period
-                </Button>
-              </ManagementFilterField>
-            </ManagementFilterPanel>
-          </ResponsiveManagementFilters>
-        </div>
 
         <Table
           columns={[
             {
               key: "staffName",
               header: "Staff",
-              render: (r: StaffEarnings) => (
-                <div className="font-medium">{r.staffName}</div>
-              ),
-            },
-            { key: "orderCount", header: "Quantity" },
-            {
-              key: "orderEarnings",
-              header: "Base amount",
-              render: (r: StaffEarnings) => formatCurrency(r.orderEarnings),
-            },
-            {
-              key: "bonus",
-              header: "Bonus",
-              render: (r: StaffEarnings) => formatCurrency(r.bonus),
-            },
-            {
-              key: "total",
-              header: "Total salary",
-              render: (r: StaffEarnings) => (
-                <span className="font-semibold text-earnings">
-                  {formatCurrency(r.total)}
-                </span>
+              render: (s: (typeof staffRows)[0]) => (
+                <div className="font-medium">{s.name}</div>
               ),
             },
             {
               key: "rules",
-              header: "Rules",
+              header: "Pay rules",
               className: "md:min-w-[15rem]",
-              render: (r: StaffEarnings) => (
+              render: (s: (typeof staffRows)[0]) => (
                 <div className="rule-card-mobile-trigger w-full min-w-0 max-w-full text-left">
                   <div className="grid w-full min-w-0 gap-3 rounded-xl border border-primary-muted bg-surface p-4 shadow-sm ring-1 ring-primary/5 transition-all hover:shadow-md">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-tightest text-text-muted/80">
-                        Payout per unit
+                        Amount per quantity
                       </label>
-                      <div className="relative group">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-text-muted group-focus-within:text-primary transition-colors">
+                      <div className="group relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-text-muted transition-colors group-focus-within:text-primary">
                           ₹
                         </span>
                         <input
                           type="number"
                           min={0}
                           step="0.01"
-                          value={draftPayout[r.staffId] ?? String(r.payoutPerOrder)}
+                          value={
+                            draftPayout[s.id] ??
+                            String(s.payoutPerOrder ?? 30)
+                          }
                           onChange={(e) =>
                             setDraftPayout((prev) => ({
                               ...prev,
-                              [r.staffId]: e.target.value,
+                              [s.id]: e.target.value,
                             }))
                           }
-                          className="box-border w-full min-w-0 max-w-full rounded-lg border border-border bg-surface-alt pl-6 pr-3 py-2 text-sm text-text transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 outline-none"
+                          className="box-border w-full min-w-0 max-w-full rounded-lg border border-border bg-surface-alt py-2 pl-6 pr-3 text-sm text-text outline-none transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10"
                           placeholder="0.00"
                         />
                       </div>
@@ -242,21 +176,23 @@ function SalaryManagementPage() {
 
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-tightest text-text-muted/80">
-                        Bonus Tiers
+                        Milestone amounts (qty:bonus)
                       </label>
                       <input
                         type="text"
                         value={
-                          draftMilestones[r.staffId] ??
-                          milestoneText(staffById.get(r.staffId)?.bonusMilestones ?? [])
+                          draftMilestones[s.id] ??
+                          milestoneText(
+                            staffById.get(s.id)?.bonusMilestones ?? [],
+                          )
                         }
                         onChange={(e) =>
                           setDraftMilestones((prev) => ({
                             ...prev,
-                            [r.staffId]: e.target.value,
+                            [s.id]: e.target.value,
                           }))
                         }
-                        className="box-border w-full min-w-0 max-w-full rounded-lg border border-border bg-surface-alt px-3 py-2 text-sm text-text transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10 outline-none"
+                        className="box-border w-full min-w-0 max-w-full rounded-lg border border-border bg-surface-alt px-3 py-2 text-sm text-text outline-none transition-all focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/10"
                         placeholder="e.g. 5:50, 10:100"
                       />
                     </div>
@@ -265,28 +201,30 @@ function SalaryManagementPage() {
                       {(() => {
                         try {
                           const tiers = parseMilestones(
-                            draftMilestones[r.staffId] ??
-                            milestoneText(staffById.get(r.staffId)?.bonusMilestones ?? [])
+                            draftMilestones[s.id] ??
+                              milestoneText(
+                                staffById.get(s.id)?.bonusMilestones ?? [],
+                              ),
                           );
                           if (tiers.length === 0) {
                             return (
-                              <span className="text-[11px] font-medium text-text-muted italic">
-                                No active tiers
+                              <span className="text-[11px] font-medium italic text-text-muted">
+                                No tiers
                               </span>
                             );
                           }
                           return tiers.map((m) => (
                             <span
-                              key={`${r.staffId}-${m.orders}-${m.bonus}`}
+                              key={`${s.id}-${m.orders}-${m.bonus}`}
                               className="rounded-md border border-primary-muted bg-primary-muted px-2 py-1 text-[10px] font-bold text-primary"
                             >
-                              {m.orders} qty → ₹{m.bonus}
+                              {m.orders}+ qty → {formatCurrency(m.bonus)}
                             </span>
                           ));
                         } catch {
                           return (
                             <span className="text-[10px] font-bold text-error">
-                              Invalid format (Qty:Bonus)
+                              Invalid (qty:bonus)
                             </span>
                           );
                         }
@@ -294,24 +232,25 @@ function SalaryManagementPage() {
                     </div>
 
                     <p className="text-[10px] leading-tight text-text-muted/60">
-                      Tier-based cumulative bonuses.
+                      Bonuses stack for every tier at or below the period
+                      quantity.
                     </p>
                     <Button
                       size="sm"
                       className="w-full shadow-sm shadow-primary/10"
-                      onClick={() => void saveStaffRule(r.staffId)}
-                      loading={savingId === r.staffId}
+                      onClick={() => void saveStaffRule(s.id)}
+                      loading={savingId === s.id}
                     >
-                      Update Rule
+                      Save pay rules
                     </Button>
                   </div>
                 </div>
               ),
             },
           ]}
-          data={rows}
-          keyExtractor={(r) => r.staffId}
-          emptyMessage="No salary rows for this period."
+          data={staffRows}
+          keyExtractor={(s) => s.id}
+          emptyMessage="No staff members."
         />
       </Card>
     </div>

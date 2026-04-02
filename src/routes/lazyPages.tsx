@@ -26,8 +26,14 @@ export const ChangePassword = lazy(() => import("../pages/ChangePassword"));
 export const SenderManagement = lazy(() => import("../pages/SenderManagement"));
 export const AdminSettings = lazy(() => import("../pages/AdminSettings"));
 export const SalaryManagement = lazy(() => import("../pages/SalaryManagement"));
+export const StaffPayrollLedger = lazy(() => import("../pages/StaffPayrollLedger"));
 export const ProfitAnalytics = lazy(() => import("../pages/ProfitAnalytics"));
 export const DeliveryManagement = lazy(() => import("../pages/DeliveryManagement"));
 export const RolePermissions = lazy(() => import("../pages/RolePermissions"));
 export const UserManagement = lazy(() => import("../pages/UserManagement"));
 export const TrackingScanner = lazy(() => import("../pages/TrackingScanner"));
+export const AdminBlogManagement = lazy(
+  () => import("../pages/AdminBlogManagement"),
+);
+export const StaffBlog = lazy(() => import("../pages/StaffBlog"));
+export const StaffBlogPost = lazy(() => import("../pages/StaffBlogPost"));

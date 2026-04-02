@@ -20,9 +20,11 @@ import {
   TruckIcon,
   Cog6ToothIcon,
   CurrencyRupeeIcon,
+  BanknotesIcon,
   PaperAirplaneIcon,
   ArchiveBoxIcon,
   ClockIcon,
+  NewspaperIcon,
   PresentationChartLineIcon,
   ShieldCheckIcon,
   IdentificationIcon,
@@ -52,52 +54,132 @@ interface AdminNavItem {
   superAdminOnly?: boolean;
 }
 
-const STAFF_NAV: StaffNavItem[] = [
-  { to: "/", label: "Dashboard", end: true, icon: HomeIcon },
-  { to: "/orders/create", label: "Create Order", end: true, icon: DocumentPlusIcon },
-  { to: "/orders", label: "My Orders", end: true, icon: ClipboardDocumentListIcon },
-  { to: "/stock", label: "Product stock", end: true, icon: ArchiveBoxIcon },
-  { to: "/recent-orders", label: "Recent orders", end: true, icon: ClockIcon },
-  { to: "/profile", label: "Profile", end: true, icon: UserCircleIcon },
-  { to: "/account/password", label: "Change password", end: true, icon: KeyIcon },
+interface NavSection<T> {
+  title: string;
+  items: T[];
+}
+
+const STAFF_NAV_SECTIONS: NavSection<StaffNavItem>[] = [
+  {
+    title: "Work",
+    items: [
+      { to: "/", label: "Dashboard", end: true, icon: HomeIcon },
+      { to: "/orders/create", label: "Create Order", end: true, icon: DocumentPlusIcon },
+      { to: "/orders", label: "My Orders", end: true, icon: ClipboardDocumentListIcon },
+      { to: "/stock", label: "Product stock", end: true, icon: ArchiveBoxIcon },
+      { to: "/recent-orders", label: "Recent orders", end: true, icon: ClockIcon },
+      { to: "/blog", label: "Blog", end: true, icon: NewspaperIcon },
+    ],
+  },
+  {
+    title: "Account",
+    items: [
+      { to: "/profile", label: "Profile", end: true, icon: UserCircleIcon },
+      { to: "/account/password", label: "Change password", end: true, icon: KeyIcon },
+    ],
+  },
 ];
 
-const ADMIN_NAV: AdminNavItem[] = [
-  { to: "/admin", label: "Dashboard", end: true, icon: HomeIcon },
-  { to: "/admin/orders", label: "Orders", end: true, icon: CubeIcon, permission: "orders.view" },
+const ADMIN_NAV_SECTIONS: NavSection<AdminNavItem>[] = [
   {
-    to: "/admin/tracking-scan",
-    label: "Tracking scan",
-    end: true,
-    icon: QrCodeIcon,
-    permission: "orders.update",
-  },
-  { to: "/admin/salary", label: "Salary", end: true, icon: CurrencyRupeeIcon, permission: "staff.view" },
-  { to: "/admin/profit", label: "Profit", end: true, icon: PresentationChartLineIcon, permission: "profit.view" },
-  { to: "/admin/staff", label: "Staff", end: true, icon: UsersIcon, permission: "staff.view" },
-  { to: "/admin/products", label: "Products", end: true, icon: Squares2X2Icon, permission: "products.view" },
-  { to: "/admin/customers", label: "Customers", end: true, icon: UserGroupIcon, permission: "customers.view" },
-  { to: "/admin/staff/assigned-numbers", label: "Assigned numbers", end: true, icon: HashtagIcon, permission: "assigned_numbers.view" },
-  { to: "/admin/categories", label: "Categories", end: true, icon: TagIcon, permission: "categories.view" },
-  { to: "/admin/delivery", label: "Delivery", end: true, icon: PaperAirplaneIcon, permission: "deliveries.view" },
-  { to: "/admin/senders", label: "Senders", end: true, icon: TruckIcon, permission: "senders.view" },
-  { to: "/admin/staff/roles", label: "Staff roles", end: true, icon: BriefcaseIcon, permission: "staff_positions.view" },
-  { to: "/account/password", label: "Change password", end: true, icon: KeyIcon },
-  { to: "/admin/export", label: "Export Data", end: true, icon: ArrowDownTrayIcon, permission: "customers.view" },
-  { to: "/admin/settings", label: "Settings", end: true, icon: Cog6ToothIcon, permission: "settings.view" },
-  {
-    to: "/admin/users",
-    label: "Users",
-    end: true,
-    icon: IdentificationIcon,
-    superAdminOnly: true,
+    title: "Overview",
+    items: [{ to: "/admin", label: "Dashboard", end: true, icon: HomeIcon }],
   },
   {
-    to: "/admin/role-permissions",
-    label: "Access control",
-    end: true,
-    icon: ShieldCheckIcon,
-    superAdminOnly: true,
+    title: "Orders & delivery",
+    items: [
+      { to: "/admin/orders", label: "Orders", end: true, icon: CubeIcon, permission: "orders.view" },
+      {
+        to: "/admin/tracking-scan",
+        label: "Tracking scan",
+        end: true,
+        icon: QrCodeIcon,
+        permission: "orders.update",
+      },
+      { to: "/admin/senders", label: "Senders", end: true, icon: TruckIcon, permission: "senders.view" },
+      { to: "/admin/delivery", label: "Delivery", end: true, icon: PaperAirplaneIcon, permission: "deliveries.view" },
+    ],
+  },
+  {
+    title: "Team & payroll",
+    items: [
+      { to: "/admin/staff", label: "Staff", end: true, icon: UsersIcon, permission: "staff.view" },
+      {
+        to: "/admin/salary",
+        label: "Staff pay",
+        end: true,
+        icon: CurrencyRupeeIcon,
+        permission: "staff.view",
+      },
+      {
+        to: "/admin/payroll-ledger",
+        label: "Payroll",
+        end: true,
+        icon: BanknotesIcon,
+        permission: "staff.view",
+      },
+      {
+        to: "/admin/staff/assigned-numbers",
+        label: "Assigned numbers",
+        end: true,
+        icon: HashtagIcon,
+        permission: "assigned_numbers.view",
+      },
+      {
+        to: "/admin/staff/roles",
+        label: "Staff roles",
+        end: true,
+        icon: BriefcaseIcon,
+        permission: "staff_positions.view",
+      },
+    ],
+  },
+  {
+    title: "Catalog & customers",
+    items: [
+      { to: "/admin/products", label: "Products", end: true, icon: Squares2X2Icon, permission: "products.view" },
+      { to: "/admin/categories", label: "Categories", end: true, icon: TagIcon, permission: "categories.view" },
+      { to: "/admin/customers", label: "Customers", end: true, icon: UserGroupIcon, permission: "customers.view" },
+    ],
+  },
+  {
+    title: "Insights",
+    items: [
+      { to: "/admin/profit", label: "Profit", end: true, icon: PresentationChartLineIcon, permission: "profit.view" },
+      { to: "/admin/export", label: "Export data", end: true, icon: ArrowDownTrayIcon, permission: "customers.view" },
+    ],
+  },
+  {
+    title: "Content",
+    items: [
+      { to: "/admin/blog", label: "Staff blog", end: true, icon: NewspaperIcon, permission: "blogs.view" },
+    ],
+  },
+  {
+    title: "System",
+    items: [
+      { to: "/account/password", label: "Change password", end: true, icon: KeyIcon },
+      { to: "/admin/settings", label: "Settings", end: true, icon: Cog6ToothIcon, permission: "settings.view" },
+    ],
+  },
+  {
+    title: "Super admin",
+    items: [
+      {
+        to: "/admin/users",
+        label: "Users",
+        end: true,
+        icon: IdentificationIcon,
+        superAdminOnly: true,
+      },
+      {
+        to: "/admin/role-permissions",
+        label: "Access control",
+        end: true,
+        icon: ShieldCheckIcon,
+        superAdminOnly: true,
+      },
+    ],
   },
 ];
 
@@ -139,13 +221,18 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
     if (setMobileOpen) setMobileOpen(false);
   };
 
-  const navItems = useMemo(() => {
-    if (user.role === "staff") return STAFF_NAV;
-    return ADMIN_NAV.filter((item) => {
-      if (item.superAdminOnly && user.role !== "super_admin") return false;
-      if (item.permission && !hasPermission(user, item.permission)) return false;
-      return true;
-    });
+  const navSections = useMemo(() => {
+    if (user.role === "staff") {
+      return STAFF_NAV_SECTIONS.filter((sec) => sec.items.length > 0);
+    }
+    return ADMIN_NAV_SECTIONS.map((sec) => ({
+      title: sec.title,
+      items: sec.items.filter((item) => {
+        if (item.superAdminOnly && user.role !== "super_admin") return false;
+        if (item.permission && !hasPermission(user, item.permission)) return false;
+        return true;
+      }),
+    })).filter((sec) => sec.items.length > 0);
   }, [user]);
 
   const linkBase =
@@ -201,38 +288,59 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
           </button>
         </Tooltip>
       </div>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-        {navItems.map((item) => {
-          const link = (
-            <NavLink
-              to={item.to}
-              end={item.end}
-              onClick={handleMobileNavClick}
-              className={({ isActive }: { isActive: boolean }) =>
-                linkBase +
-                " w-full " +
-                (isActive ? linkActive : linkInactive) +
-                (collapsed ? " md:justify-center md:px-2" : "")
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        {navSections.map((section, sectionIndex) => (
+          <div
+            key={section.title}
+            className={
+              sectionIndex > 0
+                ? "mt-3 border-t border-sidebar-hover/50 pt-3 md:mt-2.5 md:pt-2.5"
+                : ""
+            }
+          >
+            <p
+              className={
+                "mb-1.5 truncate px-2 text-[10px] font-semibold uppercase tracking-wider text-sidebar-text/50 " +
+                (collapsed ? "md:sr-only" : "")
               }
             >
-              <item.icon className="h-4 w-4 shrink-0 md:h-5 md:w-5" aria-hidden />
-              <span className={collapsed ? "block md:hidden" : "block"}>
-                {item.label}
-              </span>
-            </NavLink>
-          );
-          return (
-            <div key={item.to} className="w-full">
-              {collapsed ? (
-                <Tooltip content={item.label} side="right" className="flex w-full">
-                  {link}
-                </Tooltip>
-              ) : (
-                link
-              )}
+              {section.title}
+            </p>
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
+                const link = (
+                  <NavLink
+                    to={item.to}
+                    end={item.end}
+                    onClick={handleMobileNavClick}
+                    className={({ isActive }: { isActive: boolean }) =>
+                      linkBase +
+                      " w-full " +
+                      (isActive ? linkActive : linkInactive) +
+                      (collapsed ? " md:justify-center md:px-2" : "")
+                    }
+                  >
+                    <item.icon className="h-4 w-4 shrink-0 md:h-5 md:w-5" aria-hidden />
+                    <span className={collapsed ? "block md:hidden" : "block"}>
+                      {item.label}
+                    </span>
+                  </NavLink>
+                );
+                return (
+                  <div key={`${section.title}-${item.to}`} className="w-full">
+                    {collapsed ? (
+                      <Tooltip content={item.label} side="right" className="flex w-full">
+                        {link}
+                      </Tooltip>
+                    ) : (
+                      link
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </nav>
       <div className="border-t border-sidebar-hover p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {collapsed ? (

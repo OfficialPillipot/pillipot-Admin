@@ -34,6 +34,7 @@ export const endpoints = {
   staff: `${V1}/staff`,
   staffPermissionCatalog: `${V1}/staff/permission-catalog`,
   staffEarnings: `${V1}/staff/earnings`,
+  staffSalaryPayments: `${V1}/staff/salary-payments`,
   staffEarningsById: (id: string) => `${V1}/staff/${id}/earnings`,
   staffMe: `${V1}/staff/me`,
   staffById: (id: string) => `${V1}/staff/${id}`,
@@ -56,4 +57,13 @@ export const endpoints = {
   rbacGuestUserById: (id: string) => `${V1}/rbac/guest-users/${id}`,
   rbacGuestUserResetPassword: (id: string) =>
     `${V1}/rbac/guest-users/${id}/reset-password`,
+  blogAdmin: `${V1}/blogs/admin`,
+  blogAdminById: (id: string) => `${V1}/blogs/admin/${id}`,
+  blogAdminComments: (postId: string) =>
+    `${V1}/blogs/admin/${postId}/comments`,
+  blogStaffFeed: `${V1}/blogs/staff/feed`,
+  blogStaffPost: (postId: string) => `${V1}/blogs/staff/${postId}`,
+  blogStaffLike: (postId: string) => `${V1}/blogs/staff/${postId}/like`,
+  blogStaffComments: (postId: string) =>
+    `${V1}/blogs/staff/${postId}/comments`,
 } as const;

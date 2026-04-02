@@ -59,25 +59,6 @@ function StaffManagementPage() {
   const staff = useAppSelector(selectStaff);
   const positions = useAppSelector(selectStaffPositions);
   const assignedNumbers = useAppSelector(selectAssignedNumbers);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-
-  const statusOptions: SelectOption[] = [
-    { value: "all", label: "All Statuses" },
-    { value: "pending", label: "Pending" },
-    { value: "packed", label: "Packed" },
-    { value: "dispatch", label: "Dispatched" },
-    { value: "delivered", label: "Delivered" },
-    { value: "cancelled", label: "Cancelled" },
-    { value: "returned", label: "Returned" },
-  ];
-
-  const filteredStaff = useMemo(() => {
-    if (statusFilter === "all") return staff;
-    return staff.filter((s) => {
-      const counts = s.statusCounts ?? {};
-      return (counts[statusFilter] ?? 0) > 0;
-    });
-  }, [staff, statusFilter]);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editStaff, setEditStaff] = useState<Staff | null>(null);
   const [name, setName] = useState("");
@@ -465,32 +446,6 @@ function StaffManagementPage() {
         header: "Role",
         render: (row: Staff) => roleLabel(row),
       },
-      {
-        key: "orderStatus",
-        header: "Order Status",
-        render: (row: Staff) => {
-          const counts = row.statusCounts ?? {};
-          const entries = Object.entries(counts).filter(([_, count]) => count > 0);
-          if (entries.length === 0) return <span className="text-text-muted">—</span>;
-          return (
-            <div className="flex flex-wrap gap-1">
-              {entries.map(([status, count]) => {
-                let variant: "default" | "success" | "warning" | "error" | "info" | "packed" | "muted" = "default";
-                if (status === "pending") variant = "default";
-                else if (status === "packed") variant = "packed";
-                else if (status === "dispatch") variant = "info";
-                else if (status === "delivered") variant = "success";
-                else if (status === "cancelled" || status === "returned") variant = "error";
-                return (
-                  <Badge key={status} variant={variant} className="whitespace-nowrap">
-                    {status}: {count}
-                  </Badge>
-                );
-              })}
-            </div>
-          );
-        },
-      },
       { key: "phone", header: "Phone" },
       {
         key: "forgotPasswordRequest",
@@ -675,19 +630,9 @@ function StaffManagementPage() {
           title="Staff Management"
           // subtitle="Use Role management and Assigned numbers in the sidebar first. A pending forgot-password request shows below; use Reset to issue a temporary password."
           action={
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="w-48">
-                <Select
-                  options={statusOptions}
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  placeholder="Filter by Order Status"
-                />
-              </div>
-              <Button onClick={openAdd} disabled={!positions.length}>
-                Add Staff
-              </Button>
-            </div>
+            <Button onClick={openAdd} disabled={!positions.length}>
+              Add Staff
+            </Button>
           }
         />
         {!positions.length ? (
@@ -701,9 +646,9 @@ function StaffManagementPage() {
         ) : null}
         <Table
           columns={columns}
-          data={filteredStaff}
+          data={staff}
           keyExtractor={(row) => row.id}
-          emptyMessage={statusFilter !== 'all' ? `No staff with ${statusFilter} orders.` : "No staff."}
+          emptyMessage="No staff."
         />
       </Card>
 

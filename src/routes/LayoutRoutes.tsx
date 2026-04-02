@@ -77,6 +77,22 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/blog"
+        element={
+          <ProtectedRoute allowedRoles={["staff"]}>
+            <Pages.StaffBlog />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/blog/:postId"
+        element={
+          <ProtectedRoute allowedRoles={["staff"]}>
+            <Pages.StaffBlogPost />
+          </ProtectedRoute>
+        }
+      />
       {/* Admin shell: super_admin + guest (API enforces fine-grained permissions) */}
       <Route
         path="/admin"
@@ -230,6 +246,17 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         }
       />
       <Route
+        path="/admin/payroll-ledger"
+        element={
+          <ProtectedRoute
+            allowedRoles={["super_admin", "guest"]}
+            requiredPermissions={["staff.view"]}
+          >
+            <Pages.StaffPayrollLedger />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/profit"
         element={
           <ProtectedRoute
@@ -248,6 +275,17 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             requiredPermissions={["settings.view"]}
           >
             <Pages.AdminSettings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/blog"
+        element={
+          <ProtectedRoute
+            allowedRoles={["super_admin", "guest"]}
+            requiredPermissions={["blogs.view"]}
+          >
+            <Pages.AdminBlogManagement />
           </ProtectedRoute>
         }
       />
