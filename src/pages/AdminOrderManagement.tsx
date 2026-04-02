@@ -29,7 +29,9 @@ import {
 import { toast } from "../lib/toast";
 import { downloadBulkOrdersPdf, downloadOrderPdf } from "../lib/download-order-pdf";
 import type { Order, OrderStatus } from "../types";
-import { formatDate, orderLineProductLabel } from "../lib/orderUtils";
+import { formatDate, orderLineProductLabel, uniformOrderGroupStatus } from "../lib/orderUtils";
+import { ORDER_STATUS_FILTER_OPTIONS } from "../lib/ordersList";
+import { OrderStatusBadge } from "../components/orders/OrderStatusBadge";
 
 function safeMoney(v: unknown): number {
   if (v == null) return 0;
@@ -594,19 +596,6 @@ function AdminOrderManagementPage() {
     [staff]
   );
 
-  const statusOptions = useMemo(
-    () => [
-      { value: "", label: "Select all statuses" },
-      { value: "pending", label: "Pending" },
-      { value: "packed", label: "Packed" },
-      { value: "dispatch", label: "Dispatch" },
-      { value: "returned", label: "Returned" },
-      { value: "delivered", label: "Delivered" },
-      { value: "cancelled", label: "Cancelled" },
-    ],
-    []
-  );
-
   const typeOptions = useMemo(
     () => [
       { value: "", label: "Select all types" },
@@ -724,25 +713,13 @@ function AdminOrderManagementPage() {
       {
         key: "status",
         header: "Status",
-        render: (row: Order) => (
-          <Badge
-            variant={
-              row.status === "delivered"
-                ? "success"
-                : row.status === "cancelled"
-                  ? "error"
-                  : row.status === "returned"
-                    ? "muted"
-                    : row.status === "dispatch"
-                      ? "info"
-                      : row.status === "packed"
-                        ? "packed"
-                        : "warning"
-            }
-          >
-            {row.status}
-          </Badge>
-        ),
+        render: (row: Order & { items?: Order[] }) => {
+          const lines =
+            row.items && row.items.length > 0 ? row.items : [row];
+          return (
+            <OrderStatusBadge uniform={uniformOrderGroupStatus(lines)} />
+          );
+        },
       },
       {
         key: "trackingId",
@@ -858,7 +835,7 @@ function AdminOrderManagementPage() {
                 className={MANAGEMENT_NATIVE_CONTROL_CLASS}
                 aria-label="Filter by order status"
               >
-                {statusOptions.map((opt) => (
+                {ORDER_STATUS_FILTER_OPTIONS.map((opt) => (
                   <option key={opt.value || "all-status"} value={opt.value}>
                     {opt.label}
                   </option>

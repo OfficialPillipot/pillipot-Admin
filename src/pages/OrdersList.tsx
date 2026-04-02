@@ -16,9 +16,16 @@ import {
   ResponsiveManagementFilters,
   MANAGEMENT_NATIVE_CONTROL_CLASS,
 } from "../components/ui";
+import { OrderStatusBadge } from "../components/orders/OrderStatusBadge";
 import type { Order } from "../types";
-import { formatDate, orderLineProductLabel } from "../lib/orderUtils";
+import { formatDate } from "../lib/orderUtils";
 import type { SelectOption } from "../components/ui/Select";
+import {
+  ORDER_STATUS_FILTER_OPTIONS,
+  buildGroupedOrderRows,
+  filterOrderLinesForList,
+  type OrdersListGroupedRow,
+} from "../lib/ordersList";
 
 const getTodayStr = () => {
   const d = new Date();
@@ -46,70 +53,35 @@ function OrdersListPage() {
   const [toDate, setToDate] = useState(
     () => searchParams.get("to") ?? getTodayStr()
   );
+  const [statusFilter, setStatusFilter] = useState(
+    () => searchParams.get("status") ?? "",
+  );
 
   const staffId = user?.role === "staff" ? user.staffId : null;
 
   const groupedOrders = useMemo(() => {
-    let list = staffId
-      ? orders.filter((o) => o.staffId === staffId)
-      : [...orders];
-    
-    if (productFilter) {
-      list = list.filter((o) => o.productId === productFilter);
-    }
-    if (typeFilter) {
-      list = list.filter((o) => o.orderType === typeFilter);
-    }
-    if (fromDate) {
-      list = list.filter((o) => o.createdAt >= fromDate);
-    }
-    if (toDate) {
-      list = list.filter((o) => o.createdAt <= `${toDate}T23:59:59.999Z`);
-    }
+    const lines = filterOrderLinesForList(orders, {
+      staffId,
+      productId: productFilter,
+      orderType: typeFilter,
+      status: statusFilter,
+      fromDate,
+      toDate,
+    });
 
-    const groups: Record<string, Order[]> = {};
-    for (const o of list) {
-      if (!groups[o.orderId]) groups[o.orderId] = [];
-      groups[o.orderId].push(o);
-    }
-
-    let grouped = Object.values(groups)
-      .map((items) => {
-        const representative = items[0];
-        const total = items.reduce(
-          (sum, i) => sum + Number(i.sellingAmount),
-          0
-        );
-        const totalDelivery = items.reduce(
-          (sum, i) =>
-            sum + (i.deliveryFee ? Number(i.deliveryFee) : 0),
-          0,
-        );
-        const totalDiscount = items.reduce(
-          (sum, i) => sum + (i.discountAmount ? Number(i.discountAmount) : 0),
-          0
-        );
-        return {
-          ...representative,
-          id: representative.id, // for keyExtractor
-          sellingAmount: total + totalDelivery,
-          discountAmount: totalDiscount,
-          _lineCount: items.length,
-          _products: items.map((i) => orderLineProductLabel(i, products)),
-        };
-      });
+    let rows = buildGroupedOrderRows(lines, products);
 
     const q = searchTerm.trim().toLowerCase();
     if (q) {
-      grouped = grouped.filter((row) => {
+      rows = rows.filter((row) => {
         const customer = (row.customerName ?? "").toLowerCase();
         const phone = String(row.phone ?? "").toLowerCase();
         return customer.includes(q) || phone.includes(q);
       });
     }
 
-    return grouped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [orders, staffId, productFilter, typeFilter, fromDate, toDate, products, searchTerm]);
+    return rows;
+  }, [orders, staffId, productFilter, typeFilter, statusFilter, fromDate, toDate, products, searchTerm]);
 
   const productOptions: SelectOption[] = useMemo(
     () => [
@@ -132,11 +104,12 @@ function OrdersListPage() {
     const p = new URLSearchParams();
     if (productFilter) p.set("product", productFilter);
     if (typeFilter) p.set("type", typeFilter);
+    if (statusFilter) p.set("status", statusFilter);
     if (searchTerm.trim()) p.set("search", searchTerm.trim());
     if (fromDate) p.set("from", fromDate);
     if (toDate) p.set("to", toDate);
     setSearchParams(p, { replace: true });
-  }, [productFilter, typeFilter, searchTerm, fromDate, toDate, setSearchParams]);
+  }, [productFilter, typeFilter, statusFilter, searchTerm, fromDate, toDate, setSearchParams]);
 
   const columns = useMemo(
     () => [
@@ -157,8 +130,8 @@ function OrdersListPage() {
       {
         key: "product",
         header: "Products",
-        render: (row: any) => {
-          const names = row._products as string[];
+        render: (row: OrdersListGroupedRow) => {
+          const names = row._products;
           if (names.length === 1) return names[0];
           return (
             <div className="flex flex-col gap-0.5">
@@ -169,6 +142,15 @@ function OrdersListPage() {
             </div>
           );
         },
+      },
+      {
+        key: "status",
+        header: "Status",
+        render: (row: OrdersListGroupedRow) => (
+          <OrderStatusBadge
+            uniform={row._uniformStatus ?? row.status}
+          />
+        ),
       },
       {
         key: "orderType",
@@ -203,7 +185,7 @@ function OrdersListPage() {
         },
       },
     ],
-    [products]
+    []
   );
 
   return (
@@ -211,7 +193,7 @@ function OrdersListPage() {
       <Card>
         <CardHeader
           title="Orders"
-          subtitle="Filter by date, product, payment type, or search by customer/phone."
+          subtitle="Filter by date, status, product, payment type, or search by customer/phone."
           action={
             user?.role === "staff" && (
               <Link to="/orders/create">
@@ -271,6 +253,16 @@ function OrdersListPage() {
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
                   aria-label="Filter by payment type"
+                />
+              </ManagementFilterField>
+              <ManagementFilterField label="Status">
+                <Select
+                  label=""
+                  fullWidth
+                  options={ORDER_STATUS_FILTER_OPTIONS}
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  aria-label="Filter by order line status"
                 />
               </ManagementFilterField>
               <ManagementFilterField label="Apply">

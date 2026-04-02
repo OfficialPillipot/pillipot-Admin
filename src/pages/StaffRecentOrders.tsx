@@ -1,12 +1,25 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router";
 import { useAppSelector } from "../store/hooks";
 import { selectOrders } from "../store/ordersSlice";
 import { selectStaffMe, selectStaffMeLoading } from "../store/staffSlice";
 import { selectProducts } from "../store/productsSlice";
-import type { Order } from "../types";
-import { Card, CardHeader, Button, Badge, Table, type Column } from "../components/ui";
-import { formatDate, orderLineProductLabel } from "../lib/orderUtils";
+import type { Order, OrderStatus } from "../types";
+import {
+  Card,
+  CardHeader,
+  Button,
+  Badge,
+  Table,
+  Select,
+  type Column,
+} from "../components/ui";
+import { OrderStatusBadge } from "../components/orders/OrderStatusBadge";
+import { formatDate, orderLineProductLabel, uniformOrderGroupStatus } from "../lib/orderUtils";
+import {
+  ORDER_STATUS_FILTER_OPTIONS,
+  takeRecentOrderGroups,
+} from "../lib/ordersList";
 
 type RecentOrderGroupRow = { items: Order[] };
 
@@ -16,20 +29,21 @@ function StaffRecentOrdersPage() {
   const meLoading = useAppSelector(selectStaffMeLoading);
   const products = useAppSelector(selectProducts);
   const staffId = staffProfile?.id ?? null;
+  const [statusFilter, setStatusFilter] = useState("");
 
-  const rows: RecentOrderGroupRow[] = useMemo(() => {
+  const myLines = useMemo(() => {
     if (!staffId) return [];
-    const myOrders = orders.filter((o) => o.staffId === staffId);
-    const groups = new Map<string, Order[]>();
-    for (const o of myOrders) {
-      if (!groups.has(o.orderId)) groups.set(o.orderId, []);
-      groups.get(o.orderId)!.push(o);
+    let list = orders.filter((o) => o.staffId === staffId);
+    if (statusFilter) {
+      list = list.filter((o) => o.status === (statusFilter as OrderStatus));
     }
-    return Array.from(groups.values())
-      .slice(-5)
-      .reverse()
-      .map((items) => ({ items }));
-  }, [orders, staffId]);
+    return list;
+  }, [orders, staffId, statusFilter]);
+
+  const rows: RecentOrderGroupRow[] = useMemo(
+    () => takeRecentOrderGroups(myLines, 5).map((items) => ({ items })),
+    [myLines],
+  );
 
   const columns: Column<RecentOrderGroupRow>[] = useMemo(
     () => [
@@ -48,6 +62,14 @@ function StaffRecentOrdersPage() {
             </Link>
           );
         },
+      },
+      {
+        key: "status",
+        header: "Status",
+        mobileLabel: "Status",
+        render: (row) => (
+          <OrderStatusBadge uniform={uniformOrderGroupStatus(row.items)} />
+        ),
       },
       {
         key: "createdAt",
@@ -96,6 +118,13 @@ function StaffRecentOrdersPage() {
     [products],
   );
 
+  const onStatusChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      setStatusFilter(e.target.value);
+    },
+    [],
+  );
+
   if (meLoading) {
     return <div className="text-text-muted">Loading…</div>;
   }
@@ -113,7 +142,7 @@ function StaffRecentOrdersPage() {
       <Card>
         <CardHeader
           title="Recent orders"
-          subtitle="Your five most recent order groups (newest first)."
+          subtitle="Your five most recent order groups (newest first). Filter by line status."
           action={
             <Link to="/orders" className="block w-full sm:w-auto">
               <Button variant="outline" size="sm" className="w-full sm:w-auto">
@@ -122,15 +151,31 @@ function StaffRecentOrdersPage() {
             </Link>
           }
         />
+        <div className="mb-4 max-w-xs">
+          <Select
+            label="Status"
+            options={ORDER_STATUS_FILTER_OPTIONS}
+            value={statusFilter}
+            onChange={onStatusChange}
+            fullWidth
+            aria-label="Filter recent orders by status"
+          />
+        </div>
         {rows.length === 0 ? (
           <div className="py-8 text-center text-sm text-text-muted">
-            No orders yet.{" "}
-            <Link
-              to="/orders/create"
-              className="font-medium text-primary hover:underline"
-            >
-              Create one
-            </Link>
+            {statusFilter
+              ? "No orders match this status."
+              : "No orders yet."}{" "}
+            {!statusFilter && (
+              <>
+                <Link
+                  to="/orders/create"
+                  className="font-medium text-primary hover:underline"
+                >
+                  Create one
+                </Link>
+              </>
+            )}
           </div>
         ) : (
           <Table

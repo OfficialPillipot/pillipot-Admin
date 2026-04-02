@@ -1,4 +1,4 @@
-import type { Order, Product, Staff } from "../types";
+import type { Order, OrderStatus, Product, Staff } from "../types";
 
 const WEEK_START = 1; // Monday
 
@@ -103,4 +103,45 @@ export function orderLineProductLabel(
   const p = products.find((x) => x.id === line.productId);
   if (p?.name?.trim()) return p.name.trim();
   return "Product unavailable";
+}
+
+/** One status if every line matches; otherwise `"mixed"`. */
+export function uniformOrderGroupStatus(items: Order[]): OrderStatus | "mixed" {
+  if (items.length === 0) return "pending";
+  const s0 = items[0].status;
+  return items.every((i) => i.status === s0) ? s0 : "mixed";
+}
+
+export type OrderStatusBadgeVariant =
+  | "default"
+  | "success"
+  | "warning"
+  | "error"
+  | "info"
+  | "packed"
+  | "muted";
+
+export function orderStatusToBadgeVariant(
+  status: OrderStatus | "mixed",
+): OrderStatusBadgeVariant {
+  if (status === "mixed") return "muted";
+  switch (status) {
+    case "delivered":
+      return "success";
+    case "cancelled":
+      return "error";
+    case "returned":
+      return "muted";
+    case "dispatch":
+      return "info";
+    case "packed":
+      return "packed";
+    default:
+      return "warning";
+  }
+}
+
+export function formatOrderStatusLabel(status: OrderStatus | "mixed"): string {
+  if (status === "mixed") return "Mixed";
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
