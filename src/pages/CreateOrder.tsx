@@ -10,7 +10,13 @@ import type { SelectOption } from "../components/ui/Select";
 import { toast } from "../lib/toast";
 import { api } from "../api/client";
 import { endpoints } from "../api/endpoints";
-import type { Customer, DeliveryOptionForCart, OrderType, Product } from "../types";
+import type {
+  Customer,
+  DeliveryOptionForCart,
+  Order,
+  OrderType,
+  Product,
+} from "../types";
 
 interface ProductRow {
   productId: string;
@@ -401,6 +407,8 @@ function CreateOrderPage() {
         // Fetch a single order ID to share across all items (Single Order support)
         const { orderId: commonOrderId } = await api.get<{ orderId: string }>(endpoints.orderNextDisplayId);
 
+        let lastCreatedLine: Order | undefined;
+
         for (let i = 0; i < selectedProducts.length; i++) {
           const item = selectedProducts[i];
           const disc = parseFloat(item.discount) || 0;
@@ -415,7 +423,7 @@ function CreateOrderPage() {
             notifyCustomerEmail: isLastLine,
           });
 
-          await dispatch(
+          lastCreatedLine = await dispatch(
             createOrder({
               staffId: user.staffId!,
               orderId: commonOrderId, // Pass shared ID
@@ -448,11 +456,16 @@ function CreateOrderPage() {
           ).unwrap();
         }
 
+        const scheduled =
+          lastCreatedLine?.emailConfirmationScheduled === true;
         console.log("[CreateOrder] all lines created", {
           orderId: commonOrderId,
           lines: selectedProducts.length,
           customerEmail: form.email.trim(),
-          note: "Watch API terminal for [OrderEmail] SENT / NOT sent / FAILED",
+          emailConfirmationScheduled: scheduled,
+          meaning: scheduled
+            ? "Server queued a confirmation email (~1s delay). Check API logs for [OrderEmail] SENT or NOT sent / FAILED."
+            : "Last line did not schedule email (unexpected if you expected mail).",
         });
 
         toast.success(`Created ${selectedProducts.length} order(s) successfully!`);

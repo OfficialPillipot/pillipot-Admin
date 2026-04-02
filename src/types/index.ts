@@ -244,6 +244,8 @@ export interface Order {
   trackingId?: string | null;
   createdAt: string; // ISO date
   updatedAt?: string;
+  /** Set on POST /orders when the API queues a confirmation email (debounced on server). */
+  emailConfirmationScheduled?: boolean;
 }
 
 /** Payload for POST /orders; total is computed from product price on the server. */
