@@ -1,4 +1,5 @@
 import { memo, useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { TrashIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
@@ -303,6 +304,15 @@ function CreateOrderPage() {
     );
     setErrors((e) => ({ ...e, products: "" }));
   };
+
+  const removeProductRow = useCallback(
+    (productId: string) => {
+      if (!detailsEnabled) return;
+      setProductRows((rows) => rows.filter((r) => r.productId !== productId));
+      setErrors((e) => ({ ...e, products: "" }));
+    },
+    [detailsEnabled]
+  );
 
   const orderTypeOptions: SelectOption[] = useMemo(
     () => [
@@ -750,30 +760,44 @@ function CreateOrderPage() {
                       className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm md:grid-cols-[minmax(0,1fr)_auto_minmax(0,11rem)_auto] md:items-center md:gap-x-4"
                     >
                       <div className="min-w-0">
-                        <div className="truncate font-semibold text-gray-900">{row.name}</div>
-                        {hasCatalogPrice ? (
-                          <p className="mt-0.5 text-xs text-gray-500">
-                            Unit {formatRupee(up)} × {row.quantity} = {formatRupee(gross)}
-                          </p>
-                        ) : (
-                          <p className="mt-0.5 text-xs font-medium text-amber-800">
-                            No catalog price for this product. Ask an admin to open{" "}
-                            <span className="whitespace-nowrap">Product Management</span> and set
-                            a price — then refresh this page.
-                          </p>
-                        )}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-semibold text-gray-900">{row.name}</div>
+                            {hasCatalogPrice ? (
+                              <p className="mt-0.5 text-xs text-gray-500">
+                                Unit {formatRupee(up)} × {row.quantity} = {formatRupee(gross)}
+                              </p>
+                            ) : (
+                              <p className="mt-0.5 text-xs font-medium text-amber-800">
+                                No catalog price for this product. Ask an admin to open{" "}
+                                <span className="whitespace-nowrap">Product Management</span> and set
+                                a price — then refresh this page.
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!detailsEnabled}
+                            onClick={() => removeProductRow(row.productId)}
+                            className="shrink-0 rounded-[var(--radius-md)] p-2 text-text-muted transition hover:bg-error-bg hover:text-error focus:outline-none focus:ring-2 focus:ring-error disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label={`Remove ${row.name} from order`}
+                            title="Remove from order"
+                          >
+                            <TrashIcon className="h-4 w-4" aria-hidden />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-start md:justify-center">
                         <div className="inline-flex h-9 items-stretch overflow-hidden rounded-md border border-gray-300 bg-white shadow-sm">
                           <button
                             type="button"
-                            disabled={!detailsEnabled}
+                            disabled={!detailsEnabled || row.quantity <= 1}
                             onClick={() =>
                               updateProductRow(
                                 row.productId,
                                 "quantity",
-                                Math.max(0, row.quantity - 1)
+                                Math.max(1, row.quantity - 1)
                               )
                             }
                             className="flex w-9 items-center justify-center bg-gray-50 text-gray-700 transition hover:bg-gray-100 disabled:opacity-40"
