@@ -619,17 +619,6 @@ function CreateOrderPage() {
               placeholder="District"
             />
             </div>
-            <div className="mt-4">
-              <Select
-            label="Order Type *"
-            options={orderTypeOptions}
-            value={form.orderType}
-            onChange={(e) => update("orderType", e.target.value)}
-            placeholder="Order Type "
-            error={errors.orderType}
-            disabled={!detailsEnabled}
-              />
-            </div>
           </section>
           <section className="space-y-4 rounded-xl border border-border bg-surface-alt/30 p-4 sm:p-5">
             <h3 className="border-b pb-2 text-lg font-bold text-gray-800">Products</h3>
@@ -916,7 +905,16 @@ function CreateOrderPage() {
               <p className="text-sm font-medium text-red-500">{errors.products}</p>
             )}
           </section>
-          <section className="rounded-[var(--radius-md)] border border-border bg-surface-alt/60 p-4 sm:p-5">
+          <section className="space-y-4 rounded-[var(--radius-md)] border border-border bg-surface-alt/60 p-4 sm:p-5">
+            <Select
+              label="Order Type *"
+              options={orderTypeOptions}
+              value={form.orderType}
+              onChange={(e) => update("orderType", e.target.value)}
+              placeholder="Order Type "
+              error={errors.orderType}
+              disabled={!detailsEnabled}
+            />
             {deliveryLoading && detailsEnabled ? (
               <p className="text-sm text-text-muted py-1">Loading delivery options…</p>
             ) : (
@@ -929,13 +927,13 @@ function CreateOrderPage() {
                 disabled={!detailsEnabled}
               />
             )}
-            <p className="mt-1.5 text-[11px] text-text-muted leading-relaxed">
+            <p className="text-[11px] text-text-muted leading-relaxed">
               {!detailsEnabled
-                ? "Enter 10-digit phone above to enable delivery options."
+                ? "Enter 10-digit phone above to enable order type and delivery."
                 : !cartProductIdsKey
                   ? "Select products above first."
                   : form.orderType !== "prepaid" && form.orderType !== "cod"
-                    ? "Choose Prepaid or COD above — only matching delivery types are listed."
+                    ? "Choose Prepaid or COD — only matching delivery types are listed."
                     : deliveryOptions.length === 0
                       ? "No delivery options: add product fees under Admin → Delivery (set prepaid and COD amounts per carrier)."
                       : "Delivery total uses the prepaid or COD fee you configured for each product × quantity."}
