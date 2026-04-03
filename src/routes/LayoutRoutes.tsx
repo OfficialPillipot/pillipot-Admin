@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router";
 import { ProtectedRoute } from "../components/auth";
-import { PageLoader } from "../components/ui";
 import type { User } from "../types";
 import * as Pages from "./lazyPages";
 
@@ -9,13 +8,9 @@ interface LayoutRoutesProps {
   user: User;
 }
 
-function RouteFallback() {
-  return <PageLoader label="Loading…" />;
-}
-
 export function LayoutRoutes({ user }: LayoutRoutesProps) {
   return (
-    <Suspense fallback={<RouteFallback />}>
+    <Suspense fallback={<div>Loading...</div>}>
     <Routes>
       {/* Staff routes */}
       <Route

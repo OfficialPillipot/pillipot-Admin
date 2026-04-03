@@ -1,6 +1,5 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { subscribeApiLoading } from "../api/api-loading";
-import { PageLoader } from "./ui/PageLoader";
 
 const SHOW_DELAY_MS = 150;
 
@@ -37,12 +36,14 @@ function ApiLoadingOverlayComponent() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-surface/70 backdrop-blur-[2px]">
-      <PageLoader
-        minHeight="min-h-0"
-        className="rounded-[var(--radius-xl)] border border-border bg-surface px-10 py-8 shadow-[var(--shadow-dropdown)]"
-        label="Loading…"
-      />
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-surface/70 backdrop-blur-[2px]"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label="Loading"
+    >
+      <div className="loader shrink-0" aria-hidden />
     </div>
   );
 }
