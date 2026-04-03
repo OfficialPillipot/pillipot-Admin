@@ -9,12 +9,14 @@ import {
 } from "react";
 import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { selectOrders } from "../store/ordersSlice";
 import {
-  fetchOrders,
   updateOrder,
-  type OrderListFilters,
 } from "../store/ordersSlice";
+import {
+  ADMIN_ORDERS_PAGE_SIZE,
+  fetchOrdersList,
+  type AdminOrdersQuery,
+} from "../lib/fetch-admin-orders";
 import { selectStaff } from "../store/staffSlice";
 import { selectProducts, fetchProducts } from "../store/productsSlice";
 import { fetchSettings, selectSettings } from "../store/settingsSlice";
@@ -85,7 +87,13 @@ function nextBulkStep(
 
 function AdminOrderManagementPage() {
   const dispatch = useAppDispatch();
-  const orders = useAppSelector(selectOrders);
+  const [listLines, setListLines] = useState<Order[]>([]);
+  const [listTotal, setListTotal] = useState(0);
+  const [listPage, setListPage] = useState(1);
+  const lastQueryRef = useRef<AdminOrdersQuery>({
+    page: 1,
+    limit: ADMIN_ORDERS_PAGE_SIZE,
+  });
   const staff = useAppSelector(selectStaff);
   const products = useAppSelector(selectProducts);
   const settings = useAppSelector(selectSettings);
@@ -99,7 +107,7 @@ function AdminOrderManagementPage() {
   const [orderIdSearch, setOrderIdSearch] = useState("");
   const [appliedDateFrom, setAppliedDateFrom] = useState("");
   const [appliedDateTo, setAppliedDateTo] = useState("");
-  const lastServerFiltersRef = useRef<OrderListFilters | undefined>(undefined);
+  const [appliedOrderId, setAppliedOrderId] = useState("");
   const [filtersLoading, setFiltersLoading] = useState(false);
   const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
   const [bulkPdfLoading, setBulkPdfLoading] = useState(false);
@@ -112,11 +120,37 @@ function AdminOrderManagementPage() {
   const [returning, setReturning] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const selectAllHeaderRef = useRef<HTMLInputElement>(null);
-  const ordersRef = useRef(orders);
-  ordersRef.current = orders;
+  const listLinesRef = useRef(listLines);
+  listLinesRef.current = listLines;
+
+  const serverNarrowed =
+    !!(appliedDateFrom || appliedDateTo || appliedOrderId.trim());
+
+  const loadOrders = useCallback(async (q: AdminOrdersQuery) => {
+    lastQueryRef.current = q;
+    setFiltersLoading(true);
+    try {
+      const data = await fetchOrdersList(q);
+      setListLines(data.items);
+      setListTotal(data.total);
+      if (q.page != null) setListPage(q.page);
+    } catch (err) {
+      toast.fromError(err, "Failed to load orders");
+    } finally {
+      setFiltersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE });
+  }, [loadOrders]);
+
+  const reloadCurrentQuery = useCallback(async () => {
+    await loadOrders(lastQueryRef.current);
+  }, [loadOrders]);
 
   const groupedOrders = useMemo(() => {
-    let list = [...orders].sort(
+    let list = [...listLines].sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
@@ -151,9 +185,16 @@ function AdminOrderManagementPage() {
         items, // Keep all items for the details modal
       };
     });
-  }, [orders, productFilter, staffFilter, statusFilter, typeFilter]);
+  }, [listLines, productFilter, staffFilter, statusFilter, typeFilter]);
 
   const filteredOrders = groupedOrders;
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(listTotal / ADMIN_ORDERS_PAGE_SIZE),
+  );
+  const showApiPagination =
+    !serverNarrowed && listTotal > ADMIN_ORDERS_PAGE_SIZE;
 
   const allVisibleSelected =
     filteredOrders.length > 0 &&
@@ -210,7 +251,7 @@ function AdminOrderManagementPage() {
     return [orderDetail as Order];
   }, [orderDetail]);
 
-  /** Only when switching orders — do not depend on `orders` or the draft resets on every list refresh while typing. */
+  /** Only when switching orders — do not depend on list data or the draft resets on every list refresh while typing. */
   useEffect(() => {
     void dispatch(fetchSettings());
   }, [dispatch]);
@@ -232,7 +273,7 @@ function AdminOrderManagementPage() {
       setTrackingDraft("");
       return;
     }
-    const o = ordersRef.current.find((x) => x.id === detailId);
+    const o = listLinesRef.current.find((x) => x.id === detailId);
     if (!o) return;
     const t = (o.trackingId ?? "").trim();
     setTrackingDraft(t);
@@ -240,7 +281,7 @@ function AdminOrderManagementPage() {
 
   const persistTrackingFromBlur = useCallback(async () => {
     if (!detailId || !orderDetail) return;
-    const o = ordersRef.current.find((x) => x.id === detailId);
+    const o = listLinesRef.current.find((x) => x.id === detailId);
     if (!o || (o.status !== "pending" && o.status !== "packed")) return;
     const localT = trackingDraft.trim();
     const serverT = (o.trackingId ?? "").trim();
@@ -257,10 +298,11 @@ function AdminOrderManagementPage() {
           ).unwrap()
         )
       );
+      await reloadCurrentQuery();
     } catch (err) {
       toast.fromError(err, "Failed to save tracking ID");
     }
-  }, [detailId, orderDetail, trackingDraft, dispatch]);
+  }, [detailId, orderDetail, trackingDraft, dispatch, reloadCurrentQuery]);
 
   const markPacked = useCallback(async () => {
     if (!orderDetail || orderDetail.status !== "pending") return;
@@ -273,12 +315,13 @@ function AdminOrderManagementPage() {
         )
       );
       toast.success("Order marked packed");
+      await reloadCurrentQuery();
     } catch (err) {
       toast.fromError(err, "Failed to update status");
     } finally {
       setMarkingPacked(false);
     }
-  }, [orderDetail, dispatch]);
+  }, [orderDetail, dispatch, reloadCurrentQuery]);
 
   const moveToDispatch = useCallback(async () => {
     if (!orderDetail || orderDetail.status !== "packed") return;
@@ -301,12 +344,13 @@ function AdminOrderManagementPage() {
         )
       );
       toast.success("Order marked dispatched");
+      await reloadCurrentQuery();
     } catch (err) {
       toast.fromError(err, "Failed to update order");
     } finally {
       setDispatching(false);
     }
-  }, [orderDetail, trackingDraft, dispatch]);
+  }, [orderDetail, trackingDraft, dispatch, reloadCurrentQuery]);
 
   const confirmDelivered = useCallback(async () => {
     if (!orderDetail || orderDetail.status !== "dispatch") return;
@@ -325,12 +369,13 @@ function AdminOrderManagementPage() {
       );
       toast.success("Order marked delivered");
       setDetailId(null);
+      await reloadCurrentQuery();
     } catch (err) {
       toast.fromError(err, "Failed to update order");
     } finally {
       setDispatching(false);
     }
-  }, [orderDetail, trackingDraft, dispatch]);
+  }, [orderDetail, trackingDraft, dispatch, reloadCurrentQuery]);
 
   const handleReturn = useCallback(async () => {
     if (
@@ -361,12 +406,13 @@ function AdminOrderManagementPage() {
       setDetailId(null);
       toast.success("Return recorded — stock restocked");
       void dispatch(fetchProducts());
+      await reloadCurrentQuery();
     } catch (err) {
       toast.fromError(err, "Failed to process return");
     } finally {
       setReturning(false);
     }
-  }, [orderDetail, dispatch]);
+  }, [orderDetail, dispatch, reloadCurrentQuery]);
 
   const saveDiscount = useCallback(async () => {
     if (!orderDetail) return;
@@ -397,12 +443,13 @@ function AdminOrderManagementPage() {
         })
       );
       toast.success("Discount updated");
+      await reloadCurrentQuery();
     } catch (err) {
       toast.fromError(err, "Failed to update discount");
     } finally {
       setSavingDiscount(false);
     }
-  }, [orderDetail, discountDraft, dispatch]);
+  }, [orderDetail, discountDraft, dispatch, reloadCurrentQuery]);
 
   const handleStatusChange = useCallback(
     async (lineIds: string[], status: Order["status"]) => {
@@ -415,34 +462,35 @@ function AdminOrderManagementPage() {
         toast.success(`Order ${status}`);
         if (status === "cancelled" || status === "delivered" || status === "returned")
           setDetailId(null);
+        await reloadCurrentQuery();
       } catch (err) {
         toast.fromError(err, "Failed to update order");
       }
     },
-    [dispatch]
+    [dispatch, reloadCurrentQuery]
   );
 
   const applyDateFilters = useCallback(async () => {
-    setFiltersLoading(true);
-    try {
-      const filters: OrderListFilters = {
-        ...(dateFrom ? { dateFrom } : {}),
-        ...(dateTo ? { dateTo } : {}),
-        ...(orderIdSearch.trim() ? { orderId: orderIdSearch.trim() } : {}),
-      };
-      const payload =
-        Object.keys(filters).length > 0 ? filters : undefined;
-      lastServerFiltersRef.current = payload;
-      await dispatch(fetchOrders(payload)).unwrap();
-      setAppliedDateFrom(dateFrom);
-      setAppliedDateTo(dateTo);
+    const q: AdminOrdersQuery = {
+      ...(dateFrom ? { dateFrom } : {}),
+      ...(dateTo ? { dateTo } : {}),
+      ...(orderIdSearch.trim() ? { orderId: orderIdSearch.trim() } : {}),
+    };
+    if (Object.keys(q).length === 0) {
+      await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE });
+      setAppliedDateFrom("");
+      setAppliedDateTo("");
+      setAppliedOrderId("");
+      setListPage(1);
       toast.success("Orders updated");
-    } catch (err) {
-      toast.fromError(err, "Failed to load orders");
-    } finally {
-      setFiltersLoading(false);
+      return;
     }
-  }, [dispatch, dateFrom, dateTo, orderIdSearch]);
+    await loadOrders(q);
+    setAppliedDateFrom(dateFrom);
+    setAppliedDateTo(dateTo);
+    setAppliedOrderId(orderIdSearch.trim());
+    toast.success("Orders updated");
+  }, [dateFrom, dateTo, orderIdSearch, loadOrders]);
 
   const clearDateFilters = useCallback(async () => {
     setDateFrom("");
@@ -450,17 +498,11 @@ function AdminOrderManagementPage() {
     setOrderIdSearch("");
     setAppliedDateFrom("");
     setAppliedDateTo("");
-    lastServerFiltersRef.current = undefined;
-    setFiltersLoading(true);
-    try {
-      await dispatch(fetchOrders(undefined)).unwrap();
-      toast.success("Showing all orders");
-    } catch (err) {
-      toast.fromError(err, "Failed to load orders");
-    } finally {
-      setFiltersLoading(false);
-    }
-  }, [dispatch]);
+    setAppliedOrderId("");
+    setListPage(1);
+    await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE });
+    toast.success("Showing all orders");
+  }, [loadOrders]);
 
   const downloadPdf = useCallback(async (
     internalId: string,
@@ -569,9 +611,7 @@ function AdminOrderManagementPage() {
         );
         const ok = results.filter((r) => r.status === "fulfilled").length;
         const fail = results.length - ok;
-        await dispatch(
-          fetchOrders(lastServerFiltersRef.current),
-        ).unwrap();
+        await loadOrders(lastQueryRef.current);
         if (fail === 0) {
           toast.success(
             `Updated ${ok} order line${ok === 1 ? "" : "s"} to ${next}`,
@@ -588,7 +628,7 @@ function AdminOrderManagementPage() {
         setBulkStatusLoading(false);
       }
     },
-    [selectedIds, filteredOrders, dispatch, clearRowSelection],
+    [selectedIds, filteredOrders, dispatch, clearRowSelection, loadOrders],
   );
 
   const productOptions = useMemo(
@@ -910,14 +950,60 @@ function AdminOrderManagementPage() {
             </ManagementFilterField>
           </ManagementFilterPanel>
           </ResponsiveManagementFilters>
-          {(appliedDateFrom || appliedDateTo) && (
+          {(appliedDateFrom || appliedDateTo || appliedOrderId.trim()) && (
             <p className="text-xs text-text-muted">
               Showing orders
               {appliedDateFrom ? ` from ${appliedDateFrom}` : ""}
               {appliedDateTo ? ` through ${appliedDateTo}` : ""}
-              {" "}(UTC day boundaries).
+              {appliedOrderId.trim()
+                ? ` for order id ${appliedOrderId.trim()}`
+                : ""}
+              {(appliedDateFrom || appliedDateTo)
+                ? " (UTC day boundaries)."
+                : "."}
             </p>
           )}
+        {showApiPagination && (
+          <div className="mb-3 flex flex-col gap-2 rounded-[var(--radius-md)] border border-border bg-surface-alt/50 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <span className="text-sm text-text-muted">
+              {listTotal.toLocaleString()} customer order
+              {listTotal === 1 ? "" : "s"} total (paged by order)
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={listPage <= 1 || filtersLoading}
+                onClick={() =>
+                  void loadOrders({
+                    page: listPage - 1,
+                    limit: ADMIN_ORDERS_PAGE_SIZE,
+                  })
+                }
+              >
+                Previous
+              </Button>
+              <span className="text-sm tabular-nums text-text-heading">
+                Page {listPage} of {totalPages}
+              </span>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={listPage >= totalPages || filtersLoading}
+                onClick={() =>
+                  void loadOrders({
+                    page: listPage + 1,
+                    limit: ADMIN_ORDERS_PAGE_SIZE,
+                  })
+                }
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
         </div>
         {selectedIds.size > 0 && (
           <div className="mb-2 flex flex-col gap-2 rounded-[var(--radius-md)] border border-border bg-surface-alt/50 p-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">

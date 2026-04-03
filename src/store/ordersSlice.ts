@@ -8,7 +8,12 @@ export type OrderListFilters = {
   dateTo?: string;
   /** Display order id (e.g. ORD-1005); API normalizes digits-only to ORD-{n}. */
   orderId?: string;
+  /** When set (and no date/orderId filters), API paginates. */
+  page?: number;
+  limit?: number;
 };
+
+export type OrderListPayload = { items: Order[]; total: number };
 
 export const fetchOrders = createAsyncThunk(
   "orders/fetchAll",
@@ -19,9 +24,22 @@ export const fetchOrders = createAsyncThunk(
       if (filters?.dateTo) params.append("dateTo", filters.dateTo);
       if (filters?.orderId?.trim())
         params.append("orderId", filters.orderId.trim());
+      const narrowed = !!(
+        filters?.dateFrom ||
+        filters?.dateTo ||
+        filters?.orderId?.trim()
+      );
+      if (!narrowed && filters?.page != null) {
+        params.append("page", String(filters.page));
+        params.append("limit", String(filters.limit ?? 50));
+      }
       const qs = params.toString();
       const path = qs ? `${endpoints.orders}?${qs}` : endpoints.orders;
-      return await api.get<Order[]>(path);
+      const data = await api.get<OrderListPayload | Order[]>(path);
+      if (Array.isArray(data)) {
+        return { items: data, total: data.length } satisfies OrderListPayload;
+      }
+      return data;
     } catch (e) {
       return rejectWithValue(e);
     }
@@ -67,12 +85,15 @@ export const deleteOrder = createAsyncThunk(
 
 interface OrdersState {
   list: Order[];
+  /** Total rows matching the last list query (for paginated fetches). */
+  listTotal: number;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: OrdersState = {
   list: [],
+  listTotal: 0,
   loading: false,
   error: null,
 };
@@ -89,7 +110,8 @@ const ordersSlice = createSlice({
       })
       .addCase(fetchOrders.fulfilled, (s, a) => {
         s.loading = false;
-        s.list = a.payload;
+        s.list = a.payload.items;
+        s.listTotal = a.payload.total;
       })
       .addCase(fetchOrders.rejected, (s, a) => {
         s.loading = false;
@@ -111,3 +133,5 @@ const ordersSlice = createSlice({
 export const ordersReducer = ordersSlice.reducer;
 
 export const selectOrders = (state: { orders: OrdersState }) => state.orders.list;
+export const selectOrdersListTotal = (state: { orders: OrdersState }) =>
+  state.orders.listTotal;
