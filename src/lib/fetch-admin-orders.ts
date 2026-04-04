@@ -10,10 +10,11 @@ export type AdminOrdersQuery = {
   orderId?: string;
 };
 
-const DEFAULT_PAGE_SIZE = 50;
+const DEFAULT_PAGE_SIZE = 15;
 
 /**
- * GET /orders with optional pagination. Server skips pagination when date or orderId filters apply.
+ * GET /orders with optional pagination. Omit `page` to fetch the full list (used when table filters are on).
+ * Server also returns the full list when date or orderId filters apply.
  */
 export async function fetchOrdersList(
   q: AdminOrdersQuery,
