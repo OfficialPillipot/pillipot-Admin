@@ -35,7 +35,7 @@ function StaffProductStockPage() {
       <Card>
         <CardHeader
           title="Product stock"
-          subtitle={`Catalog quantities for every product. Rows at or below ${lowStockThreshold} units are highlighted (threshold is set by admin in Settings).`}
+        // subtitle={`Catalog quantities for every product. Rows at or below ${lowStockThreshold} units are highlighted (threshold is set by admin in Settings).`}
         />
         <Table
           columns={[
@@ -80,7 +80,7 @@ function StaffProductStockPage() {
                 const st = stockStatusLabel(p.stockQuantity ?? 0, lowStockThreshold);
                 if (st === "out") return <Badge variant="error">Out of stock</Badge>;
                 if (st === "low") return <Badge variant="warning">Low</Badge>;
-                return <Badge variant="success">OK</Badge>;
+                return <Badge variant="success">Available</Badge>;
               },
             },
           ]}

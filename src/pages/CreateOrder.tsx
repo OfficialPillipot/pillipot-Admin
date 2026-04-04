@@ -283,13 +283,10 @@ function CreateOrderPage() {
   }, [productRows, lineSubtotal, addOn, selectedDeliveryFee]);
 
   const deliverySelectOptions: SelectOption[] = useMemo(
-    () => [
-      { value: "", label: "No delivery charge" },
-      ...deliveryOptions.map((o) => ({
-        value: o.deliveryMethodId,
-        label: `${o.name} (+₹${o.totalFee.toFixed(2)})`,
-      })),
-    ],
+    () => deliveryOptions.map((o) => ({
+      value: o.deliveryMethodId,
+      label: `${o.name} (+₹${o.totalFee.toFixed(2)})`,
+    })),
     [deliveryOptions]
   );
 
@@ -364,13 +361,10 @@ function CreateOrderPage() {
 
     if (!form.postOffice.trim()) e.postOffice = "Required";
 
-    const email = form.email.trim();
-    if (!email) e.email = "Required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Invalid email format";
-
     if (!form.state.trim()) e.state = "Required";
     if (!form.district.trim()) e.district = "Required";
     if (!form.orderType) e.orderType = "Select order type";
+    if (!selectedDeliveryMethodId) e.deliveryMethod = "Select a courier service";
 
     const selected = productRows.filter((r) => r.quantity > 0);
     if (selected.length === 0) {
@@ -397,7 +391,7 @@ function CreateOrderPage() {
 
     setErrors(e);
     return Object.keys(e).length === 0;
-  }, [form, productRows, detailsEnabled, unitPrice]);
+  }, [form, productRows, detailsEnabled, unitPrice, selectedDeliveryMethodId]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -515,7 +509,7 @@ function CreateOrderPage() {
       <Card>
         <CardHeader
           title="Create Order"
-          subtitle="Add customer details, choose products, then select delivery."
+        // subtitle="Add customer details, choose products, then select delivery."
         />
         <form onSubmit={handleSubmit} className="space-y-5">
           <section className="rounded-xl border border-border bg-surface-alt/30 p-4 sm:p-5">
@@ -586,7 +580,7 @@ function CreateOrderPage() {
             </div>
             <div className="mt-4">
               <Input
-                label="Email *"
+                label="Email"
                 type="email"
                 value={form.email}
                 onChange={(e) => update("email", e.target.value)}
@@ -913,11 +907,12 @@ function CreateOrderPage() {
               <p className="text-sm text-text-muted py-1">Loading delivery options…</p>
             ) : (
               <Select
-                label="Delivery type (optional)"
+                label="Select the courier service"
                 options={deliverySelectOptions}
                 value={selectedDeliveryMethodId}
                 onChange={(e) => setSelectedDeliveryMethodId(e.target.value)}
-                placeholder="No delivery charge"
+                placeholder="Select the courier service"
+                error={errors.deliveryMethod}
                 disabled={!detailsEnabled}
               />
             )}

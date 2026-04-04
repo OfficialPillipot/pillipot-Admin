@@ -69,7 +69,7 @@ function StaffEnquiriesPage() {
     <div className="space-y-4">
       <CardHeader
         title="Ask admin"
-        subtitle="Questions, feedback, or complaints — admin can reply here."
+        // subtitle="Questions, feedback, or complaints — admin can reply here."
         action={
           <Button type="button" onClick={openModal}>
             New message

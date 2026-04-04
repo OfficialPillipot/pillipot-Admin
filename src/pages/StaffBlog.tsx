@@ -41,7 +41,7 @@ function StaffBlogPage() {
     <div className="space-y-4">
       <CardHeader
         title="Blog"
-        subtitle="Updates from your team leads and admin."
+      // subtitle="Updates from your team leads and admin."
       />
       {loading ? (
         <p className="text-sm text-text-muted">Loading…</p>

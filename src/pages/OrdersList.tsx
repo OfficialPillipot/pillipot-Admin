@@ -193,7 +193,7 @@ function OrdersListPage() {
       <Card>
         <CardHeader
           title="Orders"
-          subtitle="Filter by date, status, product, payment type, or search by customer/phone."
+          // subtitle="Filter by date, status, product, payment type, or search by customer/phone."
           action={
             user?.role === "staff" && (
               <Link to="/orders/create">

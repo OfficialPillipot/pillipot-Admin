@@ -142,7 +142,7 @@ function StaffRecentOrdersPage() {
       <Card>
         <CardHeader
           title="Recent orders"
-          subtitle="Your five most recent order groups (newest first). Filter by line status."
+          // subtitle="Your five most recent order groups (newest first). Filter by line status."
           action={
             <Link to="/orders" className="block w-full sm:w-auto">
               <Button variant="outline" size="sm" className="w-full sm:w-auto">

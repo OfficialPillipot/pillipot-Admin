@@ -159,8 +159,7 @@ function StaffDashboardPage() {
                 id="bonus-targets-heading"
                 className="text-xl font-black tracking-tight text-text-heading sm:text-2xl"
               >
-                Your bonus targets
-              </h2>
+                Today Earnings              </h2>
             </div>
             <div className="rounded-full border border-border bg-surface px-3 py-1.5 text-[11px] font-semibold text-text-muted sm:text-xs">
               Focus on your next tier
