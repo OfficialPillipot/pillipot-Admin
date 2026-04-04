@@ -134,7 +134,8 @@ body {
 }
 
 .admin-main-pane-enter {
-  animation: admin-main-pane-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* forwards only — avoids backwards fill leaving opacity 0 if the class sticks */
+  animation: admin-main-pane-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes admin-header-title-in {
