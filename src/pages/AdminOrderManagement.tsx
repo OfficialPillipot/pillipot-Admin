@@ -7,11 +7,8 @@ import {
   useLayoutEffect,
   useRef,
 } from "react";
-import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import {
-  updateOrder,
-} from "../store/ordersSlice";
+import { updateOrder } from "../store/ordersSlice";
 import {
   ADMIN_ORDERS_PAGE_SIZE,
   fetchOrdersList,
@@ -20,70 +17,24 @@ import {
 import { selectStaff } from "../store/staffSlice";
 import { selectProducts, fetchProducts } from "../store/productsSlice";
 import { fetchSettings, selectSettings } from "../store/settingsSlice";
-import {
-  Card,
-  CardHeader,
-  Button,
-  Table,
-  Badge,
-  Modal,
-  ManagementFilterPanel,
-  ManagementFilterField,
-  MANAGEMENT_NATIVE_CONTROL_CLASS,
-  ResponsiveManagementFilters,
-} from "../components/ui";
+import { Card, CardHeader, Table } from "../components/ui";
 import { toast } from "../lib/toast";
 import { downloadBulkOrdersPdf, downloadOrderPdf } from "../lib/download-order-pdf";
 import type { Order, OrderStatus } from "../types";
-import { formatDate, orderLineProductLabel, uniformOrderGroupStatus } from "../lib/orderUtils";
-import { ORDER_STATUS_FILTER_OPTIONS } from "../lib/ordersList";
-import { OrderStatusBadge } from "../components/orders/OrderStatusBadge";
-
-function safeMoney(v: unknown): number {
-  if (v == null) return 0;
-  const n = typeof v === "number" ? v : parseFloat(String(v));
-  return Number.isFinite(n) ? n : 0;
-}
-
-function discountDisplay(v: unknown): string | null {
-  const n = safeMoney(v);
-  return n > 0 ? `₹${n.toFixed(2)}` : null;
-}
-
-/** One customer order can be several API rows (same display `orderId`); each line has its own id. */
-function orderLineIds(detail: { id: string; items?: Order[] }): string[] {
-  const items = detail.items;
-  if (Array.isArray(items) && items.length > 0) {
-    return items.map((i) => i.id);
-  }
-  return [detail.id];
-}
-
-/** Single status for a grouped row, or mixed if lines disagree. */
-function rowUniformStatus(row: Order & { items?: Order[] }): OrderStatus | "mixed" {
-  const items = row.items;
-  if (items && items.length > 0) {
-    const s0 = items[0].status;
-    return items.every((i) => i.status === s0) ? s0 : "mixed";
-  }
-  return row.status;
-}
-
-/** Next step in the fulfilment chain (bulk actions only). */
-function nextBulkStep(
-  current: OrderStatus,
-): { next: OrderStatus; label: string } | null {
-  switch (current) {
-    case "pending":
-      return { next: "packed", label: "Mark packed" };
-    case "packed":
-      return { next: "dispatch", label: "Mark dispatched" };
-    case "dispatch":
-      return { next: "delivered", label: "Mark delivered" };
-    default:
-      return null;
-  }
-}
+import { AdminOrderBulkBar, type AdminBulkAdvanceAction } from "../components/orders/AdminOrderBulkBar";
+import { AdminOrderDetailModal } from "../components/orders/AdminOrderDetailModal";
+import { AdminOrderFilters } from "../components/orders/AdminOrderFilters";
+import { AdminOrderMobileSelectAll } from "../components/orders/AdminOrderMobileSelectAll";
+import { AdminOrderPagination } from "../components/orders/AdminOrderPagination";
+import {
+  groupOrdersForAdminList,
+  orderLineIds,
+  rowUniformStatus,
+  nextBulkStep,
+  safeMoney,
+  type GroupedAdminOrder,
+} from "../components/orders/adminOrderManagementUtils";
+import { useAdminOrderTableColumns } from "../hooks/useAdminOrderTableColumns";
 
 function AdminOrderManagementPage() {
   const dispatch = useAppDispatch();
@@ -94,6 +45,7 @@ function AdminOrderManagementPage() {
     page: 1,
     limit: ADMIN_ORDERS_PAGE_SIZE,
   });
+  const loadSeqRef = useRef(0);
   const staff = useAppSelector(selectStaff);
   const products = useAppSelector(selectProducts);
   const settings = useAppSelector(selectSettings);
@@ -126,18 +78,37 @@ function AdminOrderManagementPage() {
   const serverNarrowed =
     !!(appliedDateFrom || appliedDateTo || appliedOrderId.trim());
 
+  const hasTableFilters = useMemo(
+    () =>
+      !!(productFilter || staffFilter || statusFilter || typeFilter),
+    [productFilter, staffFilter, statusFilter, typeFilter],
+  );
+
+  const appliedServerQuery = useCallback((): AdminOrdersQuery => {
+    return {
+      ...(appliedDateFrom ? { dateFrom: appliedDateFrom } : {}),
+      ...(appliedDateTo ? { dateTo: appliedDateTo } : {}),
+      ...(appliedOrderId.trim() ? { orderId: appliedOrderId.trim() } : {}),
+    };
+  }, [appliedDateFrom, appliedDateTo, appliedOrderId]);
+
   const loadOrders = useCallback(async (q: AdminOrdersQuery) => {
+    const seq = ++loadSeqRef.current;
     lastQueryRef.current = q;
     setFiltersLoading(true);
     try {
       const data = await fetchOrdersList(q);
+      if (seq !== loadSeqRef.current) return;
       setListLines(data.items);
       setListTotal(data.total);
-      if (q.page != null) setListPage(q.page);
+      setListPage(q.page != null ? q.page : 1);
     } catch (err) {
+      if (seq !== loadSeqRef.current) return;
       toast.fromError(err, "Failed to load orders");
     } finally {
-      setFiltersLoading(false);
+      if (seq === loadSeqRef.current) {
+        setFiltersLoading(false);
+      }
     }
   }, []);
 
@@ -145,47 +116,46 @@ function AdminOrderManagementPage() {
     void loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE });
   }, [loadOrders]);
 
+  const hadTableFiltersRef = useRef(false);
+  useEffect(() => {
+    if (hasTableFilters) {
+      hadTableFiltersRef.current = true;
+      void loadOrders(appliedServerQuery());
+      return;
+    }
+    if (hadTableFiltersRef.current) {
+      hadTableFiltersRef.current = false;
+      if (!serverNarrowed) {
+        void loadOrders({
+          page: 1,
+          limit: ADMIN_ORDERS_PAGE_SIZE,
+        });
+      }
+    }
+  }, [
+    hasTableFilters,
+    serverNarrowed,
+    appliedDateFrom,
+    appliedDateTo,
+    appliedOrderId,
+    loadOrders,
+    appliedServerQuery,
+  ]);
+
   const reloadCurrentQuery = useCallback(async () => {
     await loadOrders(lastQueryRef.current);
   }, [loadOrders]);
 
-  const groupedOrders = useMemo(() => {
-    let list = [...listLines].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
-    if (productFilter) list = list.filter((o) => o.productId === productFilter);
-    if (staffFilter) list = list.filter((o) => o.staffId === staffFilter);
-    if (statusFilter) list = list.filter((o) => o.status === statusFilter);
-    if (typeFilter) list = list.filter((o) => o.orderType === typeFilter);
-
-    const groups = new Map<string, Order[]>();
-    for (const o of list) {
-      if (!groups.has(o.orderId)) groups.set(o.orderId, []);
-      groups.get(o.orderId)!.push(o);
-    }
-
-    return Array.from(groups.values()).map((items) => {
-      const o = items[0];
-      const totalSelling = items.reduce((sum, item) => sum + safeMoney(item.sellingAmount), 0);
-      const totalDiscount = items.reduce((sum, item) => sum + (item.discountAmount ? safeMoney(item.discountAmount) : 0), 0);
-      const deliveryFeesTotal = items.reduce(
-        (sum, item) => sum + safeMoney(item.deliveryFee),
-        0,
-      );
-
-      // Return a "summary" order object
-      return {
-        ...o,
-        sellingAmount: totalSelling,
-        discountAmount: totalDiscount > 0 ? totalDiscount : null,
-        grandTotal: totalSelling + deliveryFeesTotal,
-        deliveryFeesTotal,
-        items, // Keep all items for the details modal
-      };
-    });
-  }, [listLines, productFilter, staffFilter, statusFilter, typeFilter]);
+  const groupedOrders = useMemo(
+    () =>
+      groupOrdersForAdminList(listLines, {
+        productId: productFilter,
+        staffId: staffFilter,
+        status: statusFilter,
+        orderType: typeFilter,
+      }),
+    [listLines, productFilter, staffFilter, statusFilter, typeFilter],
+  );
 
   const filteredOrders = groupedOrders;
 
@@ -194,12 +164,24 @@ function AdminOrderManagementPage() {
     Math.ceil(listTotal / ADMIN_ORDERS_PAGE_SIZE),
   );
   const showApiPagination =
-    !serverNarrowed && listTotal > ADMIN_ORDERS_PAGE_SIZE;
+    !serverNarrowed &&
+    !hasTableFilters &&
+    listTotal > ADMIN_ORDERS_PAGE_SIZE;
+
+  const goToOrdersPage = useCallback(
+    (page: number) => {
+      const p = Math.min(Math.max(1, page), totalPages);
+      void loadOrders({ page: p, limit: ADMIN_ORDERS_PAGE_SIZE });
+    },
+    [loadOrders, totalPages],
+  );
 
   const allVisibleSelected =
     filteredOrders.length > 0 &&
     filteredOrders.every((o) => selectedIds.has(o.id));
-  const someVisibleSelected = filteredOrders.some((o) => selectedIds.has(o.id));
+  const someVisibleSelected = filteredOrders.some((o) =>
+    selectedIds.has(o.id),
+  );
 
   useLayoutEffect(() => {
     const el = selectAllHeaderRef.current;
@@ -231,9 +213,9 @@ function AdminOrderManagementPage() {
     setSelectedIds(new Set());
   }, []);
 
-  const orderDetail = useMemo(() => {
+  const orderDetail = useMemo((): GroupedAdminOrder | null => {
     if (!detailId) return null;
-    return (groupedOrders.find((o) => o.id === detailId) as any) || null;
+    return groupedOrders.find((o) => o.id === detailId) ?? null;
   }, [groupedOrders, detailId]);
 
   const discountEditable =
@@ -241,17 +223,15 @@ function AdminOrderManagementPage() {
 
   const sortedOrderLines = useMemo((): Order[] => {
     if (!orderDetail) return [];
-    const items = (orderDetail as { items?: Order[] }).items;
-    if (items?.length) {
-      return [...items].sort(
+    if (orderDetail.items?.length) {
+      return [...orderDetail.items].sort(
         (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
       );
     }
-    return [orderDetail as Order];
+    return [orderDetail];
   }, [orderDetail]);
 
-  /** Only when switching orders — do not depend on list data or the draft resets on every list refresh while typing. */
   useEffect(() => {
     void dispatch(fetchSettings());
   }, [dispatch]);
@@ -261,11 +241,12 @@ function AdminOrderManagementPage() {
       setDiscountDraft("");
       return;
     }
-    // Find the grouped order to get the TOTAL discount
     const groupedOrder = groupedOrders.find((o) => o.id === detailId);
     if (!groupedOrder) return;
     const d = groupedOrder.discountAmount;
-    setDiscountDraft(d != null && safeMoney(d) > 0 ? String(safeMoney(d)) : "");
+    setDiscountDraft(
+      d != null && safeMoney(d) > 0 ? String(safeMoney(d)) : "",
+    );
   }, [detailId, groupedOrders]);
 
   useEffect(() => {
@@ -286,7 +267,7 @@ function AdminOrderManagementPage() {
     const localT = trackingDraft.trim();
     const serverT = (o.trackingId ?? "").trim();
     if (localT === serverT) return;
-    const lineIds = orderLineIds(orderDetail as { id: string; items?: Order[] });
+    const lineIds = orderLineIds(orderDetail);
     try {
       await Promise.all(
         lineIds.map((id) =>
@@ -294,9 +275,9 @@ function AdminOrderManagementPage() {
             updateOrder({
               id,
               patch: { trackingId: localT || null },
-            })
-          ).unwrap()
-        )
+            }),
+          ).unwrap(),
+        ),
       );
       await reloadCurrentQuery();
     } catch (err) {
@@ -306,13 +287,13 @@ function AdminOrderManagementPage() {
 
   const markPacked = useCallback(async () => {
     if (!orderDetail || orderDetail.status !== "pending") return;
-    const lineIds = orderLineIds(orderDetail as { id: string; items?: Order[] });
+    const lineIds = orderLineIds(orderDetail);
     setMarkingPacked(true);
     try {
       await Promise.all(
         lineIds.map((id) =>
-          dispatch(updateOrder({ id, patch: { status: "packed" } })).unwrap()
-        )
+          dispatch(updateOrder({ id, patch: { status: "packed" } })).unwrap(),
+        ),
       );
       toast.success("Order marked packed");
       await reloadCurrentQuery();
@@ -330,7 +311,7 @@ function AdminOrderManagementPage() {
       toast.error("Enter a tracking ID");
       return;
     }
-    const lineIds = orderLineIds(orderDetail as { id: string; items?: Order[] });
+    const lineIds = orderLineIds(orderDetail);
     setDispatching(true);
     try {
       await Promise.all(
@@ -339,9 +320,9 @@ function AdminOrderManagementPage() {
             updateOrder({
               id,
               patch: { status: "dispatch", trackingId: tid },
-            })
-          ).unwrap()
-        )
+            }),
+          ).unwrap(),
+        ),
       );
       toast.success("Order marked dispatched");
       await reloadCurrentQuery();
@@ -354,18 +335,21 @@ function AdminOrderManagementPage() {
 
   const confirmDelivered = useCallback(async () => {
     if (!orderDetail || orderDetail.status !== "dispatch") return;
-    const tid = trackingDraft.trim() || orderDetail.trackingId?.trim() || "";
+    const tid =
+      trackingDraft.trim() || orderDetail.trackingId?.trim() || "";
     if (!tid) {
       toast.error("Enter a tracking ID");
       return;
     }
-    const lineIds = orderLineIds(orderDetail as { id: string; items?: Order[] });
+    const lineIds = orderLineIds(orderDetail);
     setDispatching(true);
     try {
       await Promise.all(
         lineIds.map((id) =>
-          dispatch(updateOrder({ id, patch: { status: "delivered" } })).unwrap()
-        )
+          dispatch(
+            updateOrder({ id, patch: { status: "delivered" } }),
+          ).unwrap(),
+        ),
       );
       toast.success("Order marked delivered");
       setDetailId(null);
@@ -380,19 +364,21 @@ function AdminOrderManagementPage() {
   const handleReturn = useCallback(async () => {
     if (
       !orderDetail ||
-      (orderDetail.status !== "dispatch" && orderDetail.status !== "delivered")
+      (orderDetail.status !== "dispatch" &&
+        orderDetail.status !== "delivered")
     ) {
       return;
     }
     setReturning(true);
     try {
-      const items = (orderDetail as { items?: Order[] }).items;
+      const items = orderDetail.items;
       const returnable =
         Array.isArray(items) && items.length > 0
           ? items.filter(
-            (i) => i.status === "dispatch" || i.status === "delivered"
+            (i) =>
+              i.status === "dispatch" || i.status === "delivered",
           )
-          : [orderDetail as Order];
+          : [orderDetail];
       const ids = returnable.map((i) => i.id);
       if (ids.length === 0) {
         toast.error("No lines eligible for return");
@@ -400,8 +386,10 @@ function AdminOrderManagementPage() {
       }
       await Promise.all(
         ids.map((id) =>
-          dispatch(updateOrder({ id, patch: { status: "returned" } })).unwrap()
-        )
+          dispatch(
+            updateOrder({ id, patch: { status: "returned" } }),
+          ).unwrap(),
+        ),
       );
       setDetailId(null);
       toast.success("Return recorded — stock restocked");
@@ -428,19 +416,19 @@ function AdminOrderManagementPage() {
     }
     setSavingDiscount(true);
     try {
-      const items = (orderDetail as any).items || [orderDetail];
-      // We apply the full discount to the first item and set others to 0
-      // This ensures the total discount for the "order" (group) is exactly 'amount'
+      const items = orderDetail.items?.length
+        ? orderDetail.items
+        : [orderDetail];
       await Promise.all(
-        items.map((item: any, idx: number) => {
+        items.map((item, idx) => {
           const itemDiscount = idx === 0 ? amount : 0;
           return dispatch(
             updateOrder({
               id: item.id,
               patch: { discountAmount: itemDiscount },
-            })
+            }),
           ).unwrap();
-        })
+        }),
       );
       toast.success("Discount updated");
       await reloadCurrentQuery();
@@ -456,18 +444,23 @@ function AdminOrderManagementPage() {
       try {
         await Promise.all(
           lineIds.map((id) =>
-            dispatch(updateOrder({ id, patch: { status } })).unwrap()
-          )
+            dispatch(updateOrder({ id, patch: { status } })).unwrap(),
+          ),
         );
         toast.success(`Order ${status}`);
-        if (status === "cancelled" || status === "delivered" || status === "returned")
+        if (
+          status === "cancelled" ||
+          status === "delivered" ||
+          status === "returned"
+        ) {
           setDetailId(null);
+        }
         await reloadCurrentQuery();
       } catch (err) {
         toast.fromError(err, "Failed to update order");
       }
     },
-    [dispatch, reloadCurrentQuery]
+    [dispatch, reloadCurrentQuery],
   );
 
   const applyDateFilters = useCallback(async () => {
@@ -477,7 +470,17 @@ function AdminOrderManagementPage() {
       ...(orderIdSearch.trim() ? { orderId: orderIdSearch.trim() } : {}),
     };
     if (Object.keys(q).length === 0) {
-      await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE });
+      const tableOn = !!(
+        productFilter ||
+        staffFilter ||
+        statusFilter ||
+        typeFilter
+      );
+      if (tableOn) {
+        await loadOrders({});
+      } else {
+        await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE });
+      }
       setAppliedDateFrom("");
       setAppliedDateTo("");
       setAppliedOrderId("");
@@ -490,7 +493,16 @@ function AdminOrderManagementPage() {
     setAppliedDateTo(dateTo);
     setAppliedOrderId(orderIdSearch.trim());
     toast.success("Orders updated");
-  }, [dateFrom, dateTo, orderIdSearch, loadOrders]);
+  }, [
+    dateFrom,
+    dateTo,
+    orderIdSearch,
+    loadOrders,
+    productFilter,
+    staffFilter,
+    statusFilter,
+    typeFilter,
+  ]);
 
   const clearDateFilters = useCallback(async () => {
     setDateFrom("");
@@ -500,27 +512,40 @@ function AdminOrderManagementPage() {
     setAppliedDateTo("");
     setAppliedOrderId("");
     setListPage(1);
-    await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE });
-    toast.success("Showing all orders");
-  }, [loadOrders]);
-
-  const downloadPdf = useCallback(async (
-    internalId: string,
-    displayOrderId: string,
-    sizeOverride?: "thermal" | "a4"
-  ) => {
-    setPdfLoadingId(internalId);
-    try {
-      await downloadOrderPdf(internalId, `${displayOrderId}.pdf`, {
-        size: sizeOverride ?? settings?.defaultPdfSize ?? "thermal",
-      });
-      toast.success("PDF downloaded");
-    } catch (err) {
-      toast.fromError(err, "Failed to download PDF");
-    } finally {
-      setPdfLoadingId(null);
+    const tableOn = !!(
+      productFilter ||
+      staffFilter ||
+      statusFilter ||
+      typeFilter
+    );
+    if (tableOn) {
+      await loadOrders({});
+    } else {
+      await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE });
     }
-  }, [settings?.defaultPdfSize]);
+    toast.success("Showing all orders");
+  }, [loadOrders, productFilter, staffFilter, statusFilter, typeFilter]);
+
+  const downloadPdf = useCallback(
+    async (
+      internalId: string,
+      displayOrderId: string,
+      sizeOverride?: "thermal" | "a4",
+    ) => {
+      setPdfLoadingId(internalId);
+      try {
+        await downloadOrderPdf(internalId, `${displayOrderId}.pdf`, {
+          size: sizeOverride ?? settings?.defaultPdfSize ?? "thermal",
+        });
+        toast.success("PDF downloaded");
+      } catch (err) {
+        toast.fromError(err, "Failed to download PDF");
+      } finally {
+        setPdfLoadingId(null);
+      }
+    },
+    [settings?.defaultPdfSize],
+  );
 
   const clearTableFilters = useCallback(() => {
     setStaffFilter("");
@@ -545,15 +570,17 @@ function AdminOrderManagementPage() {
     }
   }, [selectedIds, settings?.defaultPdfSize]);
 
-  const bulkAdvanceAction = useMemo(() => {
+  const bulkAdvanceAction = useMemo((): AdminBulkAdvanceAction => {
     if (selectedIds.size === 0) return null;
     const rows = filteredOrders.filter((o) => selectedIds.has(o.id));
     if (rows.length === 0) return null;
 
-    const perRow = rows.map((r) => rowUniformStatus(r as Order & { items?: Order[] }));
+    const perRow = rows.map((r) =>
+      rowUniformStatus(r as Order & { items?: Order[] }),
+    );
     if (perRow.some((s) => s === "mixed")) {
       return {
-        kind: "blocked" as const,
+        kind: "blocked",
         message:
           "One or more orders have lines with different statuses. Open those orders and align statuses first.",
       };
@@ -561,7 +588,7 @@ function AdminOrderManagementPage() {
     const current = perRow[0] as OrderStatus;
     if (!perRow.every((s) => s === current)) {
       return {
-        kind: "blocked" as const,
+        kind: "blocked",
         message:
           "Select orders that all share the same status (e.g. only pending, or only packed).",
       };
@@ -576,7 +603,7 @@ function AdminOrderManagementPage() {
     const step = nextBulkStep(current);
     if (!step) return null;
     return {
-      kind: "action" as const,
+      kind: "action",
       current,
       next: step.next,
       label: step.label,
@@ -593,9 +620,7 @@ function AdminOrderManagementPage() {
       for (const sid of selectedIds) {
         const g = filteredOrders.find((o) => o.id === sid);
         if (g) {
-          lineIds.push(
-            ...orderLineIds(g as { id: string; items?: Order[] }),
-          );
+          lineIds.push(...orderLineIds(g as { id: string; items?: Order[] }));
         } else {
           lineIds.push(sid);
         }
@@ -636,7 +661,7 @@ function AdminOrderManagementPage() {
       { value: "", label: "Select all products" },
       ...products.map((p) => ({ value: p.id, label: p.name })),
     ],
-    [products]
+    [products],
   );
 
   const staffOptions = useMemo(
@@ -646,7 +671,7 @@ function AdminOrderManagementPage() {
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((s) => ({ value: s.id, label: s.name })),
     ],
-    [staff]
+    [staff],
   );
 
   const typeOptions = useMemo(
@@ -655,810 +680,107 @@ function AdminOrderManagementPage() {
       { value: "cod", label: "COD" },
       { value: "prepaid", label: "Prepaid" },
     ],
-    []
+    [],
   );
 
-  const columns = useMemo(
-    () => [
-      {
-        key: "__select",
-        header: (
-          <span className="inline-flex items-center justify-center">
-            <input
-              ref={selectAllHeaderRef}
-              type="checkbox"
-              checked={allVisibleSelected}
-              onChange={() => toggleAllVisibleSelected()}
-              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-              aria-label="Select all orders in this table"
-            />
-          </span>
-        ),
-        className: "w-12",
-        mobileHeaderStart: true,
-        render: (row: Order) => (
-          <input
-            type="checkbox"
-            checked={selectedIds.has(row.id)}
-            onChange={() => toggleRowSelected(row.id)}
-            onClick={(e) => e.stopPropagation()}
-            className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-            aria-label={`Select order ${row.orderId}`}
-          />
-        ),
-      },
-      {
-        key: "orderId",
-        header: "Order ID",
-        mobileCardTitle: true,
-        className: "md:min-w-[9.5rem] md:whitespace-nowrap",
-        render: (row: Order) => (
-          <button
-            type="button"
-            onClick={() => setDetailId(row.id)}
-            className="font-medium text-primary hover:underline"
-          >
-            {row.orderId}
-          </button>
-        ),
-      },
-      {
-        key: "createdAt",
-        header: "Date",
-        render: (row: Order) => formatDate(row.createdAt),
-      },
-      { key: "customerName", header: "Customer" },
-      {
-        key: "productId",
-        header: "Products",
-        render: (row: any) => {
-          const lines: Order[] =
-            row.items?.length > 0 ? row.items : [];
-          const names =
-            lines.length > 0
-              ? lines.map((i) => orderLineProductLabel(i, products))
-              : [orderLineProductLabel(row as Order, products)];
-
-          if (names.length === 1) return names[0];
-
-          return (
-            <div>
-              <span className="text-xs font-bold text-primary">{names.length} items</span>
-              <div className="text-[10px] text-text-muted mt-0.5 line-clamp-1 italic">
-                {names.join(", ")}
-              </div>
-            </div>
-          );
-        }
-      },
-      {
-        key: "discountAmount",
-        header: "Discount",
-        render: (row: Order) => discountDisplay(row.discountAmount) ?? "—",
-      },
-      {
-        key: "staffAssignedNumber",
-        header: "Assigned #",
-        render: (row: Order) => {
-          const n = row.staffAssignedNumber?.trim();
-          return n ? (
-            <span className="font-mono text-xs">{n}</span>
-          ) : (
-            "—"
-          );
-        },
-      },
-      {
-        key: "sellingAmount",
-        header: "Total",
-        render: (row: Order) => {
-          const gt = (row as Order & { grandTotal?: number }).grandTotal;
-          const n = gt != null ? gt : safeMoney(row.sellingAmount);
-          return `₹${n.toFixed(2)}`;
-        },
-      },
-      {
-        key: "staffId",
-        header: "Staff",
-        render: (row: Order) =>
-          staff.find((s) => s.id === row.staffId)?.name ?? row.staffId,
-      },
-      {
-        key: "status",
-        header: "Status",
-        render: (row: Order & { items?: Order[] }) => {
-          const lines =
-            row.items && row.items.length > 0 ? row.items : [row];
-          return (
-            <OrderStatusBadge uniform={uniformOrderGroupStatus(lines)} />
-          );
-        },
-      },
-      {
-        key: "trackingId",
-        header: "Tracking ID",
-        render: (row: Order) => {
-          const t = row.trackingId?.trim();
-          return t ? (
-            <span className="font-mono text-xs">{t}</span>
-          ) : (
-            "—"
-          );
-        },
-      },
-      {
-        key: "pdf",
-        header: "PDF",
-        render: (row: Order) => (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              void downloadPdf(row.id, row.orderId);
-            }}
-            disabled={pdfLoadingId === row.id}
-            className="inline-flex items-center justify-center rounded-[var(--radius-sm)] p-1.5 text-primary hover:bg-primary-muted disabled:opacity-50"
-            title="Download PDF"
-            aria-label={`Download PDF for ${row.orderId}`}
-          >
-            <ArrowDownTrayIcon className="h-5 w-5" />
-          </button>
-        ),
-      },
-    ],
-    [
-      staff,
-      products,
-      pdfLoadingId,
-      selectedIds,
-      allVisibleSelected,
-      toggleRowSelected,
-      toggleAllVisibleSelected,
-      downloadPdf,
-    ]
-  );
+  const columns = useAdminOrderTableColumns({
+    selectAllHeaderRef,
+    staff,
+    products,
+    pdfLoadingId,
+    selectedIds,
+    allVisibleSelected,
+    toggleRowSelected,
+    toggleAllVisibleSelected,
+    downloadPdf,
+    onOpenDetail: setDetailId,
+  });
 
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader
-          title="Order Management"
-        // subtitle="Filter by date (server), staff, status, product, and order type. Staff-entered discounts appear in the Discount column."
+        <CardHeader title="Order Management" />
+        <AdminOrderFilters
+          orderIdSearch={orderIdSearch}
+          onOrderIdSearchChange={setOrderIdSearch}
+          dateFrom={dateFrom}
+          onDateFromChange={setDateFrom}
+          dateTo={dateTo}
+          onDateToChange={setDateTo}
+          filtersLoading={filtersLoading}
+          onApplyServerFilters={() => void applyDateFilters()}
+          onClearServerFilters={() => void clearDateFilters()}
+          staffFilter={staffFilter}
+          onStaffFilterChange={setStaffFilter}
+          staffOptions={staffOptions}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          productFilter={productFilter}
+          onProductFilterChange={setProductFilter}
+          productOptions={productOptions}
+          typeFilter={typeFilter}
+          onTypeFilterChange={setTypeFilter}
+          typeOptions={typeOptions}
+          onResetTableFilters={clearTableFilters}
+          appliedDateFrom={appliedDateFrom}
+          appliedDateTo={appliedDateTo}
+          appliedOrderId={appliedOrderId}
         />
-        <div className="mb-4 space-y-2">
-          <ResponsiveManagementFilters modalTitle="Order filters" triggerLabel="Filters">
-            <ManagementFilterPanel>
-              <ManagementFilterField
-                label="Order ID"
-                className="lg:col-span-2 xl:col-span-2"
-              >
-                <input
-                  type="search"
-                  value={orderIdSearch}
-                  onChange={(e) => setOrderIdSearch(e.target.value)}
-                  placeholder="e.g. ORD-1005 or 1005"
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="Search by display order id"
-                />
-              </ManagementFilterField>
-              <ManagementFilterField label="From date">
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="From date"
-                />
-              </ManagementFilterField>
-              <ManagementFilterField label="To date">
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="To date"
-                />
-              </ManagementFilterField>
-              <ManagementFilterField label="Server filters">
-                <div className="flex w-full flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => void applyDateFilters()}
-                    loading={filtersLoading}
-                  >
-                    Apply
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => void clearDateFilters()}
-                    disabled={filtersLoading}
-                  >
-                    Clear all
-                  </Button>
-                </div>
-              </ManagementFilterField>
-              <ManagementFilterField label="Staff">
-                <select
-                  value={staffFilter}
-                  onChange={(e) => setStaffFilter(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="Filter by staff"
-                >
-                  {staffOptions.map((opt) => (
-                    <option key={opt.value || "all-staff"} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </ManagementFilterField>
-              <ManagementFilterField label="Status">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="Filter by order status"
-                >
-                  {ORDER_STATUS_FILTER_OPTIONS.map((opt) => (
-                    <option key={opt.value || "all-status"} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </ManagementFilterField>
-              <ManagementFilterField label="Product">
-                <select
-                  value={productFilter}
-                  onChange={(e) => setProductFilter(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="Filter by product"
-                >
-                  {productOptions.map((opt) => (
-                    <option key={opt.value || "all-products"} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </ManagementFilterField>
-              <ManagementFilterField label="Order type">
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="Filter by order type"
-                >
-                  {typeOptions.map((opt) => (
-                    <option key={opt.value || "all-types"} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </ManagementFilterField>
-              <ManagementFilterField label="Table filters">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="w-full sm:w-auto"
-                  onClick={clearTableFilters}
-                  aria-label="Reset staff, status, product, and type filters to show all"
-                >
-                  Reset table filters
-                </Button>
-              </ManagementFilterField>
-            </ManagementFilterPanel>
-          </ResponsiveManagementFilters>
-          {(appliedDateFrom || appliedDateTo || appliedOrderId.trim()) && (
-            <p className="text-xs text-text-muted">
-              Showing orders
-              {appliedDateFrom ? ` from ${appliedDateFrom}` : ""}
-              {appliedDateTo ? ` through ${appliedDateTo}` : ""}
-              {appliedOrderId.trim()
-                ? ` for order id ${appliedOrderId.trim()}`
-                : ""}
-              {(appliedDateFrom || appliedDateTo)
-                ? " (UTC day boundaries)."
-                : "."}
-            </p>
-          )}
-          {showApiPagination && (
-            <div className="mb-3 flex flex-col gap-2 rounded-[var(--radius-md)] border border-border bg-surface-alt/50 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <span className="text-sm text-text-muted">
-                {listTotal.toLocaleString()} customer order
-                {listTotal === 1 ? "" : "s"} total (paged by order)
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={listPage <= 1 || filtersLoading}
-                  onClick={() =>
-                    void loadOrders({
-                      page: listPage - 1,
-                      limit: ADMIN_ORDERS_PAGE_SIZE,
-                    })
-                  }
-                >
-                  Previous
-                </Button>
-                <span className="text-sm tabular-nums text-text-heading">
-                  Page {listPage} of {totalPages}
-                </span>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={listPage >= totalPages || filtersLoading}
-                  onClick={() =>
-                    void loadOrders({
-                      page: listPage + 1,
-                      limit: ADMIN_ORDERS_PAGE_SIZE,
-                    })
-                  }
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-        {selectedIds.size > 0 && (
-          <div className="mb-2 flex flex-col gap-2 rounded-[var(--radius-md)] border border-border bg-surface-alt/50 p-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-            <span className="text-sm font-medium text-text-heading">
-              {selectedIds.size} order{selectedIds.size === 1 ? "" : "s"} selected
-            </span>
-            {bulkAdvanceAction?.kind === "blocked" && (
-              <p className="max-w-xl text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-[var(--radius-sm)] px-2 py-1.5">
-                {bulkAdvanceAction.message}
-              </p>
-            )}
-            {bulkAdvanceAction?.kind === "action" && (
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  loading={bulkStatusLoading}
-                  onClick={() =>
-                    void applyBulkAdvance(bulkAdvanceAction.next)
-                  }
-                >
-                  {bulkAdvanceAction.label}
-                </Button>
-                <span className="text-xs text-text-muted capitalize">
-                  All selected: {bulkAdvanceAction.current}
-                </span>
-                {bulkAdvanceAction.hint ? (
-                  <span className="text-[11px] text-text-muted max-w-md">
-                    {bulkAdvanceAction.hint}
-                  </span>
-                ) : null}
-              </div>
-            )}
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={() => void downloadSelectedPdf()}
-              loading={bulkPdfLoading}
-              className="sm:ml-auto"
-            >
-              LABEL            </Button>
-            <button
-              type="button"
-              className="text-sm font-medium text-primary underline hover:no-underline"
-              onClick={clearRowSelection}
-            >
-              Clear selection
-            </button>
-          </div>
-        )}
-        <div className="mb-3 flex items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface-alt/50 px-3 py-2 md:hidden">
-          <input
-            type="checkbox"
-            checked={allVisibleSelected}
-            onChange={() => toggleAllVisibleSelected()}
-            className="h-4 w-4 shrink-0 rounded border-border text-primary focus:ring-primary"
-            aria-label="Select all orders in this list"
-          />
-          <span className="text-xs text-text-muted">Select all visible</span>
-        </div>
+        <AdminOrderBulkBar
+          selectedCount={selectedIds.size}
+          bulkAdvanceAction={bulkAdvanceAction}
+          bulkStatusLoading={bulkStatusLoading}
+          bulkPdfLoading={bulkPdfLoading}
+          onBulkAdvance={(next) => void applyBulkAdvance(next)}
+          onDownloadSelectedPdf={() => void downloadSelectedPdf()}
+          onClearSelection={clearRowSelection}
+        />
+        <AdminOrderMobileSelectAll
+          allVisibleSelected={allVisibleSelected}
+          onToggleAll={toggleAllVisibleSelected}
+        />
         <Table
           columns={columns}
           data={filteredOrders}
           keyExtractor={(o) => o.id}
           emptyMessage="No orders."
         />
+        <AdminOrderPagination
+          visible={showApiPagination}
+          listTotal={listTotal}
+          listPage={listPage}
+          totalPages={totalPages}
+          loading={filtersLoading}
+          onGoToPage={goToOrdersPage}
+        />
       </Card>
 
-      <Modal
-        isOpen={!!orderDetail}
+      <AdminOrderDetailModal
+        orderDetail={orderDetail}
         onClose={() => setDetailId(null)}
-        title={orderDetail?.orderId ?? "Order"}
-        size="lg"
-      >
-        {orderDetail && (
-          <div className="space-y-4">
-            <dl className="grid gap-4 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Customer Name</dt>
-                <dd className="font-medium">{orderDetail.customerName}</dd>
-              </div>
-              <div>
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Phone Number</dt>
-                <dd>{orderDetail.phone}</dd>
-              </div>
-              <div>
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Building/Street</dt>
-                <dd>{orderDetail.deliveryAddress}</dd>
-              </div>
-              <div>
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Post Office</dt>
-                <dd>{orderDetail.postOffice}</dd>
-              </div>
-              <div>
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">District</dt>
-                <dd>{orderDetail.district}</dd>
-              </div>
-              <div>
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">State</dt>
-                <dd>{orderDetail.state}</dd>
-              </div>
-              <div>
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Pincode</dt>
-                <dd>{orderDetail.pincode}</dd>
-              </div>
-              <div className="sm:col-span-2 border-t pt-4 mt-2">
-                <dt className="text-text-muted mb-2 text-xs uppercase tracking-wider font-bold">Order Items</dt>
-                <dd className="space-y-2">
-                  {(() => {
-                    const od = orderDetail as Order & {
-                      items?: { id: string; productId: string; quantity: number; sellingAmount: unknown }[];
-                    };
-                    const itemRows =
-                      od.items?.length ?
-                        od.items
-                        : [
-                          {
-                            id: od.id,
-                            productId: od.productId,
-                            quantity: od.quantity,
-                            sellingAmount: od.sellingAmount,
-                          },
-                        ];
-                    return (
-                      <div className="space-y-2 sm:hidden">
-                        {itemRows.map((item) => {
-                          const nm = orderLineProductLabel(
-                            item as Order,
-                            products,
-                          );
-                          return (
-                            <div
-                              key={item.id}
-                              className="rounded-xl border border-border bg-surface px-3 py-2.5 shadow-[var(--shadow-card)]"
-                            >
-                              <div className="font-semibold text-text-heading">{nm}</div>
-                              <dl className="mt-2 space-y-1.5 text-xs">
-                                <div className="flex justify-between gap-2">
-                                  <dt className="text-text-muted">Qty</dt>
-                                  <dd className="font-mono font-semibold">{item.quantity}</dd>
-                                </div>
-                                <div className="flex justify-between gap-2">
-                                  <dt className="text-text-muted">Price</dt>
-                                  <dd className="font-semibold text-primary">
-                                    ₹{safeMoney(item.sellingAmount).toFixed(2)}
-                                  </dd>
-                                </div>
-                              </dl>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
-                  <div className="hidden sm:block overflow-hidden rounded-lg border border-gray-100 shadow-sm">
-                    <table className="w-full text-xs">
-                      <thead className="bg-gray-50 text-gray-500 font-bold">
-                        <tr>
-                          <th className="px-3 py-2 text-left">Product</th>
-                          <th className="px-3 py-2 text-center">Qty</th>
-                          <th className="px-3 py-2 text-right">Price</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {(orderDetail as any).items?.map((item: any) => (
-                          <tr key={item.id}>
-                            <td className="px-3 py-2 font-medium">
-                              <div>
-                                {orderLineProductLabel(item as Order, products)}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 text-center font-bold text-gray-600">{item.quantity}</td>
-                            <td className="px-3 py-2 text-right font-black text-indigo-600">
-                              ₹{safeMoney(item.sellingAmount).toFixed(2)}
-                            </td>
-                          </tr>
-                        )) || (
-                            <tr>
-                              <td className="px-3 py-2 font-medium">
-                                <div>
-                                  {orderLineProductLabel(
-                                    orderDetail as Order,
-                                    products,
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-3 py-2 text-center font-bold text-gray-600">{(orderDetail as any).quantity}</td>
-                              <td className="px-3 py-2 text-right font-black text-indigo-600">
-                                ₹{safeMoney((orderDetail as any).sellingAmount).toFixed(2)}
-                              </td>
-                            </tr>
-                          )}
-                      </tbody>
-                      <tfoot className="border-t border-gray-100">
-                        <tr className="bg-gray-50/90">
-                          <td colSpan={2} className="px-3 py-2 text-right text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                            Items subtotal
-                          </td>
-                          <td className="px-3 py-2 text-right font-black text-indigo-700">
-                            ₹{safeMoney((orderDetail as any).sellingAmount).toFixed(2)}
-                          </td>
-                        </tr>
-                        {sortedOrderLines.some((l) => l.deliveryMethodId || l.deliveryMethodName) ? (
-                          <tr className="bg-teal-50 border-y border-teal-100">
-                            <td colSpan={2} className="px-3 py-2.5 text-right text-[10px] font-extrabold uppercase tracking-wider text-teal-900">
-                              Delivery (
-                              {sortedOrderLines.find((l) => l.deliveryMethodName)?.deliveryMethodName ??
-                                "carrier"}
-                              )
-                            </td>
-                            <td className="px-3 py-2.5 text-right text-sm font-black tabular-nums text-teal-800">
-                              ₹{safeMoney((orderDetail as any).deliveryFeesTotal).toFixed(2)}
-                            </td>
-                          </tr>
-                        ) : null}
-                        <tr className="border-t-2 border-gray-200 bg-white">
-                          <td colSpan={2} className="px-3 py-2.5 text-right text-[10px] font-black uppercase tracking-wider text-gray-900">
-                            Grand total
-                          </td>
-                          <td className="px-3 py-2.5 text-right font-black text-earnings">
-                            ₹{safeMoney((orderDetail as any).grandTotal ?? (orderDetail as any).sellingAmount).toFixed(2)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Order Type</dt>
-                <dd><Badge variant="default">{orderDetail.orderType.toUpperCase()}</Badge></dd>
-              </div>
-              <div>
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Discount</dt>
-                <dd>{discountDisplay(orderDetail.discountAmount) ?? "—"}</dd>
-              </div>
-              {sortedOrderLines.some((l) => l.deliveryMethodId || l.deliveryMethodName) ? (
-                <div>
-                  <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">
-                    Delivery
-                  </dt>
-                  <dd className="font-medium text-teal-800">
-                    {sortedOrderLines.find((l) => l.deliveryMethodName)?.deliveryMethodName ??
-                      "—"}{" "}
-                    — ₹
-                    {sortedOrderLines
-                      .reduce((s, l) => s + safeMoney(l.deliveryFee), 0)
-                      .toFixed(2)}
-                  </dd>
-                </div>
-              ) : null}
-              <div>
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Total Amount</dt>
-                <dd className="font-medium text-earnings">
-                  ₹
-                  {safeMoney(
-                    (orderDetail as Order & { grandTotal?: number }).grandTotal ??
-                    orderDetail.sellingAmount,
-                  ).toFixed(2)}
-                </dd>
-              </div>
-              {discountEditable ? (
-                <div className="sm:col-span-2 rounded-[var(--radius-md)] border border-border bg-surface-alt p-3">
-                  <dt className="text-text-muted mb-2 text-xs uppercase tracking-wider">
-                    Edit discount (admin)
-                  </dt>
-                  <dd className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm text-text-muted">₹</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        className="w-32 rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-sm"
-                        value={discountDraft}
-                        onChange={(e) => setDiscountDraft(e.target.value)}
-                        placeholder="0"
-                        aria-label="Discount amount"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => void saveDiscount()}
-                      loading={savingDiscount}
-                    >
-                      Apply discount
-                    </Button>
-                    {/* <p className="text-xs text-text-muted sm:flex-1">
-                      Clear the field or set 0 to remove discount. Total is recalculated from the product catalog price.
-                    </p> */}
-                  </dd>
-                </div>
-              ) : null}
-              <div>
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Current Status</dt>
-                <dd>
-                  <span className="capitalize font-medium">{orderDetail.status}</span>
-                  {/* {orderDetail.status === "dispatch" ? (
-                    <span className="mt-0.5 block text-xs font-normal text-text-muted">
-                      Dispatched — tracking is locked. Use Mark delivered when the customer receives the order.
-                    </span>
-                  ) : null}
-                  {orderDetail.status === "pending" ? (
-                    <span className="mt-0.5 block text-xs font-normal text-text-muted">
-                      Enter or edit tracking below. Click Packed when the parcel is packed (not yet dispatched).
-                    </span>
-                  ) : null}
-                  {orderDetail.status === "packed" ? (
-                    <span className="mt-0.5 block text-xs font-normal text-text-muted">
-                      Packed — finish the tracking ID, then Mark dispatched when handed to the courier.
-                    </span>
-                  ) : null} */}
-                </dd>
-              </div>
-              {(orderDetail.status === "delivered" ||
-                orderDetail.status === "cancelled" ||
-                orderDetail.status === "returned") &&
-                orderDetail.trackingId?.trim() ? (
-                <div>
-                  <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Tracking ID</dt>
-                  <dd className="font-mono text-sm">{orderDetail.trackingId.trim()}</dd>
-                </div>
-              ) : null}
-              <div>
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Assigned #</dt>
-                <dd className="font-mono text-sm">
-                  {orderDetail.staffAssignedNumber?.trim() || "—"}
-                </dd>
-              </div>
-              <div className="sm:col-span-2">
-                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Staff Details</dt>
-                <dd>{staff.find(s => s.id === (orderDetail as any).staffId)?.name || (orderDetail as any).staffId}</dd>
-              </div>
-              {(orderDetail as any).notes && (
-                <div className="sm:col-span-2">
-                  <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Notes</dt>
-                  <dd className="bg-surface-alt p-2 rounded-[var(--radius-sm)] border border-border text-text-muted">
-                    {(orderDetail as any).notes}
-                  </dd>
-                </div>
-              )}
-            </dl>
-            {(orderDetail as any).status === "pending" || (orderDetail as any).status === "packed" ? (
-              <div className="rounded-[var(--radius-md)] border border-border bg-surface-alt p-3">
-                <label
-                  htmlFor="order-tracking-id"
-                  className="text-text-muted mb-2 block text-xs font-medium uppercase tracking-wider"
-                >
-                  Tracking ID
-                </label>
-                <input
-                  id="order-tracking-id"
-                  type="text"
-                  value={trackingDraft}
-                  onChange={(e) => setTrackingDraft(e.target.value)}
-                  onBlur={() => void persistTrackingFromBlur()}
-                  placeholder="Enter courier tracking number"
-                  maxLength={255}
-                  autoComplete="off"
-                  className="w-full max-w-md rounded-[var(--radius-sm)] border border-border bg-surface px-3 py-2 text-sm"
-                />
-                {/* <p className="mt-2 text-xs text-text-muted">
-                  {(orderDetail as any).status === "pending"
-                    ? "You can set tracking before or after packing. Packed means ready for courier; use Mark dispatched only after you have a final tracking ID."
-                    : trackingDraft.trim()
-                      ? "Click Mark dispatched when the parcel is with the courier."
-                      : "Enter the tracking ID, then Mark dispatched."}
-                </p> */}
-              </div>
-            ) : null}
-            {(orderDetail as any).status === "dispatch" && (orderDetail as any).trackingId?.trim() ? (
-              <div className="rounded-[var(--radius-md)] border border-border bg-surface-alt p-3">
-                <p className="text-text-muted mb-1 text-xs font-medium uppercase tracking-wider">
-                  Tracking ID
-                </p>
-                <p className="font-mono text-sm">{(orderDetail as any).trackingId.trim()}</p>
-                {/* <p className="mt-2 text-xs text-text-muted">
-                  Tracking cannot be edited after dispatch. Use Mark delivered when appropriate.
-                </p> */}
-              </div>
-            ) : null}
-            <div className="flex flex-wrap gap-2 border-t border-border mt-4 pt-4 justify-end">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setDetailId(null)}
-              >
-                Close
-              </Button>
-              {orderDetail.status === "pending" ||
-                orderDetail.status === "packed" ? (
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => {
-                    void handleStatusChange(
-                      orderLineIds(orderDetail as { id: string; items?: Order[] }),
-                      "cancelled"
-                    );
-                  }}
-                >
-                  Cancel Order
-                </Button>
-              ) : null}
-              {(orderDetail.status === "dispatch" ||
-                orderDetail.status === "delivered") ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void handleReturn()}
-                  loading={returning}
-                >
-                  Return
-                </Button>
-              ) : null}
-              {orderDetail.status === "pending" ? (
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  onClick={() => void markPacked()}
-                  loading={markingPacked}
-                >
-                  Packed
-                </Button>
-              ) : null}
-              {orderDetail.status === "packed" ? (
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  onClick={() => void moveToDispatch()}
-                  loading={dispatching}
-                >
-                  Mark dispatched
-                </Button>
-              ) : null}
-              {orderDetail.status === "dispatch" ? (
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  onClick={() => void confirmDelivered()}
-                  loading={dispatching}
-                >
-                  Mark delivered
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        )}
-      </Modal>
+        products={products}
+        staff={staff}
+        sortedOrderLines={sortedOrderLines}
+        discountEditable={!!discountEditable}
+        discountDraft={discountDraft}
+        onDiscountDraftChange={setDiscountDraft}
+        savingDiscount={savingDiscount}
+        onSaveDiscount={() => void saveDiscount()}
+        trackingDraft={trackingDraft}
+        onTrackingDraftChange={setTrackingDraft}
+        onTrackingBlur={() => void persistTrackingFromBlur()}
+        onCancelOrder={() => {
+          if (!orderDetail) return;
+          void handleStatusChange(orderLineIds(orderDetail), "cancelled");
+        }}
+        onReturn={() => void handleReturn()}
+        onMarkPacked={() => void markPacked()}
+        onMoveToDispatch={() => void moveToDispatch()}
+        onConfirmDelivered={() => void confirmDelivered()}
+        markingPacked={markingPacked}
+        dispatching={dispatching}
+        returning={returning}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router";
+import { PageLoader } from "../components/ui";
 import { ProtectedRoute } from "../components/auth";
 import type { User } from "../types";
 import * as Pages from "./lazyPages";
@@ -10,7 +11,11 @@ interface LayoutRoutesProps {
 
 export function LayoutRoutes({ user }: LayoutRoutesProps) {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <PageLoader minHeight="min-h-[50vh]" label="Loading page…" />
+      }
+    >
     <Routes>
       {/* Staff routes */}
       <Route

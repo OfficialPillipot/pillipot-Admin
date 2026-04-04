@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useState } from "react";
+import { useLocation } from "react-router";
 import { Bars3Icon, MagnifyingGlassIcon, MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import type { User } from "../../types";
 import { CommandPalette } from "./CommandPalette";
@@ -22,6 +23,7 @@ function HeaderComponent({
   themeMode,
   onToggleTheme,
 }: HeaderProps) {
+  const { pathname } = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
 
   const openCommand = useCallback(() => setCommandOpen(true), []);
@@ -52,7 +54,10 @@ function HeaderComponent({
               <Bars3Icon className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
             </button>
           )}
-          <h1 className="min-w-0 truncate text-sm font-semibold tracking-tight text-text-heading sm:text-base md:text-lg">
+          <h1
+            key={pathname}
+            className="animate-admin-header-title min-w-0 truncate text-sm font-semibold tracking-tight text-text-heading sm:text-base md:text-lg"
+          >
             {title}
           </h1>
         </div>

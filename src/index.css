@@ -16,6 +16,7 @@ html {
   font-feature-settings: "kern" 1, "liga" 1;
   /* Mobile: compact rem scale; md+ matches desktop default */
   font-size: 15px;
+  scroll-behavior: smooth;
 }
 
 @media (min-width: 768px) {
@@ -117,5 +118,91 @@ body {
   }
   100% {
     background-position: 0% 100%, 100% 100%, 200% 100%;
+  }
+}
+
+/* —— Admin shell: light motion for route changes & modals (honours reduced motion) —— */
+@keyframes admin-main-pane-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.admin-main-pane-enter {
+  /* forwards only — avoids backwards fill leaving opacity 0 if the class sticks */
+  animation: admin-main-pane-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes admin-header-title-in {
+  from {
+    opacity: 0.4;
+    transform: translateX(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-admin-header-title {
+  animation: admin-header-title-in 0.22s ease-out both;
+}
+
+@keyframes admin-modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes admin-modal-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 640px) {
+  @keyframes admin-modal-panel-in {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}
+
+.admin-modal-backdrop-in {
+  animation: admin-modal-backdrop-in 0.2s ease-out both;
+}
+
+.admin-modal-panel-in {
+  animation: admin-modal-panel-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .admin-main-pane-enter,
+  .animate-admin-header-title,
+  .admin-modal-backdrop-in,
+  .admin-modal-panel-in {
+    animation: none !important;
   }
 }
