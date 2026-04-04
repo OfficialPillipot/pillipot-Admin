@@ -20,7 +20,7 @@ function CardComponent({
   return (
     <div
       className={[
-        "rounded-[var(--radius-2xl)] border border-border bg-surface shadow-[var(--shadow-card)]",
+        "rounded-[var(--radius-2xl)] border border-border bg-surface shadow-[var(--shadow-card)] transition-shadow duration-200 ease-out",
         paddingMap[padding],
         className,
       ]

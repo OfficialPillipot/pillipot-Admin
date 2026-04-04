@@ -250,7 +250,7 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
   }, [user]);
 
   const linkBase =
-    "flex min-h-10 items-center gap-2 rounded-[var(--radius-md)] border-l-2 border-transparent py-1.5 pl-2 pr-2.5 text-xs font-medium transition-colors max-md:gap-2.5 md:min-h-0 md:gap-3 md:py-2 md:pl-2.5 md:pr-3 md:text-sm ";
+    "flex min-h-10 items-center gap-2 rounded-[var(--radius-md)] border-l-2 border-transparent py-1.5 pl-2 pr-2.5 text-xs font-medium transition-colors duration-150 ease-out max-md:gap-2.5 md:min-h-0 md:gap-3 md:py-2 md:pl-2.5 md:pr-3 md:text-sm ";
   const linkActive =
     "border-l-sidebar-accent bg-white/[0.08] text-sidebar-text-active md:bg-white/[0.06]";
   const linkInactive =

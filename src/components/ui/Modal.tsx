@@ -53,13 +53,13 @@ function ModalComponent({
       aria-labelledby="modal-title"
     >
       <div
-        className="absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
+        className="admin-modal-backdrop-in absolute inset-0 bg-zinc-950/60 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
       <div
         className={
-          "relative m-0 flex max-h-[min(92dvh,calc(100vh-0.5rem))] w-full flex-col overflow-hidden rounded-t-[var(--radius-2xl)] border border-border bg-surface shadow-[var(--shadow-dropdown)] sm:m-auto sm:max-h-[min(88dvh,42rem)] sm:rounded-[var(--radius-2xl)] " +
+          "admin-modal-panel-in relative m-0 flex max-h-[min(92dvh,calc(100vh-0.5rem))] w-full flex-col overflow-hidden rounded-t-[var(--radius-2xl)] border border-border bg-surface shadow-[var(--shadow-dropdown)] sm:m-auto sm:max-h-[min(88dvh,42rem)] sm:rounded-[var(--radius-2xl)] " +
           sizeClasses[size]
         }
         onClick={(e) => e.stopPropagation()}

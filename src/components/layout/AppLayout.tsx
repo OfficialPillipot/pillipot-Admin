@@ -2,6 +2,7 @@ import { memo, useLayoutEffect, useState } from "react";
 import { useLocation } from "react-router";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { MainPane } from "./MainPane";
 import type { User } from "../../types";
 
 interface AppLayoutProps {
@@ -116,7 +117,9 @@ function AppLayoutComponent({
           onToggleTheme={toggleTheme}
         />
         <main className="flex-1 overflow-y-auto overflow-x-hidden px-[max(0.625rem,env(safe-area-inset-left))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 pr-[max(0.625rem,env(safe-area-inset-right))] sm:px-[max(1rem,env(safe-area-inset-left))] sm:pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pt-5 sm:pr-[max(1rem,env(safe-area-inset-right))] md:px-[max(1.5rem,env(safe-area-inset-left))] md:pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pt-6 md:pr-[max(1.5rem,env(safe-area-inset-right))]">
-          <div className="mx-auto w-full max-w-[90rem]">{children}</div>
+          <div className="mx-auto w-full max-w-[90rem]">
+            <MainPane>{children}</MainPane>
+          </div>
         </main>
       </div>
     </div>
