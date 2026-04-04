@@ -542,7 +542,9 @@ function CreateOrderPage() {
                 />
               </div>
             </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className={`relative transition-all duration-300 ${!detailsEnabled ? "opacity-50 grayscale select-none" : ""}`}>
+              {!detailsEnabled && <div className="absolute inset-0 z-10 cursor-not-allowed" title="Enter 10-digit phone first" />}
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <Input
                 label="Flat/House/Building Name *"
                 value={form.flatBuilding}
@@ -607,8 +609,10 @@ function CreateOrderPage() {
                 placeholder="District"
               />
             </div>
+            </div>
           </section>
-          <section className="space-y-4 rounded-xl border border-border bg-surface-alt/30 p-4 sm:p-5">
+          <section className={`relative space-y-4 rounded-xl border border-border bg-surface-alt/30 p-4 sm:p-5 transition-all duration-300 ${!detailsEnabled ? "opacity-50 grayscale select-none" : ""}`}>
+            {!detailsEnabled && <div className="absolute inset-0 z-10 cursor-not-allowed" title="Enter 10-digit phone first" />}
             <h3 className="border-b pb-2 text-lg font-bold text-gray-800">Products</h3>
 
             <Select
@@ -893,7 +897,8 @@ function CreateOrderPage() {
               <p className="text-sm font-medium text-red-500">{errors.products}</p>
             )}
           </section>
-          <section className="space-y-4 rounded-[var(--radius-md)] border border-border bg-surface-alt/60 p-4 sm:p-5">
+          <section className={`relative space-y-4 rounded-[var(--radius-md)] border border-border bg-surface-alt/60 p-4 sm:p-5 transition-all duration-300 ${!detailsEnabled ? "opacity-50 grayscale select-none" : ""}`}>
+            {!detailsEnabled && <div className="absolute inset-0 z-10 cursor-not-allowed" title="Enter 10-digit phone first" />}
             <Select
               label="Payment Type"
               options={orderTypeOptions}
@@ -928,7 +933,8 @@ function CreateOrderPage() {
                       : "Delivery total uses the prepaid or COD fee you configured for each product × quantity."}
             </p>
           </section>
-          <section>
+          <section className={`relative transition-all duration-300 ${!detailsEnabled ? "opacity-50 grayscale select-none" : ""}`}>
+            {!detailsEnabled && <div className="absolute inset-0 z-10 cursor-not-allowed" title="Enter 10-digit phone first" />}
             <Textarea
               label="Notes (optional)"
               value={form.notes}
