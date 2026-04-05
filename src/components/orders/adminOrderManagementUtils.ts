@@ -56,14 +56,18 @@ export function rowUniformStatus(
   return row.status;
 }
 
+/**
+ * Bulk toolbar: no action while pending (use order detail to mark packed).
+ * Packed → dispatch; dispatch → delivered.
+ */
 export function nextBulkStep(
   current: OrderStatus,
 ): { next: OrderStatus; label: string } | null {
   switch (current) {
     case "pending":
-      return { next: "packed", label: "Mark packed" };
+      return null;
     case "packed":
-      return { next: "dispatch", label: "Mark dispatched" };
+      return { next: "dispatch", label: "Mark as dispatch" };
     case "dispatch":
       return { next: "delivered", label: "Mark delivered" };
     default:

@@ -159,6 +159,32 @@ function AdminOrderManagementPage() {
 
   const filteredOrders = groupedOrders;
 
+  const filteredHeadIdSet = useMemo(
+    () => new Set(filteredOrders.map((o) => o.id)),
+    [filteredOrders],
+  );
+
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (filteredHeadIdSet.has(id)) next.add(id);
+      }
+      if (next.size === prev.size) {
+        for (const id of prev) {
+          if (!next.has(id)) return next;
+        }
+        return prev;
+      }
+      return next;
+    });
+  }, [filteredHeadIdSet]);
+
+  const selectedVisibleCount = useMemo(
+    () => filteredOrders.filter((o) => selectedIds.has(o.id)).length,
+    [filteredOrders, selectedIds],
+  );
+
   const totalPages = Math.max(
     1,
     Math.ceil(listTotal / ADMIN_ORDERS_PAGE_SIZE),
@@ -555,11 +581,14 @@ function AdminOrderManagementPage() {
   }, []);
 
   const downloadSelectedPdf = useCallback(async () => {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
+    const ids = filteredOrders
+      .filter((o) => selectedIds.has(o.id))
+      .flatMap((g) => orderLineIds(g as { id: string; items?: Order[] }));
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return;
     setBulkPdfLoading(true);
     try {
-      await downloadBulkOrdersPdf(ids, `orders-${Date.now()}.pdf`, {
+      await downloadBulkOrdersPdf(unique, `orders-${Date.now()}.pdf`, {
         size: settings?.defaultPdfSize ?? "thermal",
       });
       toast.success("Selected orders PDF downloaded");
@@ -568,10 +597,10 @@ function AdminOrderManagementPage() {
     } finally {
       setBulkPdfLoading(false);
     }
-  }, [selectedIds, settings?.defaultPdfSize]);
+  }, [selectedIds, filteredOrders, settings?.defaultPdfSize]);
 
   const bulkAdvanceAction = useMemo((): AdminBulkAdvanceAction => {
-    if (selectedIds.size === 0) return null;
+    if (selectedVisibleCount === 0) return null;
     const rows = filteredOrders.filter((o) => selectedIds.has(o.id));
     if (rows.length === 0) return null;
 
@@ -607,23 +636,15 @@ function AdminOrderManagementPage() {
       current,
       next: step.next,
       label: step.label,
-      hint:
-        step.next === "dispatch"
-          ? ""
-          : undefined,
     };
-  }, [selectedIds, filteredOrders]);
+  }, [selectedVisibleCount, selectedIds, filteredOrders]);
 
   const applyBulkAdvance = useCallback(
     async (next: OrderStatus) => {
       const lineIds: string[] = [];
-      for (const sid of selectedIds) {
-        const g = filteredOrders.find((o) => o.id === sid);
-        if (g) {
-          lineIds.push(...orderLineIds(g as { id: string; items?: Order[] }));
-        } else {
-          lineIds.push(sid);
-        }
+      for (const g of filteredOrders) {
+        if (!selectedIds.has(g.id)) continue;
+        lineIds.push(...orderLineIds(g as { id: string; items?: Order[] }));
       }
       const unique = [...new Set(lineIds)];
       if (unique.length === 0) return;
@@ -727,7 +748,7 @@ function AdminOrderManagementPage() {
           appliedOrderId={appliedOrderId}
         />
         <AdminOrderBulkBar
-          selectedCount={selectedIds.size}
+          selectedCount={selectedVisibleCount}
           bulkAdvanceAction={bulkAdvanceAction}
           bulkStatusLoading={bulkStatusLoading}
           bulkPdfLoading={bulkPdfLoading}
