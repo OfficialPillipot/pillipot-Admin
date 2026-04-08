@@ -11,7 +11,12 @@ import {
 } from "../../lib/header-notifications";
 import type { BlogFeedItem, StaffEnquiryListRow, User } from "../../types";
 
-const POLL_MS = 45_000;
+const POLL_MS = 25_000;
+
+function postPublishedMs(iso: string): number {
+  const n = new Date(iso).getTime();
+  return Number.isFinite(n) ? n : 0;
+}
 
 function badgeLabel(n: number): string {
   if (n <= 0) return "Notifications";
@@ -31,23 +36,22 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
   const refresh = useCallback(async () => {
     if (isStaff) {
       try {
-        const feed = await api.get<BlogFeedItem[]>(endpoints.blogStaffFeed);
-        let last = localStorage.getItem(LS_STAFF_BLOG_LAST_SEEN);
-        if (!last && feed.length > 0) {
-          const maxT = feed.reduce(
-            (m, p) => Math.max(m, new Date(p.publishedAt).getTime()),
-            0,
-          );
-          last = new Date(maxT).toISOString();
-          localStorage.setItem(LS_STAFF_BLOG_LAST_SEEN, last);
-          setBlogUnread(0);
-        } else if (!last) {
-          setBlogUnread(0);
+        const feed = await api.get<BlogFeedItem[]>(endpoints.blogStaffFeed, {
+          silent: true,
+        });
+        const last = localStorage.getItem(LS_STAFF_BLOG_LAST_SEEN);
+        if (!last) {
+          // Do not write last_seen here — only StaffBlog / StaffBlogPost set it after
+          // the user actually opens the feed or a post. Otherwise every post looked
+          // "read" before staff ever saw the blog.
+          setBlogUnread(feed.length);
         } else {
           const t = new Date(last).getTime();
-          setBlogUnread(
-            feed.filter((p) => new Date(p.publishedAt).getTime() > t).length,
-          );
+          if (!Number.isFinite(t)) {
+            setBlogUnread(feed.length);
+          } else {
+            setBlogUnread(feed.filter((p) => postPublishedMs(p.publishedAt) > t).length);
+          }
         }
       } catch {
         /* ignore poll errors */
@@ -58,6 +62,7 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
       try {
         const rows = await api.get<StaffEnquiryListRow[]>(
           endpoints.staffEnquiriesAdmin,
+          { silent: true },
         );
         const openRows = rows.filter((r) => r.status === "open");
         const last = localStorage.getItem(LS_ADMIN_ENQUIRY_LAST_SEEN);
@@ -85,6 +90,18 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
     const onRefresh = () => void refresh();
     window.addEventListener(HEADER_NOTIFICATIONS_REFRESH, onRefresh);
     return () => window.removeEventListener(HEADER_NOTIFICATIONS_REFRESH, onRefresh);
+  }, [refresh]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
   }, [refresh]);
 
   useEffect(() => {

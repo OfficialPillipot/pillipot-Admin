@@ -48,7 +48,7 @@ function StaffBlogPostPage() {
     const prev = localStorage.getItem(LS_STAFF_BLOG_LAST_SEEN);
     const prevT = prev ? new Date(prev).getTime() : 0;
     if (t > prevT) {
-      localStorage.setItem(LS_STAFF_BLOG_LAST_SEEN, post.publishedAt);
+      localStorage.setItem(LS_STAFF_BLOG_LAST_SEEN, new Date(t).toISOString());
       dispatchNotificationsRefresh();
     }
   }, [post]);

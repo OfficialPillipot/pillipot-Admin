@@ -20,7 +20,7 @@ function CardComponent({
   return (
     <div
       className={[
-        "rounded-[var(--radius-2xl)] border border-border bg-surface shadow-[var(--shadow-card)] transition-shadow duration-200 ease-out",
+        "rounded-[var(--radius-xl)] border border-border/90 bg-surface shadow-[var(--shadow-card)] transition-shadow duration-200 ease-out md:rounded-[var(--radius-2xl)]",
         paddingMap[padding],
         className,
       ]
@@ -47,9 +47,9 @@ export const CardHeader = memo(function CardHeader({
   action,
 }: CardHeaderProps) {
   return (
-    <div className="mb-3 flex flex-col gap-2 sm:mb-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-2 md:gap-3">
+    <div className="mb-4 flex flex-col gap-3 border-b border-border/70 pb-4 sm:mb-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 md:gap-4">
       <div className="min-w-0 flex-1">
-        <h2 className="text-base font-semibold tracking-tight text-text-heading md:text-lg lg:text-xl">
+        <h2 className="text-lg font-semibold tracking-tight text-text-heading md:text-xl">
           {title}
         </h2>
         {subtitle ? (
@@ -58,10 +58,9 @@ export const CardHeader = memo(function CardHeader({
           </p>
         ) : null}
       </div>
-      {action && (
-        <div className="shrink-0 sm:self-start ml-auto">
-          {action}
-        </div>
-      )}    </div>
+      {action ? (
+        <div className="ml-auto shrink-0 sm:self-start">{action}</div>
+      ) : null}
+    </div>
   );
 });

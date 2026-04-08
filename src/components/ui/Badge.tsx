@@ -10,13 +10,15 @@ type Variant =
   | "muted";
 
 const variantClasses: Record<Variant, string> = {
-  default: "bg-surface border border-border text-text",
-  success: "bg-success-bg text-success",
-  warning: "bg-warning-bg text-warning",
-  error: "bg-error-bg text-error",
-  info: "bg-info-bg text-info",
-  packed: "bg-violet-100 text-violet-900 border border-violet-200",
-  muted: "bg-slate-200 text-slate-800 border border-slate-300",
+  default: "border border-border/90 bg-surface text-text",
+  success: "border-0 bg-success-bg text-success",
+  warning: "border-0 bg-warning-bg text-warning",
+  error: "border-0 bg-error-bg text-error",
+  info: "border-0 bg-info-bg text-info",
+  packed:
+    "border-0 bg-violet-100 text-violet-900 dark:bg-violet-950/55 dark:text-violet-200",
+  muted:
+    "border border-border/80 bg-slate-100 text-slate-700 dark:bg-zinc-800 dark:text-zinc-300",
 };
 
 interface BadgeProps {
@@ -29,7 +31,7 @@ function BadgeComponent({ children, variant = "default", className = "" }: Badge
   return (
     <span
       className={[
-        "inline-flex items-center rounded-[var(--radius-sm)] px-1.5 py-0.5 text-[10px] font-medium md:px-2 md:text-xs",
+        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium leading-none",
         variantClasses[variant],
         className,
       ].join(" ")}

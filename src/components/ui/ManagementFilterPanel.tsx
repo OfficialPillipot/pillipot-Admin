@@ -10,7 +10,7 @@ export const MANAGEMENT_NATIVE_CONTROL_CLASS =
   "w-full min-h-[2.5rem] rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text-heading shadow-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary";
 
 const panelClass =
-  "rounded-[var(--radius-xl)] border border-border bg-surface-alt/40 p-4 dark:bg-surface-alt/20 md:p-5";
+  "rounded-[var(--radius-xl)] border border-border/80 bg-surface p-4 shadow-sm md:p-5";
 
 const gridClass =
   "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 [&>*]:min-w-0";

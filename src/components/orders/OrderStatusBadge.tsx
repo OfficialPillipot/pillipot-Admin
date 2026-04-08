@@ -10,7 +10,10 @@ export const OrderStatusBadge = memo(function OrderStatusBadge({
   uniform,
 }: Props) {
   return (
-    <Badge variant={orderStatusToBadgeVariant(uniform)}>
+    <Badge
+      variant={orderStatusToBadgeVariant(uniform)}
+      className="capitalize"
+    >
       {formatOrderStatusLabel(uniform)}
     </Badge>
   );

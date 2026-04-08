@@ -9,12 +9,16 @@
   --color-primary-muted: #eef2ff;
   --color-primary-dark: #3730a3;
 
-  /* Surfaces — soft gray canvas, crisp cards */
+  /* Surfaces — cool gray canvas, crisp white cards (dashboard / table UIs) */
   --color-surface: #ffffff;
-  --color-surface-alt: #f4f4f5;
+  --color-surface-alt: #f1f5f9;
   --color-surface-elevated: #ffffff;
-  --color-border: #e4e4e7;
-  --color-border-strong: #d4d4d8;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  /* Table regions */
+  --color-table-header-bg: #f8fafc;
+  --color-table-row-hover: #f1f5f9;
 
   /* Text — zinc scale */
   --color-text: #3f3f46;
@@ -53,9 +57,11 @@
   --radius-xl: 1rem;
   --radius-2xl: 1.25rem;
 
-  /* Flatter, Zenith-like elevation */
-  --shadow-card: 0 1px 2px 0 rgb(24 24 27 / 0.04), 0 1px 3px 0 rgb(24 24 27 / 0.06);
-  --shadow-card-lg: 0 4px 6px -1px rgb(24 24 27 / 0.05), 0 2px 4px -2px rgb(24 24 27 / 0.04);
+  /* Soft elevation — readable cards without heavy drop shadow */
+  --shadow-card:
+    0 1px 2px rgb(15 23 42 / 0.04), 0 4px 12px rgb(15 23 42 / 0.06);
+  --shadow-card-lg:
+    0 2px 4px rgb(15 23 42 / 0.04), 0 8px 20px rgb(15 23 42 / 0.06);
   --shadow-dropdown: 0 10px 15px -3px rgb(24 24 27 / 0.08), 0 4px 6px -4px rgb(24 24 27 / 0.05);
   --shadow-header: 0 1px 0 0 rgb(24 24 27 / 0.06);
 }
@@ -71,6 +77,9 @@
   --color-surface-elevated: #27272a;
   --color-border: #3f3f46;
   --color-border-strong: #52525b;
+
+  --color-table-header-bg: #18181b;
+  --color-table-row-hover: #27272a;
 
   --color-text: #e4e4e7;
   --color-text-muted: #a1a1aa;

@@ -75,7 +75,7 @@ function TableComponent<T>({
     return (
       <div
         className={
-          "rounded-[var(--radius-2xl)] border border-border bg-surface py-10 text-center text-xs text-text-muted shadow-[var(--shadow-card)] md:py-14 md:text-sm " +
+          "rounded-[var(--radius-xl)] border border-border/80 bg-surface py-12 text-center text-sm text-text-muted md:rounded-[var(--radius-2xl)] md:py-16 md:text-base " +
           className
         }
       >
@@ -103,18 +103,18 @@ function TableComponent<T>({
     <div
       className={
         mobileCards
-          ? "hidden md:block overflow-x-auto overscroll-x-contain rounded-[var(--radius-2xl)] border border-border bg-surface shadow-[var(--shadow-card)] [-webkit-overflow-scrolling:touch]"
-          : "overflow-x-auto overscroll-x-contain rounded-[var(--radius-2xl)] border border-border bg-surface shadow-[var(--shadow-card)] [-webkit-overflow-scrolling:touch]"
+          ? "hidden md:block overflow-x-auto overscroll-x-contain rounded-[var(--radius-xl)] border border-border/80 bg-surface [-webkit-overflow-scrolling:touch] md:rounded-[var(--radius-2xl)]"
+          : "overflow-x-auto overscroll-x-contain rounded-[var(--radius-xl)] border border-border/80 bg-surface [-webkit-overflow-scrolling:touch] md:rounded-[var(--radius-2xl)]"
       }
     >
-      <table className="w-full min-w-[600px] text-left text-xs md:text-sm">
+      <table className="w-full min-w-[600px] text-left text-sm">
         <thead>
-          <tr className="border-b border-border bg-surface-alt">
+          <tr className="border-b border-border/90 bg-[var(--color-table-header-bg)]">
             {columns.map((col) => (
               <th
                 key={col.key}
                 className={
-                  "whitespace-nowrap px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-text-muted first:pl-3 last:pr-3 sm:px-4 sm:py-3 sm:text-xs md:px-4 " +
+                  "whitespace-nowrap px-3 py-3.5 text-left text-xs font-semibold tracking-tight text-text-heading first:pl-4 last:pr-4 md:px-4 md:py-4 " +
                   (col.className ?? "")
                 }
               >
@@ -123,17 +123,17 @@ function TableComponent<T>({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-border">
+        <tbody className="divide-y divide-border/80">
           {data.map((row) => (
             <tr
               key={keyExtractor(row)}
-              className="transition-colors hover:bg-surface-alt/60"
+              className="transition-colors hover:bg-[var(--color-table-row-hover)]"
             >
               {columns.map((col) => (
                 <td
                   key={col.key}
                   className={
-                    "px-2 py-2 align-middle text-text first:pl-3 last:pr-3 sm:px-4 sm:py-3 " +
+                    "px-3 py-3.5 align-middle text-sm text-text first:pl-4 last:pr-4 md:px-4 md:py-4 " +
                     (col.className ?? "")
                   }
                 >
@@ -157,9 +157,9 @@ function TableComponent<T>({
         {data.map((row) => (
           <article
             key={keyExtractor(row)}
-            className="overflow-hidden rounded-[var(--radius-2xl)] border border-border bg-surface shadow-[var(--shadow-card-lg)] [touch-action:manipulation]"
+            className="overflow-hidden rounded-[var(--radius-xl)] border border-border/80 bg-surface shadow-[var(--shadow-card)] [touch-action:manipulation]"
           >
-            <div className="flex items-center gap-1.5 border-b border-border bg-surface px-2.5 py-2 sm:gap-2 sm:px-3 sm:py-2.5">
+            <div className="flex items-center gap-1.5 border-b border-border/80 bg-[var(--color-table-header-bg)] px-3 py-2.5 sm:gap-2 sm:px-4 sm:py-3">
               {headerStartColumns.length > 0 ? (
                 <div className="flex shrink-0 items-center gap-1">
                   {headerStartColumns.map((col) => (
@@ -185,13 +185,13 @@ function TableComponent<T>({
                 </div>
               ) : null}
             </div>
-            <dl className="divide-y divide-border">
+            <dl className="divide-y divide-border/80">
               {bodyColumns.map((col) => (
                 <div
                   key={col.key}
-                  className="flex gap-2 px-2.5 py-2 text-xs leading-snug sm:gap-3 sm:px-3 sm:py-2.5 sm:text-sm"
+                  className="flex gap-2 px-3 py-2.5 text-xs leading-snug sm:gap-3 sm:px-4 sm:py-3 sm:text-sm"
                 >
-                  <dt className="w-[40%] shrink-0 text-[10px] font-medium uppercase tracking-wide text-text-muted sm:w-[38%] sm:text-xs">
+                  <dt className="w-[40%] shrink-0 text-[11px] font-medium tracking-tight text-text-muted sm:w-[38%] sm:text-xs">
                     {columnLabel(col)}
                   </dt>
                   <dd className="min-w-0 flex-1 text-right text-xs font-medium text-text-heading [word-break:break-word] sm:text-sm">
