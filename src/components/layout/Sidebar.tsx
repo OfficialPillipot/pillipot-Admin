@@ -311,7 +311,7 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
           </button>
         </Tooltip>
       </div>
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <nav className="sidebar-scroll flex-1 overflow-y-auto overflow-x-hidden p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {navSections.map((section, sectionIndex) => (
           <div
             key={section.title}
