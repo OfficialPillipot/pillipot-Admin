@@ -49,6 +49,90 @@ function splitDeliveryAddress(deliveryAddress: string): { flat: string; area: st
   return { flat: t.slice(0, i).trim(), area: t.slice(i + 1).trim() };
 }
 
+/** Extract 10-digit Indian mobile from pasted text (handles +91, spaces). */
+function extractPhoneDigits(blob: string): string {
+  const digits = blob.replace(/\D/g, "");
+  for (let i = Math.max(0, digits.length - 12); i <= digits.length - 10; i++) {
+    const slice = digits.slice(i, i + 10);
+    if (/^[6-9]\d{9}$/.test(slice)) return slice;
+  }
+  const m = blob.match(/\b(\d{10})\b/);
+  return m && /^[6-9]\d{9}$/.test(m[1]) ? m[1] : "";
+}
+
+/**
+ * Fill customer fields from a WhatsApp / notes paste (name, phone, address, pincode, email).
+ * User can still edit after applying.
+ */
+function parsePastedCustomerDetails(text: string): Partial<typeof INITIAL> {
+  const out: Partial<typeof INITIAL> = {};
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  const blob = lines.join("\n");
+
+  const phone = extractPhoneDigits(blob);
+  if (phone) out.phone = phone;
+
+  const pinM = blob.match(/\b(\d{6})\b/);
+  if (pinM) out.pincode = pinM[1];
+
+  const emailM = blob.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  if (emailM) out.email = emailM[0];
+
+  let work = [...lines];
+
+  const nameLabel = work.findIndex((l) => /^name\s*[:：.-]\s*\S/i.test(l));
+  if (nameLabel >= 0) {
+    out.customerName = work[nameLabel].replace(/^name\s*[:：.-]\s*/i, "").trim();
+    work.splice(nameLabel, 1);
+  }
+
+  work = work.filter((l) => {
+    if (/^phone\s*[:：.-]/i.test(l) || /^mobile\s*[:：.-]/i.test(l)) return false;
+    const d = l.replace(/\D/g, "");
+    if (phone && (d === phone || (d.length >= 10 && d.endsWith(phone)))) return false;
+    return true;
+  });
+
+  work = work.filter((l) => !(out.email && l.includes(out.email)));
+
+  work = work.filter((l) => {
+    const t = l.trim();
+    if (/^\d{6}$/.test(t)) return false;
+    return true;
+  });
+
+  const addrLabelIdx = work.findIndex((l) =>
+    /^(address|addr|delivery|shipping)\s*[:：.-]/i.test(l),
+  );
+  if (addrLabelIdx >= 0) {
+    const raw = work[addrLabelIdx].replace(
+      /^(address|addr|delivery|shipping)\s*[:：.-]\s*/i,
+      "",
+    );
+    work.splice(addrLabelIdx, 1);
+    if (raw.trim()) {
+      work.unshift(raw.trim());
+    }
+  }
+
+  if (!out.customerName && work[0]) {
+    out.customerName = work[0];
+    work = work.slice(1);
+  }
+
+  const addrStr = work.join(", ").replace(/\s+/g, " ").trim();
+  if (addrStr) {
+    const { flat, area } = splitDeliveryAddress(addrStr);
+    out.flatBuilding = flat || addrStr;
+    out.areaSector = area;
+  }
+
+  return out;
+}
+
 /** API may send price as number or decimal string */
 function catalogUnitPrice(p: Product | undefined): number {
   if (!p) return 0;
@@ -71,6 +155,17 @@ const UNCATEGORIZED_KEY = "__uncategorized__";
 
 function productCategoryKey(p: Product): string {
   return p.categoryId ?? UNCATEGORIZED_KEY;
+}
+
+/**
+ * Create-order API still expects a valid email string. When staff leaves email blank,
+ * send a stable synthetic address (per phone) so validation passes — no UI validation.
+ */
+function emailForCreateOrderApi(typed: string, phoneDigits: string): string {
+  const t = typed.trim();
+  if (t) return t;
+  const p = phoneDigits.replace(/\D/g, "").slice(-10) || "unknown";
+  return `noemail.${p}@example.com`;
 }
 
 function CreateOrderPage() {
@@ -102,6 +197,9 @@ function CreateOrderPage() {
   const [deliveryOptions, setDeliveryOptions] = useState<DeliveryOptionForCart[]>([]);
   const [deliveryLoading, setDeliveryLoading] = useState(false);
   const [selectedDeliveryMethodId, setSelectedDeliveryMethodId] = useState("");
+  const [pasteModalOpen, setPasteModalOpen] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [pasteReading, setPasteReading] = useState(false);
   const editingOrder = useMemo(
     () => (editOrderId ? orders.find((o) => o.id === editOrderId) ?? null : null),
     [editOrderId, orders]
@@ -519,7 +617,7 @@ function CreateOrderPage() {
               phone: form.phone.trim(),
               pincode: form.pincode.trim(),
               postOffice: form.postOffice.trim(),
-              email: form.email.trim(),
+              email: emailForCreateOrderApi(form.email, form.phone),
               state: form.state.trim(),
               district: form.district.trim(),
               orderType: form.orderType as OrderType,
@@ -595,6 +693,50 @@ function CreateOrderPage() {
     setErrors((er) => ({ ...er, [field]: "" }));
   }, []);
 
+  const readClipboard = useCallback(async () => {
+    setPasteReading(true);
+    try {
+      const t = await navigator.clipboard.readText();
+      setPasteText(t);
+      toast.success("Loaded from clipboard");
+    } catch {
+      toast.error("Could not read clipboard — paste manually (⌘V / Ctrl+V)");
+    } finally {
+      setPasteReading(false);
+    }
+  }, []);
+
+  const applyPaste = useCallback(() => {
+    const raw = pasteText.trim();
+    if (!raw) {
+      toast.error("Paste customer details first");
+      return;
+    }
+    const parsed = parsePastedCustomerDetails(raw);
+    const entries = Object.entries(parsed).filter(
+      (e): e is [keyof typeof INITIAL, string] =>
+        typeof e[1] === "string" && (e[1] as string).trim().length > 0,
+    );
+    if (entries.length === 0) {
+      toast.warning("Could not detect details — include name, phone, or address and try again");
+      return;
+    }
+    setForm((f) => {
+      const next = { ...f };
+      for (const [k, v] of entries) {
+        (next as Record<string, string>)[k as string] = v.trim();
+      }
+      return next;
+    });
+    setErrors((e) => {
+      const next = { ...e };
+      for (const [k] of entries) delete next[k as string];
+      return next;
+    });
+    setPasteModalOpen(false);
+    toast.success("Details applied — complete state, district, and post office if needed");
+  }, [pasteText]);
+
   return (
     <div className="mx-auto max-w-3xl px-1 sm:px-2">
       <Card>
@@ -604,7 +746,18 @@ function CreateOrderPage() {
         />
         <form onSubmit={handleSubmit} className="space-y-5">
           <section className="rounded-xl border border-border bg-surface-alt/30 p-4 sm:p-5">
-            <h3 className="mb-3 text-base font-semibold text-text-heading">Customer details</h3>
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="text-base font-semibold text-text-heading">Customer details</h3>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="shrink-0 self-start sm:self-auto"
+                onClick={() => setPasteModalOpen(true)}
+              >
+                Paste from clipboard
+              </Button>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 label="Customer Name *"
@@ -673,13 +826,15 @@ function CreateOrderPage() {
             </div>
             <div className="mt-4">
               <Input
-                label="Email"
-                type="email"
+                label="Email (optional)"
+                type="text"
+                inputMode="email"
+                autoComplete="email"
                 value={form.email}
                 onChange={(e) => update("email", e.target.value)}
                 error={errors.email}
                 disabled={!detailsEnabled}
-                placeholder="Email "
+                placeholder="Leave blank if not available"
               />
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -1086,6 +1241,47 @@ function CreateOrderPage() {
               }}
             >
               Save Add-on
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={pasteModalOpen}
+        onClose={() => setPasteModalOpen(false)}
+        title="Paste customer details"
+        size="xl"
+      >
+        <div className="space-y-4 pt-1">
+          <p className="text-sm text-text-muted leading-relaxed">
+            Copy the full customer message from WhatsApp (or notes), then tap{" "}
+            <span className="font-medium text-text-heading">Read from clipboard</span> or paste
+            here (⌘V / Ctrl+V). We try to fill name, phone, address, PIN, and email — you can edit
+            anything after applying.
+          </p>
+          <Textarea
+            label="Pasted text"
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            rows={12}
+            placeholder={
+              "Example:\nRavi Kumar\n9876543210\n12 Main Street, Area Name\nErode, Tamil Nadu 638001"
+            }
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              loading={pasteReading}
+              onClick={() => void readClipboard()}
+            >
+              Read from clipboard
+            </Button>
+            <Button type="button" onClick={applyPaste}>
+              Apply to form
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setPasteModalOpen(false)}>
+              Cancel
             </Button>
           </div>
         </div>
