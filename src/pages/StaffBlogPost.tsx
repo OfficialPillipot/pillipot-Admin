@@ -11,6 +11,10 @@ import { endpoints } from "../api/endpoints";
 import { Card, CardHeader, Button } from "../components/ui";
 import { BlogCommentsPanel } from "../components/blog/BlogCommentsPanel";
 import { toast } from "../lib/toast";
+import {
+  LS_STAFF_BLOG_LAST_SEEN,
+  dispatchNotificationsRefresh,
+} from "../lib/header-notifications";
 import type { BlogPostDetail } from "../types";
 
 function StaffBlogPostPage() {
@@ -36,6 +40,17 @@ function StaffBlogPostPage() {
   useEffect(() => {
     void loadPost();
   }, [loadPost]);
+
+  useEffect(() => {
+    if (!post) return;
+    const t = new Date(post.publishedAt).getTime();
+    const prev = localStorage.getItem(LS_STAFF_BLOG_LAST_SEEN);
+    const prevT = prev ? new Date(prev).getTime() : 0;
+    if (t > prevT) {
+      localStorage.setItem(LS_STAFF_BLOG_LAST_SEEN, post.publishedAt);
+      dispatchNotificationsRefresh();
+    }
+  }, [post]);
 
   const bumpCommentCount = useCallback(() => {
     setPost((prev) =>

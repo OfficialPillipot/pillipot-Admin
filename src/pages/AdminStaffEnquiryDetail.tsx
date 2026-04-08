@@ -8,6 +8,10 @@ import { Card, CardHeader, Button, Textarea, Select } from "../components/ui";
 import { hasPermission } from "../lib/permissions";
 import { toast } from "../lib/toast";
 import { formatDateTime } from "../lib/orderUtils";
+import {
+  LS_ADMIN_ENQUIRY_LAST_SEEN,
+  dispatchNotificationsRefresh,
+} from "../lib/header-notifications";
 import type { StaffEnquiryDetail, StaffEnquiryReply, StaffEnquiryStatus } from "../types";
 import type { SelectOption } from "../components/ui/Select";
 
@@ -46,6 +50,17 @@ function AdminStaffEnquiryDetailPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!detail) return;
+    const t = new Date(detail.updatedAt).getTime();
+    const prev = localStorage.getItem(LS_ADMIN_ENQUIRY_LAST_SEEN);
+    const prevT = prev ? new Date(prev).getTime() : 0;
+    if (t > prevT) {
+      localStorage.setItem(LS_ADMIN_ENQUIRY_LAST_SEEN, detail.updatedAt);
+      dispatchNotificationsRefresh();
+    }
+  }, [detail]);
 
   const sendReply = useCallback(async () => {
     if (!id || !detail || !canUpdate) return;

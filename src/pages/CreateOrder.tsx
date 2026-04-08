@@ -1252,8 +1252,8 @@ function CreateOrderPage() {
         title="Paste customer details"
         size="xl"
       >
-        <div className="space-y-4 pt-1">
-          <p className="text-sm text-text-muted leading-relaxed">
+        <div className="space-y-4 pt-1 max-md:[&_label]:text-[14px] max-md:[&_label]:leading-snug">
+          <p className="text-base text-text-muted leading-relaxed md:text-sm">
             Copy the full customer message from WhatsApp (or notes), then tap{" "}
             <span className="font-medium text-text-heading">Read from clipboard</span> or paste
             here (⌘V / Ctrl+V). We try to fill name, phone, address, PIN, and email — you can edit
@@ -1264,6 +1264,7 @@ function CreateOrderPage() {
             value={pasteText}
             onChange={(e) => setPasteText(e.target.value)}
             rows={12}
+            className="!text-[14px] md:!text-sm"
             placeholder={
               "Example:\nRavi Kumar\n9876543210\n12 Main Street, Area Name\nErode, Tamil Nadu 638001"
             }

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import { api } from "../api/client";
@@ -6,17 +6,24 @@ import { endpoints } from "../api/endpoints";
 import { Card, CardHeader, Table } from "../components/ui";
 import { toast } from "../lib/toast";
 import { formatDateTime } from "../lib/orderUtils";
+import {
+  LS_ADMIN_ENQUIRY_LAST_SEEN,
+  dispatchNotificationsRefresh,
+} from "../lib/header-notifications";
 import type { StaffEnquiryListRow } from "../types";
 
 function AdminStaffEnquiriesPage() {
   const [rows, setRows] = useState<StaffEnquiryListRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const listFetchOk = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    listFetchOk.current = false;
     try {
       const data = await api.get<StaffEnquiryListRow[]>(endpoints.staffEnquiriesAdmin);
       setRows(data);
+      listFetchOk.current = true;
     } catch (e) {
       toast.fromError(e, "Could not load enquiries");
     } finally {
@@ -27,6 +34,19 @@ function AdminStaffEnquiriesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (loading || !listFetchOk.current) return;
+    const maxU =
+      rows.length > 0
+        ? Math.max(...rows.map((r) => new Date(r.updatedAt).getTime()))
+        : Date.now();
+    localStorage.setItem(
+      LS_ADMIN_ENQUIRY_LAST_SEEN,
+      new Date(maxU).toISOString(),
+    );
+    dispatchNotificationsRefresh();
+  }, [loading, rows]);
 
   return (
     <div className="space-y-4">

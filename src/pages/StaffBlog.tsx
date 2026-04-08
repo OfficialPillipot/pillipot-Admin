@@ -5,6 +5,10 @@ import { api } from "../api/client";
 import { endpoints } from "../api/endpoints";
 import { Card, CardHeader, Badge } from "../components/ui";
 import { toast } from "../lib/toast";
+import {
+  LS_STAFF_BLOG_LAST_SEEN,
+  dispatchNotificationsRefresh,
+} from "../lib/header-notifications";
 import type { BlogFeedItem } from "../types";
 
 function formatBlogDate(iso: string) {
@@ -36,6 +40,15 @@ function StaffBlogPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (loading || items.length === 0) return;
+    const maxT = Math.max(
+      ...items.map((p) => new Date(p.publishedAt).getTime()),
+    );
+    localStorage.setItem(LS_STAFF_BLOG_LAST_SEEN, new Date(maxT).toISOString());
+    dispatchNotificationsRefresh();
+  }, [loading, items]);
 
   return (
     <div className="space-y-4">

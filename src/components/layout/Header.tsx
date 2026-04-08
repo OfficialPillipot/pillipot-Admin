@@ -3,6 +3,7 @@ import { useLocation } from "react-router";
 import { Bars3Icon, MagnifyingGlassIcon, MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import type { User } from "../../types";
 import { CommandPalette } from "./CommandPalette";
+import { HeaderNotifications } from "./HeaderNotifications";
 
 interface HeaderProps {
   title: string;
@@ -86,6 +87,7 @@ function HeaderComponent({
           </button>
         </div>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3 md:pl-2">
+          <HeaderNotifications user={user} />
           <button
             type="button"
             onClick={onToggleTheme}
