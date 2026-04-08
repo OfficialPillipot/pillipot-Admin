@@ -60,8 +60,13 @@ function CustomerManagementPage() {
       {
         key: "deliveryAddress",
         header: "Address",
+        className:
+          "min-w-0 max-w-[14rem] align-top sm:max-w-[16rem] md:max-w-[18rem] lg:max-w-[20rem]",
         render: (row: Customer) => (
-          <span className="max-w-[220px] truncate text-sm" title={row.deliveryAddress}>
+          <span
+            className="block max-w-full whitespace-normal break-words text-sm leading-relaxed text-text"
+            title={row.deliveryAddress}
+          >
             {row.deliveryAddress}
           </span>
         ),

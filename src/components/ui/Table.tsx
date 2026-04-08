@@ -133,7 +133,7 @@ function TableComponent<T>({
                 <td
                   key={col.key}
                   className={
-                    "px-3 py-3.5 align-middle text-sm text-text first:pl-4 last:pr-4 md:px-4 md:py-4 " +
+                    "px-3 py-3.5 align-top text-sm text-text first:pl-4 last:pr-4 md:px-4 md:py-4 " +
                     (col.className ?? "")
                   }
                 >
