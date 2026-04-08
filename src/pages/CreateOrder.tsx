@@ -255,9 +255,9 @@ function CreateOrderPage() {
     setAddOn(
       editingOrder.addOnAmount != null
         ? {
-            amount: String(editingOrder.addOnAmount),
-            note: editingOrder.addOnNote ?? "",
-          }
+          amount: String(editingOrder.addOnAmount),
+          note: editingOrder.addOnNote ?? "",
+        }
         : null
     );
   }, [editingOrder, products]);
@@ -789,72 +789,72 @@ function CreateOrderPage() {
             <div className={`relative transition-all duration-300 ${!detailsEnabled ? "opacity-50 grayscale select-none" : ""}`}>
               {!detailsEnabled && <div className="absolute inset-0 z-10 cursor-not-allowed" title="Enter 10-digit phone first" />}
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Input
-                label="Flat/House/Building Name *"
-                value={form.flatBuilding}
-                onChange={(e) => update("flatBuilding", e.target.value)}
-                error={errors.flatBuilding}
-                disabled={!detailsEnabled}
-                placeholder="Flat/House/Building Name"
-              />
-              <Input
-                label="Area/Sector/Locality *"
-                value={form.areaSector}
-                onChange={(e) => update("areaSector", e.target.value)}
-                error={errors.areaSector}
-                disabled={!detailsEnabled}
-                placeholder="Area/Sector/Locality"
-              />
-            </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Input
-                label="Pincode *"
-                value={form.pincode}
-                onChange={(e) => update("pincode", e.target.value.replace(/\D/g, "").slice(0, 6))}
-                error={errors.pincode}
-                disabled={!detailsEnabled}
-                placeholder="Pincode"
-              />
-              <Input
-                label="Post Office *"
-                value={form.postOffice}
-                onChange={(e) => update("postOffice", e.target.value)}
-                error={errors.postOffice}
-                disabled={!detailsEnabled}
-                placeholder="Post Office"
-              />
-            </div>
-            <div className="mt-4">
-              <Input
-                label="Email (optional)"
-                type="text"
-                inputMode="email"
-                autoComplete="email"
-                value={form.email}
-                onChange={(e) => update("email", e.target.value)}
-                error={errors.email}
-                disabled={!detailsEnabled}
-                placeholder="Leave blank if not available"
-              />
-            </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <Input
-                label="State *"
-                value={form.state}
-                onChange={(e) => update("state", e.target.value)}
-                error={errors.state}
-                disabled={!detailsEnabled}
-                placeholder="State"
-              />
-              <Input
-                label="District *"
-                value={form.district}
-                onChange={(e) => update("district", e.target.value)}
-                error={errors.district}
-                disabled={!detailsEnabled}
-                placeholder="District"
-              />
-            </div>
+                <Input
+                  label="Flat/House/Building Name *"
+                  value={form.flatBuilding}
+                  onChange={(e) => update("flatBuilding", e.target.value)}
+                  error={errors.flatBuilding}
+                  disabled={!detailsEnabled}
+                  placeholder="Flat/House/Building Name"
+                />
+                <Input
+                  label="Area/Sector/Locality *"
+                  value={form.areaSector}
+                  onChange={(e) => update("areaSector", e.target.value)}
+                  error={errors.areaSector}
+                  disabled={!detailsEnabled}
+                  placeholder="Area/Sector/Locality"
+                />
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <Input
+                  label="Pincode *"
+                  value={form.pincode}
+                  onChange={(e) => update("pincode", e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  error={errors.pincode}
+                  disabled={!detailsEnabled}
+                  placeholder="Pincode"
+                />
+                <Input
+                  label="Post Office *"
+                  value={form.postOffice}
+                  onChange={(e) => update("postOffice", e.target.value)}
+                  error={errors.postOffice}
+                  disabled={!detailsEnabled}
+                  placeholder="Post Office"
+                />
+              </div>
+              <div className="mt-4">
+                <Input
+                  label="Email (optional)"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="email"
+                  value={form.email}
+                  onChange={(e) => update("email", e.target.value)}
+                  error={errors.email}
+                  disabled={!detailsEnabled}
+                  placeholder="Leave blank if not available"
+                />
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <Input
+                  label="State *"
+                  value={form.state}
+                  onChange={(e) => update("state", e.target.value)}
+                  error={errors.state}
+                  disabled={!detailsEnabled}
+                  placeholder="State"
+                />
+                <Input
+                  label="District *"
+                  value={form.district}
+                  onChange={(e) => update("district", e.target.value)}
+                  error={errors.district}
+                  disabled={!detailsEnabled}
+                  placeholder="District"
+                />
+              </div>
             </div>
           </section>
           <section className={`relative space-y-4 rounded-xl border border-border bg-surface-alt/30 p-4 sm:p-5 transition-all duration-300 ${!detailsEnabled ? "opacity-50 grayscale select-none" : ""}`}>
@@ -1253,22 +1253,25 @@ function CreateOrderPage() {
         size="xl"
       >
         <div className="space-y-4 pt-1 max-md:[&_label]:text-[14px] max-md:[&_label]:leading-snug">
-          <p className="text-base text-text-muted leading-relaxed md:text-sm">
+          {/* <p className="text-base text-text-muted leading-relaxed md:text-sm">
             Copy the full customer message from WhatsApp (or notes), then tap{" "}
             <span className="font-medium text-text-heading">Read from clipboard</span> or paste
             here (⌘V / Ctrl+V). We try to fill name, phone, address, PIN, and email — you can edit
             anything after applying.
-          </p>
-          <Textarea
-            label="Pasted text"
-            value={pasteText}
-            onChange={(e) => setPasteText(e.target.value)}
-            rows={12}
-            className="!text-[14px] md:!text-sm"
-            placeholder={
-              "Example:\nRavi Kumar\n9876543210\n12 Main Street, Area Name\nErode, Tamil Nadu 638001"
-            }
-          />
+          </p> */}
+          <div className="relative">
+            <Textarea
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              rows={12}
+              className="!text-[14px] md:!text-sm text-center"
+            />
+            {!pasteText && (
+              <span className="absolute inset-0 flex items-center justify-center pointer-events-none text-gray-400">
+                Paste the adress here
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
