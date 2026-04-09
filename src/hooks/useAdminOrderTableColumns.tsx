@@ -25,10 +25,15 @@ export type UseAdminOrderTableColumnsParams = {
     sizeOverride?: "thermal" | "a4",
   ) => void;
   onOpenDetail: (id: string) => void;
-  /** When set, show an Edit link for eligible single-line orders (pending / scheduled / packed). */
+  /**
+   * When set, show an Edit link for eligible single-line orders (pending / scheduled / packed).
+   * Column is still rendered when omitted (cells show —).
+   */
   getAdminOrderEditHref?: (
     row: Order & { items?: Order[] },
   ) => string | null;
+  /** When false, omit the Edit column entirely (default: true). */
+  showAdminEditColumn?: boolean;
 };
 
 export function useAdminOrderTableColumns({
@@ -43,6 +48,7 @@ export function useAdminOrderTableColumns({
   downloadPdf,
   onOpenDetail,
   getAdminOrderEditHref,
+  showAdminEditColumn = true,
 }: UseAdminOrderTableColumnsParams): Column<Order>[] {
   return useMemo(
     () => [
@@ -88,6 +94,38 @@ export function useAdminOrderTableColumns({
           </button>
         ),
       },
+      ...(showAdminEditColumn
+        ? [
+            {
+              key: "edit",
+              header: "Edit",
+              className: "w-14",
+              mobileHeaderEnd: true,
+              mobileLabel: "Edit",
+              render: (row: Order & { items?: Order[] }) => {
+                const href = getAdminOrderEditHref?.(row);
+                if (!href) {
+                  return (
+                    <span className="text-text-muted" title="Not editable">
+                      —
+                    </span>
+                  );
+                }
+                return (
+                  <Link
+                    to={href}
+                    className="inline-flex items-center justify-center rounded-[var(--radius-sm)] p-1.5 text-primary hover:bg-primary-muted"
+                    title="Edit order"
+                    aria-label={`Edit order ${row.orderId}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <PencilIcon className="h-5 w-5" aria-hidden />
+                  </Link>
+                );
+              },
+            } as Column<Order>,
+          ]
+        : []),
       {
         key: "createdAt",
         header: "Date",
@@ -174,37 +212,6 @@ export function useAdminOrderTableColumns({
           );
         },
       },
-      ...(getAdminOrderEditHref
-        ? [
-            {
-              key: "edit",
-              header: "Edit",
-              className: "w-14",
-              mobileHeaderEnd: true,
-              render: (row: Order & { items?: Order[] }) => {
-                const href = getAdminOrderEditHref(row);
-                if (!href) {
-                  return (
-                    <span className="text-text-muted" aria-hidden>
-                      —
-                    </span>
-                  );
-                }
-                return (
-                  <Link
-                    to={href}
-                    className="inline-flex items-center justify-center rounded-[var(--radius-sm)] p-1.5 text-primary hover:bg-primary-muted"
-                    title="Edit order"
-                    aria-label={`Edit order ${row.orderId}`}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <PencilIcon className="h-5 w-5" aria-hidden />
-                  </Link>
-                );
-              },
-            } as Column<Order>,
-          ]
-        : []),
       {
         key: "pdf",
         header: "PDF",
@@ -237,6 +244,7 @@ export function useAdminOrderTableColumns({
       downloadPdf,
       onOpenDetail,
       getAdminOrderEditHref,
+      showAdminEditColumn,
     ],
   );
 }

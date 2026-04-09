@@ -740,6 +740,7 @@ function AdminOrderManagementPage() {
     downloadPdf,
     onOpenDetail: setDetailId,
     getAdminOrderEditHref,
+    showAdminEditColumn: true,
   });
 
   return (
