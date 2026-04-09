@@ -341,7 +341,8 @@ function CreateOrderPage() {
   useEffect(() => {
     if (!cartProductIdsKey) {
       setDeliveryOptions([]);
-      setSelectedDeliveryMethodId("");
+      /** Same race as phone reset: first edit paint has no rows yet; don't wipe delivery selection. */
+      if (!isEditMode) setSelectedDeliveryMethodId("");
       return;
     }
     if (form.orderType !== "prepaid" && form.orderType !== "cod") {
@@ -378,9 +379,12 @@ function CreateOrderPage() {
     return () => {
       cancelled = true;
     };
-  }, [cartProductIdsKey, form.orderType]);
+  }, [cartProductIdsKey, form.orderType, isEditMode]);
 
+  /** Create-order only: reset cart when phone is incomplete. Skip in edit mode — otherwise the first
+   * paint has empty phone, this clears rows, and the populate effect may not re-run (same deps). */
   useEffect(() => {
+    if (isEditMode) return;
     if (phoneTrim.length === 10) return;
     lookupGen.current += 1;
     setProductRows([]);
@@ -395,7 +399,7 @@ function CreateOrderPage() {
       district: "",
       orderType: "" as OrderType | "",
     }));
-  }, [phoneTrim]);
+  }, [phoneTrim, isEditMode]);
 
   useEffect(() => {
     if (!detailsEnabled) setIsDropdownOpen(false);
