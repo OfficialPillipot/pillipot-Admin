@@ -299,12 +299,16 @@ function emailForCreateOrderApi(typed: string, phoneDigits: string): string {
   return `noemail.${p}@example.com`;
 }
 
-/** Staff: pending/scheduled only. Admin (guest/super_admin): also packed. */
+/** Staff `/orders/.../edit`: pending or scheduled. Admin `/admin/orders/.../edit`: pending or packed only. */
 function canEditOrderLineStatus(
   status: OrderStatus | undefined,
   role: string | undefined,
+  isAdminOrderEdit: boolean,
 ): boolean {
   if (!status) return false;
+  if (isAdminOrderEdit) {
+    return status === "pending" || status === "packed";
+  }
   if (status === "pending" || status === "scheduled") return true;
   if (status === "packed") return role === "super_admin" || role === "guest";
   return false;
@@ -881,11 +885,11 @@ function CreateOrderPage() {
             toast.error("Order not found for editing");
             return;
           }
-          if (!canEditOrderLineStatus(editingOrder.status, user?.role)) {
+          if (!canEditOrderLineStatus(editingOrder.status, user?.role, isAdminOrderEdit)) {
             toast.error(
-              user?.role === "staff"
-                ? "Only pending or scheduled orders can be edited"
-                : "Only pending, scheduled, or packed orders can be edited",
+              isAdminOrderEdit
+                ? "Only pending or packed orders can be edited"
+                : "Only pending or scheduled orders can be edited",
             );
             return;
           }

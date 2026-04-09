@@ -719,10 +719,9 @@ function AdminOrderManagementPage() {
     (row: Order & { items?: Order[] }) => {
       if (!hasPermission(user, "orders.update")) return null;
       const lines = row.items?.length ? row.items : [row];
-      if (lines.length !== 1) return null;
       const u = rowUniformStatus(row);
       if (u === "mixed") return null;
-      if (u !== "pending" && u !== "scheduled" && u !== "packed") return null;
+      if (u !== "pending" && u !== "packed") return null;
       return `/admin/orders/${lines[0].id}/edit`;
     },
     [user],
@@ -740,7 +739,6 @@ function AdminOrderManagementPage() {
     downloadPdf,
     onOpenDetail: setDetailId,
     getAdminOrderEditHref,
-    showAdminEditColumn: true,
   });
 
   return (
