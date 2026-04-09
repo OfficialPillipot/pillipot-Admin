@@ -1,5 +1,5 @@
 import { memo, useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { TrashIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
@@ -264,8 +264,19 @@ function CreateOrderPage() {
     return d.toISOString().slice(0, 10);
   }, []);
 
+  /** Last 10 digits — used so edit mode unlocks before form.phone is copied from the order (mobile race). */
+  const normalizedPhone10 = useMemo(() => {
+    const fromForm = form.phone.replace(/\D/g, "");
+    if (fromForm.length >= 10) return fromForm.slice(-10);
+    if (isEditMode && editingOrder?.phone) {
+      const fromOrder = String(editingOrder.phone).replace(/\D/g, "");
+      if (fromOrder.length >= 10) return fromOrder.slice(-10);
+    }
+    return fromForm.length > 0 ? fromForm : "";
+  }, [form.phone, editingOrder, isEditMode]);
+
   const phoneTrim = form.phone.trim();
-  const detailsEnabled = phoneTrim.length === 10;
+  const detailsEnabled = normalizedPhone10.length === 10;
   const disabledHint = "Enter 10-digit phone first";
 
   const unitPrice = useCallback(
@@ -286,6 +297,10 @@ function CreateOrderPage() {
       setScheduledForDate("");
       return;
     }
+    setProductSearch("");
+    setIsDropdownOpen(false);
+    const lineProduct = products.find((p) => p.id === editingOrder.productId);
+    setOrderCategory(lineProduct ? productCategoryKey(lineProduct) : "");
     const { flat, area } = splitDeliveryAddress(editingOrder.deliveryAddress);
     setForm({
       customerName: editingOrder.customerName ?? "",
@@ -338,8 +353,29 @@ function CreateOrderPage() {
     [productRows]
   );
 
+  /** Debounce cart changes so mobile quantity taps / product toggles don’t hit the API every tap.
+   * First product(s) in the cart fetch immediately; later changes wait 400ms after activity stops. */
+  const [debouncedDeliveryCartKey, setDebouncedDeliveryCartKey] = useState("");
+  const deliveryCartWasEmptyRef = useRef(true);
   useEffect(() => {
     if (!cartProductIdsKey) {
+      setDebouncedDeliveryCartKey("");
+      deliveryCartWasEmptyRef.current = true;
+      return;
+    }
+    if (deliveryCartWasEmptyRef.current) {
+      deliveryCartWasEmptyRef.current = false;
+      setDebouncedDeliveryCartKey(cartProductIdsKey);
+      return;
+    }
+    const t = window.setTimeout(() => {
+      setDebouncedDeliveryCartKey(cartProductIdsKey);
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [cartProductIdsKey]);
+
+  useEffect(() => {
+    if (!debouncedDeliveryCartKey) {
       setDeliveryOptions([]);
       /** Same race as phone reset: first edit paint has no rows yet; don't wipe delivery selection. */
       if (!isEditMode) setSelectedDeliveryMethodId("");
@@ -350,7 +386,7 @@ function CreateOrderPage() {
       setSelectedDeliveryMethodId("");
       return;
     }
-    const ids = cartProductIdsKey.split(",").filter(Boolean);
+    const ids = debouncedDeliveryCartKey.split(",").filter(Boolean);
     let cancelled = false;
     setDeliveryLoading(true);
     const qs = ids.join(",");
@@ -379,7 +415,7 @@ function CreateOrderPage() {
     return () => {
       cancelled = true;
     };
-  }, [cartProductIdsKey, form.orderType, isEditMode]);
+  }, [debouncedDeliveryCartKey, form.orderType, isEditMode]);
 
   /** Create-order only: reset cart when phone is incomplete. Skip in edit mode — otherwise the first
    * paint has empty phone, this clears rows, and the populate effect may not re-run (same deps). */
@@ -406,6 +442,10 @@ function CreateOrderPage() {
   }, [detailsEnabled]);
 
   useEffect(() => {
+    if (isEditMode) {
+      setLookupLoading(false);
+      return;
+    }
     if (phoneTrim.length !== 10) {
       setLookupLoading(false);
       return;
@@ -447,7 +487,7 @@ function CreateOrderPage() {
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [phoneTrim]);
+  }, [phoneTrim, isEditMode]);
 
   const toggleProductSelection = useCallback(
     (product: { id: string; name: string }) => {
@@ -866,7 +906,20 @@ function CreateOrderPage() {
       <Card>
         <CardHeader
           title={isEditMode ? "Edit Order" : "Create Order"}
-        // subtitle="Add customer details, choose products, then select delivery."
+          action={
+            isAdminOrderEdit ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="inline-flex items-center gap-1.5"
+                onClick={() => navigate("/admin/orders")}
+              >
+                <ArrowLeftIcon className="h-4 w-4" aria-hidden />
+                Back to orders
+              </Button>
+            ) : undefined
+          }
         />
         <form onSubmit={handleSubmit} className="space-y-5">
           <section className="rounded-xl border border-border bg-surface-alt/30 p-4 sm:p-5">
