@@ -1,5 +1,6 @@
 import { useMemo, type RefObject } from "react";
-import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
+import { Link } from "react-router";
+import { ArrowDownTrayIcon, PencilIcon } from "@heroicons/react/24/outline";
 import type { Column } from "../components/ui/Table";
 import { OrderStatusBadge } from "../components/orders/OrderStatusBadge";
 import type { Order, Product, Staff } from "../types";
@@ -24,6 +25,10 @@ export type UseAdminOrderTableColumnsParams = {
     sizeOverride?: "thermal" | "a4",
   ) => void;
   onOpenDetail: (id: string) => void;
+  /** When set, show an Edit link for eligible single-line orders (pending / scheduled / packed). */
+  getAdminOrderEditHref?: (
+    row: Order & { items?: Order[] },
+  ) => string | null;
 };
 
 export function useAdminOrderTableColumns({
@@ -37,6 +42,7 @@ export function useAdminOrderTableColumns({
   toggleAllVisibleSelected,
   downloadPdf,
   onOpenDetail,
+  getAdminOrderEditHref,
 }: UseAdminOrderTableColumnsParams): Column<Order>[] {
   return useMemo(
     () => [
@@ -168,6 +174,37 @@ export function useAdminOrderTableColumns({
           );
         },
       },
+      ...(getAdminOrderEditHref
+        ? [
+            {
+              key: "edit",
+              header: "Edit",
+              className: "w-14",
+              mobileHeaderEnd: true,
+              render: (row: Order & { items?: Order[] }) => {
+                const href = getAdminOrderEditHref(row);
+                if (!href) {
+                  return (
+                    <span className="text-text-muted" aria-hidden>
+                      —
+                    </span>
+                  );
+                }
+                return (
+                  <Link
+                    to={href}
+                    className="inline-flex items-center justify-center rounded-[var(--radius-sm)] p-1.5 text-primary hover:bg-primary-muted"
+                    title="Edit order"
+                    aria-label={`Edit order ${row.orderId}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <PencilIcon className="h-5 w-5" aria-hidden />
+                  </Link>
+                );
+              },
+            } as Column<Order>,
+          ]
+        : []),
       {
         key: "pdf",
         header: "PDF",
@@ -199,6 +236,7 @@ export function useAdminOrderTableColumns({
       toggleAllVisibleSelected,
       downloadPdf,
       onOpenDetail,
+      getAdminOrderEditHref,
     ],
   );
 }

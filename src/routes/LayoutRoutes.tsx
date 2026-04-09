@@ -187,6 +187,17 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         }
       />
       <Route
+        path="/admin/orders/:id/edit"
+        element={
+          <ProtectedRoute
+            allowedRoles={["super_admin", "guest"]}
+            requiredPermissions={["orders.update"]}
+          >
+            <Pages.CreateOrder />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/tracking-scan"
         element={
           <ProtectedRoute

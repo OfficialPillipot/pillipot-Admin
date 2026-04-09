@@ -35,9 +35,12 @@ import {
   type GroupedAdminOrder,
 } from "../components/orders/adminOrderManagementUtils";
 import { useAdminOrderTableColumns } from "../hooks/useAdminOrderTableColumns";
+import { useAuth } from "../context/AuthContext";
+import { hasPermission } from "../lib/permissions";
 
 function AdminOrderManagementPage() {
   const dispatch = useAppDispatch();
+  const { user } = useAuth();
   const [listLines, setListLines] = useState<Order[]>([]);
   const [listTotal, setListTotal] = useState(0);
   const [listPage, setListPage] = useState(1);
@@ -712,6 +715,19 @@ function AdminOrderManagementPage() {
     [],
   );
 
+  const getAdminOrderEditHref = useCallback(
+    (row: Order & { items?: Order[] }) => {
+      if (!hasPermission(user, "orders.update")) return null;
+      const lines = row.items?.length ? row.items : [row];
+      if (lines.length !== 1) return null;
+      const u = rowUniformStatus(row);
+      if (u === "mixed") return null;
+      if (u !== "pending" && u !== "scheduled" && u !== "packed") return null;
+      return `/admin/orders/${lines[0].id}/edit`;
+    },
+    [user],
+  );
+
   const columns = useAdminOrderTableColumns({
     selectAllHeaderRef,
     staff,
@@ -723,6 +739,7 @@ function AdminOrderManagementPage() {
     toggleAllVisibleSelected,
     downloadPdf,
     onOpenDetail: setDetailId,
+    getAdminOrderEditHref,
   });
 
   return (

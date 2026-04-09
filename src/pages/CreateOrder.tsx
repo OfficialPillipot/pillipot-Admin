@@ -1,11 +1,11 @@
 import { memo, useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { TrashIcon } from "@heroicons/react/24/outline";
-import { useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { selectProducts, fetchProducts } from "../store/productsSlice";
 import { selectCategories, fetchCategories } from "../store/categoriesSlice";
-import { createOrder, selectOrders, updateOrder } from "../store/ordersSlice";
+import { createOrder, fetchOrders, selectOrders, updateOrder } from "../store/ordersSlice";
 import { Card, CardHeader, Button, Input, Modal, Select, Textarea } from "../components/ui";
 import type { SelectOption } from "../components/ui/Select";
 import { toast } from "../lib/toast";
@@ -15,6 +15,7 @@ import type {
   Customer,
   DeliveryOptionForCart,
   Order,
+  OrderStatus,
   OrderType,
   Product,
 } from "../types";
@@ -168,9 +169,24 @@ function emailForCreateOrderApi(typed: string, phoneDigits: string): string {
   return `noemail.${p}@example.com`;
 }
 
+/** Staff: pending/scheduled only. Admin (guest/super_admin): also packed. */
+function canEditOrderLineStatus(
+  status: OrderStatus | undefined,
+  role: string | undefined,
+): boolean {
+  if (!status) return false;
+  if (status === "pending" || status === "scheduled") return true;
+  if (status === "packed") return role === "super_admin" || role === "guest";
+  return false;
+}
+
 function CreateOrderPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id: editOrderId } = useParams<{ id: string }>();
+  const isAdminOrderEdit =
+    location.pathname.startsWith("/admin/orders/") &&
+    location.pathname.endsWith("/edit");
   const dispatch = useAppDispatch();
   const { user } = useAuth();
   const orders = useAppSelector(selectOrders);
@@ -201,11 +217,45 @@ function CreateOrderPage() {
   const [pasteText, setPasteText] = useState("");
   const [pasteReading, setPasteReading] = useState(false);
   const [scheduledForDate, setScheduledForDate] = useState("");
+  const [editOrderFallback, setEditOrderFallback] = useState<Order | null>(null);
   const editingOrder = useMemo(
-    () => (editOrderId ? orders.find((o) => o.id === editOrderId) ?? null : null),
-    [editOrderId, orders]
+    () =>
+      editOrderId
+        ? orders.find((o) => o.id === editOrderId) ?? editOrderFallback
+        : null,
+    [editOrderId, orders, editOrderFallback],
   );
   const isEditMode = Boolean(editOrderId);
+
+  useEffect(() => {
+    if (!editOrderId) {
+      setEditOrderFallback(null);
+      return;
+    }
+    if (orders.some((o) => o.id === editOrderId)) {
+      setEditOrderFallback(null);
+      return;
+    }
+    let cancelled = false;
+    void api
+      .get<Order>(endpoints.orderById(editOrderId), { silent: true })
+      .then((o) => {
+        if (!cancelled) setEditOrderFallback(o);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setEditOrderFallback(null);
+          toast.error("Could not load this order to edit.");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [editOrderId, orders]);
+
+  useEffect(() => {
+    if (isEditMode) void dispatch(fetchOrders());
+  }, [dispatch, isEditMode]);
 
   /** Earliest selectable schedule day (UTC calendar): tomorrow. */
   const minScheduleDate = useMemo(() => {
@@ -579,7 +629,16 @@ function CreateOrderPage() {
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!validate() || !user?.staffId) return;
+      if (!validate()) return;
+      if (!user) {
+        toast.error("Not signed in");
+        return;
+      }
+      const needsStaffProfile = !isEditMode || user.role === "staff";
+      if (needsStaffProfile && !user.staffId) {
+        toast.error("Your account must be linked to a staff profile to save orders.");
+        return;
+      }
       setSubmitting(true);
       try {
         const fullAddress = `${form.flatBuilding.trim()}, ${form.areaSector.trim()}`;
@@ -590,11 +649,12 @@ function CreateOrderPage() {
             toast.error("Order not found for editing");
             return;
           }
-          if (
-            editingOrder.status !== "pending" &&
-            editingOrder.status !== "scheduled"
-          ) {
-            toast.error("Only pending or scheduled orders can be edited");
+          if (!canEditOrderLineStatus(editingOrder.status, user?.role)) {
+            toast.error(
+              user?.role === "staff"
+                ? "Only pending or scheduled orders can be edited"
+                : "Only pending, scheduled, or packed orders can be edited",
+            );
             return;
           }
           if (selectedProducts.length !== 1) {
@@ -612,32 +672,36 @@ function CreateOrderPage() {
                   ? { scheduledFor: null }
                   : {}
               : {};
+          /** Staff: API forbids sending `discountAmount` or `deliveryMethodId` at all (even null). */
+          const patch: Partial<Order> = {
+            customerName: form.customerName.trim(),
+            deliveryAddress: fullAddress,
+            phone: form.phone.trim(),
+            pincode: form.pincode.trim(),
+            postOffice: form.postOffice.trim(),
+            email: form.email.trim(),
+            state: form.state.trim(),
+            district: form.district.trim(),
+            orderType: form.orderType as OrderType,
+            productId: item.productId,
+            quantity: item.quantity,
+            addOnAmount: addOn?.amount ? parseFloat(addOn.amount) : null,
+            addOnNote: addOn?.note?.trim() ? addOn.note.trim() : null,
+            notes: form.notes.trim() || undefined,
+            ...schedulePatch,
+          };
+          if (user.role !== "staff") {
+            patch.discountAmount = disc > 0 ? disc : null;
+            patch.deliveryMethodId = selectedDeliveryMethodId || null;
+          }
           await dispatch(
             updateOrder({
               id: editingOrder.id,
-              patch: {
-                customerName: form.customerName.trim(),
-                deliveryAddress: fullAddress,
-                phone: form.phone.trim(),
-                pincode: form.pincode.trim(),
-                postOffice: form.postOffice.trim(),
-                email: form.email.trim(),
-                state: form.state.trim(),
-                district: form.district.trim(),
-                orderType: form.orderType as OrderType,
-                productId: item.productId,
-                quantity: item.quantity,
-                discountAmount: disc > 0 ? disc : null,
-                addOnAmount: addOn?.amount ? parseFloat(addOn.amount) : null,
-                addOnNote: addOn?.note?.trim() ? addOn.note.trim() : null,
-                deliveryMethodId: selectedDeliveryMethodId || null,
-                notes: form.notes.trim() || undefined,
-                ...schedulePatch,
-              },
+              patch,
             })
           ).unwrap();
           toast.success("Order updated successfully");
-          navigate("/orders");
+          navigate(isAdminOrderEdit ? "/admin/orders" : "/orders");
           return;
         }
 
@@ -735,8 +799,10 @@ function CreateOrderPage() {
       productRows,
       validate,
       user?.staffId,
+      user?.role,
       dispatch,
       navigate,
+      isAdminOrderEdit,
       addOn,
       selectedDeliveryMethodId,
       isEditMode,
