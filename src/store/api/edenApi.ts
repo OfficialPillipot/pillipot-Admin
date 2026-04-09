@@ -88,6 +88,9 @@ function ordersQueryParams(filters: OrderListFilters | undefined): string {
 export const edenApi = createApi({
   reducerPath: "edenApi",
   baseQuery: baseQueryWithAuth,
+  /** No automatic refetch on window focus/reconnect — avoids surprise API traffic on management pages. */
+  refetchOnFocus: false,
+  refetchOnReconnect: false,
   tagTypes: [
     "Product",
     "Category",

@@ -11,7 +11,8 @@ import {
 } from "../../lib/header-notifications";
 import type { BlogFeedItem, StaffEnquiryListRow, User } from "../../types";
 
-const POLL_MS = 25_000;
+/** Notification polling only; ~1 min, paused while tab is hidden. */
+const POLL_MS = 60_000;
 
 function postPublishedMs(iso: string): number {
   const n = new Date(iso).getTime();
@@ -82,26 +83,50 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
 
   useEffect(() => {
     void refresh();
-    const id = window.setInterval(() => void refresh(), POLL_MS);
-    return () => window.clearInterval(id);
+
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const stopPolling = () => {
+      if (intervalId != null) {
+        window.clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      void refresh();
+    };
+
+    const startPolling = () => {
+      if (intervalId != null) return;
+      intervalId = window.setInterval(tick, POLL_MS);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void refresh();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    if (document.visibilityState === "visible") {
+      startPolling();
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [refresh]);
 
   useEffect(() => {
     const onRefresh = () => void refresh();
     window.addEventListener(HEADER_NOTIFICATIONS_REFRESH, onRefresh);
     return () => window.removeEventListener(HEADER_NOTIFICATIONS_REFRESH, onRefresh);
-  }, [refresh]);
-
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void refresh();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", onVisible);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", onVisible);
-    };
   }, [refresh]);
 
   useEffect(() => {
