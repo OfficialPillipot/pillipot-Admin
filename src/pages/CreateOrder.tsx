@@ -347,41 +347,36 @@ function CreateOrderPage() {
   const [pasteText, setPasteText] = useState("");
   const [pasteReading, setPasteReading] = useState(false);
   const [scheduledForDate, setScheduledForDate] = useState("");
-  const [editOrderFallback, setEditOrderFallback] = useState<Order | null>(null);
-  const editingOrder = useMemo(
-    () =>
-      editOrderId
-        ? orders.find((o) => o.id === editOrderId) ?? editOrderFallback
-        : null,
-    [editOrderId, orders, editOrderFallback],
-  );
+  /** Full row from GET /orders/:id — list cache can omit fields; always fetch on edit. */
+  const [editOrderDetail, setEditOrderDetail] = useState<Order | null>(null);
+  const editingOrder = useMemo(() => {
+    if (!editOrderId) return null;
+    if (editOrderDetail?.id === editOrderId) return editOrderDetail;
+    return orders.find((o) => o.id === editOrderId) ?? null;
+  }, [editOrderId, orders, editOrderDetail]);
   const isEditMode = Boolean(editOrderId);
 
   useEffect(() => {
     if (!editOrderId) {
-      setEditOrderFallback(null);
-      return;
-    }
-    if (orders.some((o) => o.id === editOrderId)) {
-      setEditOrderFallback(null);
+      setEditOrderDetail(null);
       return;
     }
     let cancelled = false;
     void api
       .get<Order>(endpoints.orderById(editOrderId), { silent: true })
       .then((o) => {
-        if (!cancelled) setEditOrderFallback(o);
+        if (!cancelled) setEditOrderDetail(o);
       })
       .catch(() => {
         if (!cancelled) {
-          setEditOrderFallback(null);
+          setEditOrderDetail(null);
           toast.error("Could not load this order to edit.");
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [editOrderId, orders]);
+  }, [editOrderId]);
 
   useEffect(() => {
     if (isEditMode) void dispatch(fetchOrders());
