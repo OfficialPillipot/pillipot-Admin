@@ -29,14 +29,25 @@ export function extractMessageFromResponseBody(data: unknown): string | null {
     return o.message.trim();
   }
   if (Array.isArray(o.message)) {
-    const parts = o.message.filter(
-      (x): x is string => typeof x === "string" && x.trim(),
-    );
+    const parts = o.message
+      .map((x) => (typeof x === "string" ? x.trim() : String(x).trim()))
+      .filter(Boolean);
     if (parts.length) return parts.join(", ");
   }
 
   if (typeof o.error === "string" && o.error.trim()) {
     return o.error.trim();
+  }
+
+  // Some validation payloads nest field errors
+  if (o.errors && typeof o.errors === "object" && o.errors !== null) {
+    const nested = extractMessageFromResponseBody(o.errors);
+    if (nested) return nested;
+    const flat = Object.values(o.errors as Record<string, unknown>)
+      .flatMap((v) => (Array.isArray(v) ? v : [v]))
+      .map((x) => (typeof x === "string" ? x : String(x)))
+      .filter(Boolean);
+    if (flat.length) return flat.join(", ");
   }
 
   return null;

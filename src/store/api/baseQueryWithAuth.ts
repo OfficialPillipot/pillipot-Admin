@@ -44,6 +44,18 @@ export const baseQueryWithAuth: BaseQueryFn<
   try {
     const result = await rawBaseQuery(args, api, extraOptions);
     if (result.error) {
+      // Flatten backend text onto the error so `.unwrap()` / UI always see a string `message`
+      // (RTK passes this object through as the thrown value).
+      const text = getApiErrorMessage(result.error, "");
+      if (text) {
+        return {
+          ...result,
+          error: {
+            ...result.error,
+            message: text,
+          } as FetchBaseQueryError,
+        };
+      }
       return { ...result, error: result.error };
     }
     return result;
