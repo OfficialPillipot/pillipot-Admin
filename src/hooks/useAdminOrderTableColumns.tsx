@@ -1,6 +1,10 @@
 import { useMemo, type RefObject } from "react";
 import { Link } from "react-router";
-import { ArrowDownTrayIcon, PencilIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowDownTrayIcon,
+  ArrowUturnLeftIcon,
+  PencilIcon,
+} from "@heroicons/react/24/outline";
 import type { Column } from "../components/ui/Table";
 import { OrderStatusBadge } from "../components/orders/OrderStatusBadge";
 import type { Order, Product, Staff } from "../types";
@@ -29,6 +33,9 @@ export type UseAdminOrderTableColumnsParams = {
   getAdminOrderEditHref?: (
     row: Order & { items?: Order[] },
   ) => string | null;
+  /** When the whole group is uniformly `packed`, move lines back to `pending` (clears tracking). */
+  onRevokePacked?: (row: Order & { items?: Order[] }) => void | Promise<void>;
+  revokePackedLoadingId?: string | null;
 };
 
 export function useAdminOrderTableColumns({
@@ -43,6 +50,8 @@ export function useAdminOrderTableColumns({
   downloadPdf,
   onOpenDetail,
   getAdminOrderEditHref,
+  onRevokePacked,
+  revokePackedLoadingId,
 }: UseAdminOrderTableColumnsParams): Column<Order>[] {
   return useMemo(
     () => [
@@ -209,21 +218,44 @@ export function useAdminOrderTableColumns({
       {
         key: "pdf",
         header: "PDF",
-        render: (row: Order) => (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              void downloadPdf(row.id, row.orderId);
-            }}
-            disabled={pdfLoadingId === row.id}
-            className="inline-flex items-center justify-center rounded-[var(--radius-sm)] p-1.5 text-primary hover:bg-primary-muted disabled:opacity-50"
-            title="Download PDF"
-            aria-label={`Download PDF for ${row.orderId}`}
-          >
-            <ArrowDownTrayIcon className="h-5 w-5" />
-          </button>
-        ),
+        render: (row: Order & { items?: Order[] }) => {
+          const lines = row.items && row.items.length > 0 ? row.items : [row];
+          const uniform = uniformOrderGroupStatus(lines);
+          const showRevoke =
+            Boolean(onRevokePacked) && uniform === "packed";
+          return (
+            <div className="inline-flex items-center gap-0.5">
+              {showRevoke ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void onRevokePacked?.(row);
+                  }}
+                  disabled={revokePackedLoadingId === row.id}
+                  className="inline-flex items-center justify-center rounded-[var(--radius-sm)] p-1.5 text-amber-700 hover:bg-amber-500/15 disabled:opacity-50"
+                  title="Revoke packed — return to pending (clears tracking)"
+                  aria-label={`Revoke packed status for ${row.orderId}`}
+                >
+                  <ArrowUturnLeftIcon className="h-5 w-5" aria-hidden />
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void downloadPdf(row.id, row.orderId);
+                }}
+                disabled={pdfLoadingId === row.id}
+                className="inline-flex items-center justify-center rounded-[var(--radius-sm)] p-1.5 text-primary hover:bg-primary-muted disabled:opacity-50"
+                title="Download PDF"
+                aria-label={`Download PDF for ${row.orderId}`}
+              >
+                <ArrowDownTrayIcon className="h-5 w-5" />
+              </button>
+            </div>
+          );
+        },
       },
     ],
     [
@@ -238,6 +270,8 @@ export function useAdminOrderTableColumns({
       downloadPdf,
       onOpenDetail,
       getAdminOrderEditHref,
+      onRevokePacked,
+      revokePackedLoadingId,
     ],
   );
 }

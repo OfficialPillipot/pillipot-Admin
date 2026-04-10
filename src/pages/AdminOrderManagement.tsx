@@ -73,6 +73,9 @@ function AdminOrderManagementPage() {
   const [dispatching, setDispatching] = useState(false);
   const [markingPacked, setMarkingPacked] = useState(false);
   const [returning, setReturning] = useState(false);
+  const [revokePackedLoadingId, setRevokePackedLoadingId] = useState<
+    string | null
+  >(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const selectAllHeaderRef = useRef<HTMLInputElement>(null);
   const listLinesRef = useRef(listLines);
@@ -736,6 +739,40 @@ function AdminOrderManagementPage() {
     [user],
   );
 
+  const handleRevokePacked = useCallback(
+    async (row: Order & { items?: Order[] }) => {
+      if (!hasPermission(user, "orders.update")) return;
+      if (rowUniformStatus(row) !== "packed") return;
+      const lineIds = orderLineIds(row);
+      if (
+        !window.confirm(
+          "Return this order to pending? Tracking numbers will be cleared.",
+        )
+      )
+        return;
+      setRevokePackedLoadingId(row.id);
+      try {
+        await Promise.all(
+          lineIds.map((id) =>
+            dispatch(
+              updateOrder({
+                id,
+                patch: { status: "pending", trackingId: null },
+              }),
+            ).unwrap(),
+          ),
+        );
+        toast.success("Order returned to pending");
+        await loadOrders(lastQueryRef.current);
+      } catch (err) {
+        toast.fromError(err, "Could not revoke packed status");
+      } finally {
+        setRevokePackedLoadingId(null);
+      }
+    },
+    [user, dispatch, loadOrders],
+  );
+
   const columns = useAdminOrderTableColumns({
     selectAllHeaderRef,
     staff,
@@ -748,6 +785,10 @@ function AdminOrderManagementPage() {
     downloadPdf,
     onOpenDetail: setDetailId,
     getAdminOrderEditHref,
+    onRevokePacked: hasPermission(user, "orders.update")
+      ? handleRevokePacked
+      : undefined,
+    revokePackedLoadingId,
   });
 
   return (
