@@ -10,10 +10,19 @@ import { notifyApiLoading } from "../../api/api-loading";
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: getApiBaseUrl(),
-  prepareHeaders: (headers) => {
+  prepareHeaders: (headers, { arg }) => {
     const token = getAccessToken();
     if (token) headers.set("Authorization", `Bearer ${token}`);
-    headers.set("Content-Type", "application/json");
+    const body =
+      typeof arg === "object" &&
+      arg !== null &&
+      "body" in arg &&
+      (arg as { body?: unknown }).body !== undefined
+        ? (arg as { body?: unknown }).body
+        : undefined;
+    if (!(body instanceof FormData)) {
+      headers.set("Content-Type", "application/json");
+    }
     return headers;
   },
 });

@@ -43,6 +43,9 @@ export type NewProductPayload = Pick<Product, "name" | "price"> & {
   stockQuantity?: number;
   size?: string;
   color?: string;
+  description?: string;
+  image?: File;
+  video?: File;
 };
 
 /** POST /staff body (shared with legacy slice exports). */
@@ -126,11 +129,30 @@ export const edenApi = createApi({
           : [{ type: "Product", id: "LIST" }],
     }),
     createProduct: builder.mutation<Product, NewProductPayload>({
-      query: (body) => ({
-        url: endpoints.products,
-        method: "POST",
-        body,
-      }),
+      query: (body) => {
+        const fd = new FormData();
+        fd.append("name", body.name);
+        fd.append("categoryId", body.categoryId);
+        fd.append("price", String(body.price));
+        if (body.description != null && body.description !== "") {
+          fd.append("description", body.description);
+        }
+        if (body.buyingPrice != null && body.buyingPrice !== undefined) {
+          fd.append("buyingPrice", String(body.buyingPrice));
+        }
+        if (body.stockQuantity != null && body.stockQuantity !== undefined) {
+          fd.append("stockQuantity", String(body.stockQuantity));
+        }
+        if (body.size) fd.append("size", body.size);
+        if (body.color) fd.append("color", body.color);
+        if (body.image) fd.append("image", body.image);
+        if (body.video) fd.append("video", body.video);
+        return {
+          url: endpoints.products,
+          method: "POST",
+          body: fd,
+        };
+      },
       invalidatesTags: [{ type: "Product", id: "LIST" }],
     }),
     updateProduct: builder.mutation<

@@ -47,6 +47,10 @@ export interface Product {
   /** Business id e.g. PRD-1001 */
   productCode?: string;
   name: string;
+  description?: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  createdAt?: string;
   categoryId?: string;
   categoryName?: string;
   sku?: string;

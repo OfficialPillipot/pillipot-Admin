@@ -23,6 +23,31 @@ import type { Product } from "../types";
 
 const UNCATEGORIZED_FILTER = "__none__";
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/quicktime"]);
+
+function validateImageFile(file: File): string | null {
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+    return "Image must be JPG, PNG, or WebP.";
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return "Image must be at most 5MB.";
+  }
+  return null;
+}
+
+function validateVideoFile(file: File): string | null {
+  if (!ALLOWED_VIDEO_TYPES.has(file.type)) {
+    return "Video must be MP4 or MOV.";
+  }
+  if (file.size > MAX_VIDEO_BYTES) {
+    return "Video must be at most 50MB.";
+  }
+  return null;
+}
+
 function ProductManagementPage() {
   const dispatch = useAppDispatch();
   const products = useAppSelector(selectProducts);
@@ -36,12 +61,42 @@ function ProductManagementPage() {
   const [categoryId, setCategoryId] = useState("");
   const [size, setSize] = useState("");
   const [color, setColor] = useState("");
+  const [description, setDescription] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [togglingActiveId, setTogglingActiveId] = useState<string | null>(null);
 
   useEffect(() => {
     void dispatch(fetchCategories());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(imageFile);
+    setImagePreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [imageFile]);
+
+  useEffect(() => {
+    if (!videoFile) {
+      setVideoPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(videoFile);
+    setVideoPreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [videoFile]);
 
   const categoryOptions: SelectOption[] = useMemo(
     () => [
@@ -60,6 +115,9 @@ function ProductManagementPage() {
     setStockQuantity("");
     setSize("");
     setColor("");
+    setDescription("");
+    setImageFile(null);
+    setVideoFile(null);
     setModalOpen(true);
   }, []);
 
@@ -74,6 +132,9 @@ function ProductManagementPage() {
     setStockQuantity(String(p.stockQuantity ?? 0));
     setSize(p.size ?? "");
     setColor(p.color ?? "");
+    setDescription(p.description ?? "");
+    setImageFile(null);
+    setVideoFile(null);
     setModalOpen(true);
   }, []);
 
@@ -102,6 +163,22 @@ function ProductManagementPage() {
       toast.error("Enter a valid stock quantity");
       return;
     }
+    if (imageFile) {
+      const err = validateImageFile(imageFile);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+    }
+    if (videoFile) {
+      const err = validateVideoFile(videoFile);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+    }
+
+    setSubmitting(true);
     try {
       if (editingId) {
         await dispatch(
@@ -115,6 +192,7 @@ function ProductManagementPage() {
               stockQuantity: stockNum,
               size: size.trim() || undefined,
               color: color.trim() || undefined,
+              description: description.trim() || undefined,
             },
           })
         ).unwrap();
@@ -129,6 +207,9 @@ function ProductManagementPage() {
             stockQuantity: stockNum,
             size: size.trim() || undefined,
             color: color.trim() || undefined,
+            description: description.trim() || undefined,
+            image: imageFile ?? undefined,
+            video: videoFile ?? undefined,
           })
         ).unwrap();
         toast.success("Product created");
@@ -136,6 +217,8 @@ function ProductManagementPage() {
       setModalOpen(false);
     } catch (err) {
       toast.fromError(err, "Failed to save product");
+    } finally {
+      setSubmitting(false);
     }
   }, [
     editingId,
@@ -146,6 +229,9 @@ function ProductManagementPage() {
     stockQuantity,
     size,
     color,
+    description,
+    imageFile,
+    videoFile,
     dispatch,
   ]);
 
@@ -205,6 +291,11 @@ function ProductManagementPage() {
     return products.filter((p) => p.categoryId === categoryFilter);
   }, [products, categoryFilter]);
 
+  const editingProduct = useMemo(
+    () => (editingId ? products.find((p) => p.id === editingId) : null),
+    [editingId, products],
+  );
+
   const columns = useMemo(
     () => [
       {
@@ -220,6 +311,34 @@ function ProductManagementPage() {
         render: (row: Product) => row.categoryName ?? "—",
       },
       { key: "name", header: "Name" },
+      {
+        key: "imageUrl",
+        header: "Image",
+        render: (row: Product) =>
+          row.imageUrl ? (
+            <img
+              src={row.imageUrl}
+              alt=""
+              width={50}
+              height={50}
+              className="h-12 w-12 rounded object-cover"
+            />
+          ) : (
+            "—"
+          ),
+      },
+      {
+        key: "videoUrl",
+        header: "Video",
+        render: (row: Product) =>
+          row.videoUrl ? (
+            <video width={100} controls className="max-h-24 rounded">
+              <source src={row.videoUrl} />
+            </video>
+          ) : (
+            "—"
+          ),
+      },
       {
         key: "sku",
         header: "SKU",
@@ -359,6 +478,102 @@ function ProductManagementPage() {
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Organic Honey 500g"
           />
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-text">
+              Description
+            </span>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              placeholder="Optional details for catalog or staff"
+            />
+          </label>
+          {!editingId && (
+            <div className="space-y-3 rounded-[var(--radius-md)] border border-border bg-surface-muted/40 p-3">
+              <p className="text-sm font-medium text-text">Media (optional)</p>
+              <div>
+                <label className="mb-1 block text-xs text-text-muted">
+                  Image (JPG, PNG, WebP — max 5MB)
+                </label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="block w-full text-sm text-text-muted file:mr-2 file:rounded file:border-0 file:bg-primary-muted file:px-2 file:py-1 file:text-sm file:text-primary"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      const err = validateImageFile(f);
+                      if (err) {
+                        toast.error(err);
+                        e.target.value = "";
+                        return;
+                      }
+                    }
+                    setImageFile(f ?? null);
+                    e.target.value = "";
+                  }}
+                />
+                {imagePreviewUrl && (
+                  <img
+                    src={imagePreviewUrl}
+                    alt="Selected product"
+                    className="mt-2 max-h-40 rounded border border-border object-contain"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-text-muted">
+                  Video (MP4, MOV — max 50MB)
+                </label>
+                <input
+                  type="file"
+                  accept="video/mp4,video/quicktime"
+                  className="block w-full text-sm text-text-muted file:mr-2 file:rounded file:border-0 file:bg-primary-muted file:px-2 file:py-1 file:text-sm file:text-primary"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      const err = validateVideoFile(f);
+                      if (err) {
+                        toast.error(err);
+                        e.target.value = "";
+                        return;
+                      }
+                    }
+                    setVideoFile(f ?? null);
+                    e.target.value = "";
+                  }}
+                />
+                {videoPreviewUrl && (
+                  <video
+                    controls
+                    className="mt-2 max-h-48 w-full max-w-md rounded border border-border"
+                    src={videoPreviewUrl}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+          {editingId &&
+            (editingProduct?.imageUrl || editingProduct?.videoUrl) && (
+              <div className="space-y-2 rounded-[var(--radius-md)] border border-border p-3">
+                <p className="text-sm font-medium text-text">Current media</p>
+                {editingProduct?.imageUrl && (
+                  <img
+                    src={editingProduct.imageUrl}
+                    alt=""
+                    width={50}
+                    className="rounded object-cover"
+                  />
+                )}
+                {editingProduct?.videoUrl && (
+                  <video width={100} controls className="max-h-24 rounded">
+                    <source src={editingProduct.videoUrl} />
+                  </video>
+                )}
+              </div>
+            )}
           <Select
             label="Category *"
             options={categoryOptions}
@@ -419,8 +634,14 @@ function ProductManagementPage() {
             </p>  
           )} */}
           <div className="flex gap-2">
-            <Button onClick={handleSave}>Save</Button>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
+            <Button onClick={handleSave} disabled={submitting}>
+              {submitting ? "Saving…" : "Save"}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setModalOpen(false)}
+              disabled={submitting}
+            >
               Cancel
             </Button>
           </div>
