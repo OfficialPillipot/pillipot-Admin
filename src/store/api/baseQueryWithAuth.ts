@@ -53,7 +53,7 @@ export const baseQueryWithAuth: BaseQueryFn<
           error: {
             ...result.error,
             message: text,
-          } as FetchBaseQueryError,
+          } as unknown as FetchBaseQueryError,
         };
       }
       return { ...result, error: result.error };
