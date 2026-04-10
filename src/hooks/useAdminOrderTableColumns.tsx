@@ -216,46 +216,57 @@ export function useAdminOrderTableColumns({
         },
       },
       {
-        key: "pdf",
-        header: "PDF",
+        key: "revoke",
+        header: "Revoke",
+        className: "w-[4.5rem]",
         render: (row: Order & { items?: Order[] }) => {
           const lines = row.items && row.items.length > 0 ? row.items : [row];
           const uniform = uniformOrderGroupStatus(lines);
           const showRevoke =
             Boolean(onRevokePacked) && uniform === "packed";
+          if (!showRevoke) {
+            return (
+              <span className="text-text-muted" aria-hidden>
+                —
+              </span>
+            );
+          }
           return (
-            <div className="inline-flex items-center gap-0.5">
-              {showRevoke ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void onRevokePacked?.(row);
-                  }}
-                  disabled={revokePackedLoadingId === row.id}
-                  className="inline-flex items-center justify-center rounded-[var(--radius-sm)] p-1.5 text-amber-700 hover:bg-amber-500/15 disabled:opacity-50"
-                  title="Revoke packed — return to pending (clears tracking)"
-                  aria-label={`Revoke packed status for ${row.orderId}`}
-                >
-                  <ArrowUturnLeftIcon className="h-5 w-5" aria-hidden />
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void downloadPdf(row.id, row.orderId);
-                }}
-                disabled={pdfLoadingId === row.id}
-                className="inline-flex items-center justify-center rounded-[var(--radius-sm)] p-1.5 text-primary hover:bg-primary-muted disabled:opacity-50"
-                title="Download PDF"
-                aria-label={`Download PDF for ${row.orderId}`}
-              >
-                <ArrowDownTrayIcon className="h-5 w-5" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                void onRevokePacked?.(row);
+              }}
+              disabled={revokePackedLoadingId === row.id}
+              className="inline-flex items-center justify-center rounded-[var(--radius-sm)] p-1.5 text-amber-700 hover:bg-amber-500/15 disabled:opacity-50"
+              title="Revoke packed — return to pending (clears tracking)"
+              aria-label={`Revoke packed status for ${row.orderId}`}
+            >
+              <ArrowUturnLeftIcon className="h-5 w-5" aria-hidden />
+            </button>
           );
         },
+      },
+      {
+        key: "pdf",
+        header: "PDF",
+        className: "w-[3.25rem]",
+        render: (row: Order) => (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              void downloadPdf(row.id, row.orderId);
+            }}
+            disabled={pdfLoadingId === row.id}
+            className="inline-flex items-center justify-center rounded-[var(--radius-sm)] p-1.5 text-primary hover:bg-primary-muted disabled:opacity-50"
+            title="Download PDF"
+            aria-label={`Download PDF for ${row.orderId}`}
+          >
+            <ArrowDownTrayIcon className="h-5 w-5" />
+          </button>
+        ),
       },
     ],
     [
