@@ -11,10 +11,8 @@ import { ORDER_STATUS_FILTER_OPTIONS } from "../../lib/ordersList";
 export type SelectOption = { value: string; label: string };
 
 export type AdminOrderFiltersProps = {
-  orderIdSearch: string;
-  onOrderIdSearchChange: (v: string) => void;
-  customerSearch: string;
-  onCustomerSearchChange: (v: string) => void;
+  serverSearch: string;
+  onServerSearchChange: (v: string) => void;
   dateFrom: string;
   onDateFromChange: (v: string) => void;
   dateTo: string;
@@ -36,16 +34,13 @@ export type AdminOrderFiltersProps = {
   onResetTableFilters: () => void;
   appliedDateFrom: string;
   appliedDateTo: string;
-  appliedOrderId: string;
-  appliedCustomerSearch: string;
+  appliedServerSearch: string;
 };
 
 function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
   const {
-    orderIdSearch,
-    onOrderIdSearchChange,
-    customerSearch,
-    onCustomerSearchChange,
+    serverSearch,
+    onServerSearchChange,
     dateFrom,
     onDateFromChange,
     dateTo,
@@ -67,8 +62,7 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
     onResetTableFilters,
     appliedDateFrom,
     appliedDateTo,
-    appliedOrderId,
-    appliedCustomerSearch,
+    appliedServerSearch,
   } = props;
 
   return (
@@ -76,29 +70,16 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
       <ResponsiveManagementFilters modalTitle="Order filters" triggerLabel="Filters">
         <ManagementFilterPanel>
           <ManagementFilterField
-            label="Order ID"
+            label="Search"
             className="lg:col-span-2 xl:col-span-2"
           >
             <input
               type="search"
-              value={orderIdSearch}
-              onChange={(e) => onOrderIdSearchChange(e.target.value)}
-              placeholder="e.g. ORD-1005 or 1005"
+              value={serverSearch}
+              onChange={(e) => onServerSearchChange(e.target.value)}
+              placeholder="Order ID, name, phone, or pincode"
               className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-              aria-label="Search by display order id"
-            />
-          </ManagementFilterField>
-          <ManagementFilterField
-            label="Customer"
-            className="lg:col-span-2 xl:col-span-2"
-          >
-            <input
-              type="search"
-              value={customerSearch}
-              onChange={(e) => onCustomerSearchChange(e.target.value)}
-              placeholder="Name, phone, or pincode"
-              className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-              aria-label="Search by customer name, phone, or pincode"
+              aria-label="Search by order id, customer name, phone, or pincode"
             />
           </ManagementFilterField>
           <ManagementFilterField label="From date">
@@ -212,17 +193,13 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
       </ResponsiveManagementFilters>
       {(appliedDateFrom ||
         appliedDateTo ||
-        appliedOrderId.trim() ||
-        appliedCustomerSearch.trim()) && (
+        appliedServerSearch.trim()) && (
         <p className="text-xs text-text-muted">
           Showing orders
           {appliedDateFrom ? ` from ${appliedDateFrom}` : ""}
           {appliedDateTo ? ` through ${appliedDateTo}` : ""}
-          {appliedOrderId.trim()
-            ? ` for order id ${appliedOrderId.trim()}`
-            : ""}
-          {appliedCustomerSearch.trim()
-            ? `${appliedOrderId.trim() ? ";" : ""} matching “${appliedCustomerSearch.trim()}” (name, phone, or pincode)`
+          {appliedServerSearch.trim()
+            ? `${appliedDateFrom || appliedDateTo ? ";" : ""} matching “${appliedServerSearch.trim()}” (order id, name, phone, or pincode)`
             : ""}
           {appliedDateFrom || appliedDateTo ? " (UTC day boundaries)." : "."}
         </p>

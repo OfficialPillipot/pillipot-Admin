@@ -59,12 +59,10 @@ function AdminOrderManagementPage() {
   const [typeFilter, setTypeFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [orderIdSearch, setOrderIdSearch] = useState("");
-  const [customerSearch, setCustomerSearch] = useState("");
+  const [serverSearch, setServerSearch] = useState("");
   const [appliedDateFrom, setAppliedDateFrom] = useState("");
   const [appliedDateTo, setAppliedDateTo] = useState("");
-  const [appliedOrderId, setAppliedOrderId] = useState("");
-  const [appliedCustomerSearch, setAppliedCustomerSearch] = useState("");
+  const [appliedServerSearch, setAppliedServerSearch] = useState("");
   const [filtersLoading, setFiltersLoading] = useState(false);
   const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
   const [bulkPdfLoading, setBulkPdfLoading] = useState(false);
@@ -84,8 +82,7 @@ function AdminOrderManagementPage() {
     !!(
       appliedDateFrom ||
       appliedDateTo ||
-      appliedOrderId.trim() ||
-      appliedCustomerSearch.trim()
+      appliedServerSearch.trim()
     );
 
   const hasTableFilters = useMemo(
@@ -98,12 +95,11 @@ function AdminOrderManagementPage() {
     return {
       ...(appliedDateFrom ? { dateFrom: appliedDateFrom } : {}),
       ...(appliedDateTo ? { dateTo: appliedDateTo } : {}),
-      ...(appliedOrderId.trim() ? { orderId: appliedOrderId.trim() } : {}),
-      ...(appliedCustomerSearch.trim()
-        ? { search: appliedCustomerSearch.trim() }
+      ...(appliedServerSearch.trim()
+        ? { search: appliedServerSearch.trim() }
         : {}),
     };
-  }, [appliedDateFrom, appliedDateTo, appliedOrderId, appliedCustomerSearch]);
+  }, [appliedDateFrom, appliedDateTo, appliedServerSearch]);
 
   const loadOrders = useCallback(async (q: AdminOrdersQuery) => {
     const seq = ++loadSeqRef.current;
@@ -150,8 +146,7 @@ function AdminOrderManagementPage() {
     serverNarrowed,
     appliedDateFrom,
     appliedDateTo,
-    appliedOrderId,
-    appliedCustomerSearch,
+    appliedServerSearch,
     loadOrders,
     appliedServerQuery,
   ]);
@@ -515,8 +510,7 @@ function AdminOrderManagementPage() {
     const q: AdminOrdersQuery = {
       ...(dateFrom ? { dateFrom } : {}),
       ...(dateTo ? { dateTo } : {}),
-      ...(orderIdSearch.trim() ? { orderId: orderIdSearch.trim() } : {}),
-      ...(customerSearch.trim() ? { search: customerSearch.trim() } : {}),
+      ...(serverSearch.trim() ? { search: serverSearch.trim() } : {}),
     };
     if (Object.keys(q).length === 0) {
       const tableOn = !!(
@@ -532,8 +526,7 @@ function AdminOrderManagementPage() {
       }
       setAppliedDateFrom("");
       setAppliedDateTo("");
-      setAppliedOrderId("");
-      setAppliedCustomerSearch("");
+      setAppliedServerSearch("");
       setListPage(1);
       toast.success("Orders updated");
       return;
@@ -541,14 +534,12 @@ function AdminOrderManagementPage() {
     await loadOrders(q);
     setAppliedDateFrom(dateFrom);
     setAppliedDateTo(dateTo);
-    setAppliedOrderId(orderIdSearch.trim());
-    setAppliedCustomerSearch(customerSearch.trim());
+    setAppliedServerSearch(serverSearch.trim());
     toast.success("Orders updated");
   }, [
     dateFrom,
     dateTo,
-    orderIdSearch,
-    customerSearch,
+    serverSearch,
     loadOrders,
     productFilter,
     staffFilter,
@@ -559,12 +550,10 @@ function AdminOrderManagementPage() {
   const clearDateFilters = useCallback(async () => {
     setDateFrom("");
     setDateTo("");
-    setOrderIdSearch("");
-    setCustomerSearch("");
+    setServerSearch("");
     setAppliedDateFrom("");
     setAppliedDateTo("");
-    setAppliedOrderId("");
-    setAppliedCustomerSearch("");
+    setAppliedServerSearch("");
     setListPage(1);
     const tableOn = !!(
       productFilter ||
@@ -763,10 +752,8 @@ function AdminOrderManagementPage() {
       <Card>
         <CardHeader title="Order Management" />
         <AdminOrderFilters
-          orderIdSearch={orderIdSearch}
-          onOrderIdSearchChange={setOrderIdSearch}
-          customerSearch={customerSearch}
-          onCustomerSearchChange={setCustomerSearch}
+          serverSearch={serverSearch}
+          onServerSearchChange={setServerSearch}
           dateFrom={dateFrom}
           onDateFromChange={setDateFrom}
           dateTo={dateTo}
@@ -788,8 +775,7 @@ function AdminOrderManagementPage() {
           onResetTableFilters={clearTableFilters}
           appliedDateFrom={appliedDateFrom}
           appliedDateTo={appliedDateTo}
-          appliedOrderId={appliedOrderId}
-          appliedCustomerSearch={appliedCustomerSearch}
+          appliedServerSearch={appliedServerSearch}
         />
         <AdminOrderBulkBar
           selectedCount={selectedVisibleCount}

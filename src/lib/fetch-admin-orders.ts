@@ -9,7 +9,7 @@ export type AdminOrdersQuery = {
   dateFrom?: string;
   dateTo?: string;
   orderId?: string;
-  /** Substring match on name, phone, or pincode (API `search`). */
+  /** API `search`: order id, name, phone, or pincode. */
   search?: string;
 };
 
