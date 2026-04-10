@@ -31,7 +31,7 @@ export function extractMessageFromResponseBody(data: unknown): string | null {
   if (Array.isArray(o.message)) {
     const parts = o.message
       .map((x) => (typeof x === "string" ? x.trim() : String(x).trim()))
-      .filter(Boolean);
+      .filter((s) => s.length > 0);
     if (parts.length) return parts.join(", ");
   }
 
@@ -46,7 +46,7 @@ export function extractMessageFromResponseBody(data: unknown): string | null {
     const flat = Object.values(o.errors as Record<string, unknown>)
       .flatMap((v) => (Array.isArray(v) ? v : [v]))
       .map((x) => (typeof x === "string" ? x : String(x)))
-      .filter(Boolean);
+      .filter((s) => s.length > 0);
     if (flat.length) return flat.join(", ");
   }
 
