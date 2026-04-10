@@ -333,12 +333,22 @@ function AdminOrderManagementPage() {
 
   const markPacked = useCallback(async () => {
     if (!orderDetail || orderDetail.status !== "pending") return;
+    const tid = trackingDraft.trim();
+    if (!tid) {
+      toast.error("Enter a tracking ID before marking packed");
+      return;
+    }
     const lineIds = orderLineIds(orderDetail);
     setMarkingPacked(true);
     try {
       await Promise.all(
         lineIds.map((id) =>
-          dispatch(updateOrder({ id, patch: { status: "packed" } })).unwrap(),
+          dispatch(
+            updateOrder({
+              id,
+              patch: { status: "packed", trackingId: tid },
+            }),
+          ).unwrap(),
         ),
       );
       toast.success("Order marked packed");
@@ -348,7 +358,7 @@ function AdminOrderManagementPage() {
     } finally {
       setMarkingPacked(false);
     }
-  }, [orderDetail, dispatch, reloadCurrentQuery]);
+  }, [orderDetail, trackingDraft, dispatch, reloadCurrentQuery]);
 
   const moveToDispatch = useCallback(async () => {
     if (!orderDetail || orderDetail.status !== "packed") return;
