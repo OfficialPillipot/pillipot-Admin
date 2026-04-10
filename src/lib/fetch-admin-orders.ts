@@ -9,17 +9,21 @@ export type AdminOrdersQuery = {
   dateFrom?: string;
   dateTo?: string;
   orderId?: string;
+  /** Substring match on name, phone, or pincode (API `search`). */
+  search?: string;
 };
 
 const DEFAULT_PAGE_SIZE = 15;
 
 function toOrderListFilters(q: AdminOrdersQuery): OrderListFilters {
   const oid = q.orderId?.trim();
-  const narrowed = !!(q.dateFrom || q.dateTo || oid);
+  const search = q.search?.trim();
+  const narrowed = !!(q.dateFrom || q.dateTo || oid || search);
   const filters: OrderListFilters = {
     dateFrom: q.dateFrom,
     dateTo: q.dateTo,
     orderId: q.orderId,
+    search: q.search,
   };
   if (!narrowed && q.page != null) {
     filters.page = q.page;

@@ -13,6 +13,8 @@ export type SelectOption = { value: string; label: string };
 export type AdminOrderFiltersProps = {
   orderIdSearch: string;
   onOrderIdSearchChange: (v: string) => void;
+  customerSearch: string;
+  onCustomerSearchChange: (v: string) => void;
   dateFrom: string;
   onDateFromChange: (v: string) => void;
   dateTo: string;
@@ -35,12 +37,15 @@ export type AdminOrderFiltersProps = {
   appliedDateFrom: string;
   appliedDateTo: string;
   appliedOrderId: string;
+  appliedCustomerSearch: string;
 };
 
 function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
   const {
     orderIdSearch,
     onOrderIdSearchChange,
+    customerSearch,
+    onCustomerSearchChange,
     dateFrom,
     onDateFromChange,
     dateTo,
@@ -63,6 +68,7 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
     appliedDateFrom,
     appliedDateTo,
     appliedOrderId,
+    appliedCustomerSearch,
   } = props;
 
   return (
@@ -80,6 +86,19 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
               placeholder="e.g. ORD-1005 or 1005"
               className={MANAGEMENT_NATIVE_CONTROL_CLASS}
               aria-label="Search by display order id"
+            />
+          </ManagementFilterField>
+          <ManagementFilterField
+            label="Customer"
+            className="lg:col-span-2 xl:col-span-2"
+          >
+            <input
+              type="search"
+              value={customerSearch}
+              onChange={(e) => onCustomerSearchChange(e.target.value)}
+              placeholder="Name, phone, or pincode"
+              className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+              aria-label="Search by customer name, phone, or pincode"
             />
           </ManagementFilterField>
           <ManagementFilterField label="From date">
@@ -191,13 +210,19 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
           </ManagementFilterField>
         </ManagementFilterPanel>
       </ResponsiveManagementFilters>
-      {(appliedDateFrom || appliedDateTo || appliedOrderId.trim()) && (
+      {(appliedDateFrom ||
+        appliedDateTo ||
+        appliedOrderId.trim() ||
+        appliedCustomerSearch.trim()) && (
         <p className="text-xs text-text-muted">
           Showing orders
           {appliedDateFrom ? ` from ${appliedDateFrom}` : ""}
           {appliedDateTo ? ` through ${appliedDateTo}` : ""}
           {appliedOrderId.trim()
             ? ` for order id ${appliedOrderId.trim()}`
+            : ""}
+          {appliedCustomerSearch.trim()
+            ? `${appliedOrderId.trim() ? ";" : ""} matching “${appliedCustomerSearch.trim()}” (name, phone, or pincode)`
             : ""}
           {appliedDateFrom || appliedDateTo ? " (UTC day boundaries)." : "."}
         </p>

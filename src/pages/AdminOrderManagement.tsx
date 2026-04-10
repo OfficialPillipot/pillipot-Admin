@@ -60,9 +60,11 @@ function AdminOrderManagementPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [orderIdSearch, setOrderIdSearch] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
   const [appliedDateFrom, setAppliedDateFrom] = useState("");
   const [appliedDateTo, setAppliedDateTo] = useState("");
   const [appliedOrderId, setAppliedOrderId] = useState("");
+  const [appliedCustomerSearch, setAppliedCustomerSearch] = useState("");
   const [filtersLoading, setFiltersLoading] = useState(false);
   const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
   const [bulkPdfLoading, setBulkPdfLoading] = useState(false);
@@ -79,7 +81,12 @@ function AdminOrderManagementPage() {
   listLinesRef.current = listLines;
 
   const serverNarrowed =
-    !!(appliedDateFrom || appliedDateTo || appliedOrderId.trim());
+    !!(
+      appliedDateFrom ||
+      appliedDateTo ||
+      appliedOrderId.trim() ||
+      appliedCustomerSearch.trim()
+    );
 
   const hasTableFilters = useMemo(
     () =>
@@ -92,8 +99,11 @@ function AdminOrderManagementPage() {
       ...(appliedDateFrom ? { dateFrom: appliedDateFrom } : {}),
       ...(appliedDateTo ? { dateTo: appliedDateTo } : {}),
       ...(appliedOrderId.trim() ? { orderId: appliedOrderId.trim() } : {}),
+      ...(appliedCustomerSearch.trim()
+        ? { search: appliedCustomerSearch.trim() }
+        : {}),
     };
-  }, [appliedDateFrom, appliedDateTo, appliedOrderId]);
+  }, [appliedDateFrom, appliedDateTo, appliedOrderId, appliedCustomerSearch]);
 
   const loadOrders = useCallback(async (q: AdminOrdersQuery) => {
     const seq = ++loadSeqRef.current;
@@ -141,6 +151,7 @@ function AdminOrderManagementPage() {
     appliedDateFrom,
     appliedDateTo,
     appliedOrderId,
+    appliedCustomerSearch,
     loadOrders,
     appliedServerQuery,
   ]);
@@ -505,6 +516,7 @@ function AdminOrderManagementPage() {
       ...(dateFrom ? { dateFrom } : {}),
       ...(dateTo ? { dateTo } : {}),
       ...(orderIdSearch.trim() ? { orderId: orderIdSearch.trim() } : {}),
+      ...(customerSearch.trim() ? { search: customerSearch.trim() } : {}),
     };
     if (Object.keys(q).length === 0) {
       const tableOn = !!(
@@ -521,6 +533,7 @@ function AdminOrderManagementPage() {
       setAppliedDateFrom("");
       setAppliedDateTo("");
       setAppliedOrderId("");
+      setAppliedCustomerSearch("");
       setListPage(1);
       toast.success("Orders updated");
       return;
@@ -529,11 +542,13 @@ function AdminOrderManagementPage() {
     setAppliedDateFrom(dateFrom);
     setAppliedDateTo(dateTo);
     setAppliedOrderId(orderIdSearch.trim());
+    setAppliedCustomerSearch(customerSearch.trim());
     toast.success("Orders updated");
   }, [
     dateFrom,
     dateTo,
     orderIdSearch,
+    customerSearch,
     loadOrders,
     productFilter,
     staffFilter,
@@ -545,9 +560,11 @@ function AdminOrderManagementPage() {
     setDateFrom("");
     setDateTo("");
     setOrderIdSearch("");
+    setCustomerSearch("");
     setAppliedDateFrom("");
     setAppliedDateTo("");
     setAppliedOrderId("");
+    setAppliedCustomerSearch("");
     setListPage(1);
     const tableOn = !!(
       productFilter ||
@@ -748,6 +765,8 @@ function AdminOrderManagementPage() {
         <AdminOrderFilters
           orderIdSearch={orderIdSearch}
           onOrderIdSearchChange={setOrderIdSearch}
+          customerSearch={customerSearch}
+          onCustomerSearchChange={setCustomerSearch}
           dateFrom={dateFrom}
           onDateFromChange={setDateFrom}
           dateTo={dateTo}
@@ -770,6 +789,7 @@ function AdminOrderManagementPage() {
           appliedDateFrom={appliedDateFrom}
           appliedDateTo={appliedDateTo}
           appliedOrderId={appliedOrderId}
+          appliedCustomerSearch={appliedCustomerSearch}
         />
         <AdminOrderBulkBar
           selectedCount={selectedVisibleCount}

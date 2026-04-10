@@ -31,6 +31,7 @@ export type OrderListFilters = {
   dateFrom?: string;
   dateTo?: string;
   orderId?: string;
+  search?: string;
   page?: number;
   limit?: number;
 };
@@ -85,10 +86,13 @@ function ordersQueryParams(filters: OrderListFilters | undefined): string {
   if (filters?.dateTo) params.append("dateTo", filters.dateTo);
   if (filters?.orderId?.trim())
     params.append("orderId", filters.orderId.trim());
+  if (filters?.search?.trim())
+    params.append("search", filters.search.trim());
   const narrowed = !!(
     filters?.dateFrom ||
     filters?.dateTo ||
-    filters?.orderId?.trim()
+    filters?.orderId?.trim() ||
+    filters?.search?.trim()
   );
   if (!narrowed && filters?.page != null) {
     params.append("page", String(filters.page));
