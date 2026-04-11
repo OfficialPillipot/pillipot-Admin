@@ -114,7 +114,7 @@ function TableComponent<T>({
               <th
                 key={col.key}
                 className={
-                  "whitespace-nowrap px-3 py-3.5 text-left text-xs font-semibold tracking-tight text-text-heading first:pl-4 last:pr-4 md:px-4 md:py-4 " +
+                  "whitespace-nowrap px-3 py-4 text-left text-sm font-semibold tracking-tight text-text-heading first:pl-4 last:pr-4 md:px-4 md:py-[1.125rem] " +
                   (col.className ?? "")
                 }
               >
