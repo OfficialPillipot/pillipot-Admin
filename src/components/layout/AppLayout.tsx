@@ -40,7 +40,7 @@ function getTitle(pathname: string, pageTitles: Record<string, string>): string 
   if (pathname.startsWith("/admin/staff/")) return "Staff Profile";
   if (pathname.startsWith("/orders/") && pathname !== "/orders/create")
     return "Order Detail";
-  return "Edenecart";
+  return "Pillipot";
 }
 
 function AppLayoutComponent({

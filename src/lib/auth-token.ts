@@ -1,4 +1,4 @@
-const TOKEN_KEY = "edenecart_access_token";
+const TOKEN_KEY = "Pillipot_access_token";
 
 export function getAccessToken(): string | null {
   try {

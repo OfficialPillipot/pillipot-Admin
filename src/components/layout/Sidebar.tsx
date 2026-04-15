@@ -37,7 +37,7 @@ import { Tooltip } from "../ui";
 import type { User } from "../../types";
 import { hasPermission } from "../../lib/permissions";
 
-const SIDEBAR_COLLAPSED_KEY = "edenecart_sidebar_collapsed";
+const SIDEBAR_COLLAPSED_KEY = "Pillipot_sidebar_collapsed";
 
 interface StaffNavItem {
   to: string;
@@ -296,7 +296,7 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
             E
           </span>
           <span className="truncate text-sm font-semibold tracking-tight text-sidebar-text-active">
-            Edenecart
+            Pillipot
           </span>
         </div>
 

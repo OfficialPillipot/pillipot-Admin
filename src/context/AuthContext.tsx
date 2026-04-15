@@ -12,7 +12,7 @@ import { endpoints } from "../api/endpoints";
 import { getAccessToken, setAccessToken } from "../lib/auth-token";
 import { getApiErrorMessage } from "../lib/api-error";
 
-const USER_KEY = "edenecart_user";
+const USER_KEY = "Pillipot_user";
 
 interface LoginResult {
   ok: true;
