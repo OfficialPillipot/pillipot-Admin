@@ -87,10 +87,10 @@ function LoginPage() {
       <Card className="w-full max-w-md border-border-strong shadow-[var(--shadow-card-lg)]" padding="lg">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] bg-primary-muted text-lg font-bold text-primary">
-            E
+            P
           </div>
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            Eden E Cart
+            Pillipot
           </p>
           {/* <h1 className="mt-2 text-xl font-semibold tracking-tight text-text-heading sm:text-2xl">
             Order management

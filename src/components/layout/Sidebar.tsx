@@ -293,7 +293,7 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-sidebar-accent/20 text-xs font-bold text-sidebar-accent"
             aria-hidden
           >
-            E
+            P
           </span>
           <span className="truncate text-sm font-semibold tracking-tight text-sidebar-text-active">
             Pillipot
