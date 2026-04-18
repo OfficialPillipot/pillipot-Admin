@@ -204,6 +204,20 @@ export function useAdminOrderTableColumns({
         },
       },
       {
+        key: "scheduledFor",
+        header: "Scheduled For",
+        render: (row: Order & { items?: Order[] }) => {
+          const lines = row.items && row.items.length > 0 ? row.items : [row];
+          const sf = lines.find((i) => i.scheduledFor)?.scheduledFor;
+          if (!sf) return <span className="text-text-muted">—</span>;
+          return (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 rounded-full px-2.5 py-1 whitespace-nowrap">
+              📅 {formatDate(sf)}
+            </span>
+          );
+        },
+      },
+      {
         key: "trackingId",
         header: "Tracking ID",
         render: (row: Order) => {

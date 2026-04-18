@@ -996,8 +996,8 @@ function CreateOrderPage() {
                 ? { deliveryMethodId: selectedDeliveryMethodId }
                 : {}),
               notes: form.notes.trim() || undefined,
-              ...(isFirst && scheduleYmd
-                ? { scheduledFor: scheduleYmd }
+              ...(scheduleOrder
+                ? (isFirst ? { scheduledFor: scheduleYmd } : {})
                 : { status: "pending" }),
               // One confirmation email after the whole order is created (API debounces / last line schedules).
               notifyCustomerEmail: isLastLine,

@@ -108,6 +108,20 @@ function StaffRecentOrdersPage() {
         ),
       },
       {
+        key: "scheduledFor",
+        header: "Scheduled For",
+        mobileLabel: "Scheduled",
+        render: (row) => {
+          const sf = row.items[0].scheduledFor ?? row.items.find((i) => i.scheduledFor)?.scheduledFor;
+          if (!sf) return <span className="text-text-muted">—</span>;
+          return (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 rounded-full px-2.5 py-1">
+              📅 {formatDate(sf)}
+            </span>
+          );
+        },
+      },
+      {
         key: "trackingId",
         header: "Tracking ID",
         mobileLabel: "Tracking",
