@@ -41,7 +41,7 @@ interface CardHeaderProps {
   action?: React.ReactNode;
 }
 
-export const CardHeader = memo(function CardHeader({
+export const CardHeader = memo(function CardHeaderInner({
   title,
   subtitle,
   action,
@@ -52,15 +52,15 @@ export const CardHeader = memo(function CardHeader({
         <h2 className="text-lg font-semibold tracking-tight text-text-heading md:text-xl">
           {title}
         </h2>
-        {subtitle ? (
+        {subtitle && (
           <p className="mt-1.5 text-sm text-text-muted leading-relaxed md:text-[0.9375rem]">
             {subtitle}
           </p>
-        ) : null}
+        )}
       </div>
-      {action ? (
+      {action && (
         <div className="ml-auto shrink-0 sm:self-start">{action}</div>
-      ) : null}
+      )}
     </div>
   );
 });
