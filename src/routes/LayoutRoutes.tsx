@@ -122,7 +122,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
           </ProtectedRoute>
         }
       />
-      {/* Admin shell: super_admin + guest (API enforces fine-grained permissions) */}
+      {/* Admin shell: super_admin + guest (staff have their own routes; customers cannot access admin) */}
       <Route
         path="/admin"
         element={
@@ -227,6 +227,14 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             requiredPermissions={["customers.view"]}
           >
             <Pages.CustomerManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/webapp-users"
+        element={
+          <ProtectedRoute allowedRoles={["super_admin"]}>
+            <Pages.WebappUserManagement />
           </ProtectedRoute>
         }
       />

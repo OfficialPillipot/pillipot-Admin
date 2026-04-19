@@ -88,3 +88,6 @@ export const AdminStaffEnquiryDetail = lazyRoute(
 export const PostOfficeManagement = lazyRoute(
   () => import("../pages/PostOfficeManagement"),
 );
+export const WebappUserManagement = lazyRoute(
+  () => import("../pages/WebappUserManagement"),
+);

@@ -12,3 +12,4 @@ export { default as ProductManagement } from "./ProductManagement";
 export { default as CategoryManagement } from "./CategoryManagement";
 export { default as CustomerManagement } from "./CustomerManagement";
 export { default as ExportData } from "./ExportData";
+export { default as WebappUserManagement } from "./WebappUserManagement";

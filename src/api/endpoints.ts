@@ -57,6 +57,10 @@ export const endpoints = {
   rbacPermissions: `${V1}/rbac/permissions`,
   rbacRoles: `${V1}/rbac/roles`,
   rbacRolePermissions: (roleId: string) => `${V1}/rbac/roles/${roleId}/permissions`,
+  rbacCustomerUsers: `${V1}/rbac/customer-users`,
+  rbacCustomerUserById: (id: string) => `${V1}/rbac/customer-users/${id}`,
+  rbacCustomerUserResetPassword: (id: string) =>
+    `${V1}/rbac/customer-users/${id}/reset-password`,
   rbacGuestUsers: `${V1}/rbac/guest-users`,
   rbacGuestUserById: (id: string) => `${V1}/rbac/guest-users/${id}`,
   rbacGuestUserResetPassword: (id: string) =>
