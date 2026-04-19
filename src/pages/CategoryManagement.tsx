@@ -1,5 +1,5 @@
 import { memo, useState, useCallback, useMemo, useEffect } from "react";
-import { PencilIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, TrashIcon, XMarkIcon, EyeIcon } from "@heroicons/react/24/outline";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   selectCategories,
@@ -34,6 +34,7 @@ function CategoryManagementPage() {
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewingCategory, setViewingCategory] = useState<Category | null>(null);
 
   const filteredCategories = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -74,6 +75,10 @@ function CategoryManagementPage() {
     setDescription(c.description ?? "");
     setImageFile(null);
     setModalOpen(true);
+  }, []);
+
+  const openView = useCallback((c: Category) => {
+    setViewingCategory(c);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -162,6 +167,16 @@ function CategoryManagementPage() {
             : "Delete category";
           return (
             <div className="flex items-center gap-1">
+              <Tooltip content="View" side="top">
+                <button
+                  type="button"
+                  onClick={() => openView(row)}
+                  className="rounded-[var(--radius-md)] p-2 text-text-muted hover:bg-primary-muted hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-label="View category"
+                >
+                  <EyeIcon className="h-4 w-4" />
+                </button>
+              </Tooltip>
               <Tooltip content="Edit" side="top">
                 <button
                   type="button"
@@ -194,7 +209,7 @@ function CategoryManagementPage() {
         },
       },
     ],
-    [openEdit, handleDelete, productCountByCategory]
+    [openEdit, openView, handleDelete, productCountByCategory]
   );
 
   return (
@@ -322,6 +337,44 @@ function CategoryManagementPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!viewingCategory}
+        onClose={() => setViewingCategory(null)}
+        title="View Category"
+      >
+        {viewingCategory && (
+          <div className="space-y-6">
+            <div className="border-b border-border pb-4 text-center">
+              <h3 className="text-xl font-bold text-text">{viewingCategory.name}</h3>
+              {viewingCategory.description && (
+                <p className="mt-1 text-sm text-text-muted">{viewingCategory.description}</p>
+              )}
+            </div>
+
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-sm font-semibold text-text">Category Image</p>
+              {viewingCategory.imageUrl ? (
+                <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-xl w-full max-w-[280px] aspect-square">
+                  <img
+                    src={viewingCategory.imageUrl}
+                    alt={viewingCategory.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="flex aspect-square w-full max-w-[280px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface-muted/30">
+                  <p className="text-sm text-text-muted italic text-center px-4">No image uploaded for this category</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-center pt-2">
+              <Button onClick={() => setViewingCategory(null)}>Close</Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

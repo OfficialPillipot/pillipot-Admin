@@ -1,5 +1,5 @@
 import { memo, useState, useCallback, useMemo, useEffect } from "react";
-import { PencilIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, TrashIcon, XMarkIcon, EyeIcon } from "@heroicons/react/24/outline";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { selectProducts, createProduct, updateProduct, deleteProduct } from "../store/productsSlice";
 import { selectCategories, fetchCategories } from "../store/categoriesSlice";
@@ -69,6 +69,7 @@ function ProductManagementPage() {
   const [submitting, setSubmitting] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [togglingActiveId, setTogglingActiveId] = useState<string | null>(null);
+  const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     void dispatch(fetchCategories());
@@ -132,10 +133,16 @@ function ProductManagementPage() {
     setStockQuantity(String(p.stockQuantity ?? 0));
     setSize(p.size ?? "");
     setColor(p.color ?? "");
+    setSize(p.size ?? "");
+    setColor(p.color ?? "");
     setDescription(p.description ?? "");
     setImageFiles([]);
     setVideoFile(null);
     setModalOpen(true);
+  }, []);
+
+  const openView = useCallback((p: Product) => {
+    setViewingProduct(p);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -405,6 +412,16 @@ function ProductManagementPage() {
         mobileHeaderEnd: true,
         render: (row: Product) => (
           <div className="flex items-center gap-1">
+            <Tooltip content="View" side="top">
+              <button
+                type="button"
+                onClick={() => openView(row)}
+                className="rounded-[var(--radius-md)] p-2 text-text-muted hover:bg-primary-muted hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label="View product"
+              >
+                <EyeIcon className="h-4 w-4" />
+              </button>
+            </Tooltip>
             <Tooltip content="Edit" side="top">
               <button
                 type="button"
@@ -429,7 +446,7 @@ function ProductManagementPage() {
         ),
       },
     ],
-    [openEdit, handleDelete, toggleProductActive, togglingActiveId]
+    [openEdit, openView, handleDelete, toggleProductActive, togglingActiveId]
   );
 
   return (
@@ -724,6 +741,87 @@ function ProductManagementPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!viewingProduct}
+        onClose={() => setViewingProduct(null)}
+        title="View Product"
+      >
+        {viewingProduct && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4 border-b border-border pb-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Name</p>
+                <p className="text-sm font-medium text-text">{viewingProduct.name}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Category</p>
+                <p className="text-sm font-medium text-text">{viewingProduct.categoryName || "Uncategorized"}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-sm font-semibold text-text">Product Media</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {[
+                  viewingProduct.imageUrl,
+                  viewingProduct.imageUrl2,
+                  viewingProduct.imageUrl3,
+                ].map(
+                  (url, idx) =>
+                    url && (
+                      <div key={idx} className="aspect-square overflow-hidden rounded-lg border border-border bg-surface-muted">
+                        <img
+                          src={url}
+                          alt={`Product image ${idx + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    ),
+                )}
+              </div>
+              {viewingProduct.videoUrl && (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">Video Preview</p>
+                  <video
+                    controls
+                    className="w-full rounded-lg border border-border shadow-sm max-h-64"
+                    src={viewingProduct.videoUrl}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 rounded-lg bg-surface-muted/50 p-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase text-text-muted">Price</p>
+                <p className="text-sm font-bold text-primary">₹{viewingProduct.price}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase text-text-muted">Stock</p>
+                <p className="text-sm font-medium text-text">{viewingProduct.stockQuantity}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase text-text-muted">Status</p>
+                <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${viewingProduct.isActive !== false ? "bg-success/10 text-success" : "bg-error/10 text-error"}`}>
+                  {viewingProduct.isActive !== false ? "Active" : "Hidden"}
+                </span>
+              </div>
+            </div>
+
+            {viewingProduct.description && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Description</p>
+                <p className="mt-1 text-sm text-text-muted leading-relaxed whitespace-pre-wrap">{viewingProduct.description}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setViewingProduct(null)}>Close</Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
