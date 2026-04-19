@@ -30,5 +30,9 @@ export const bulkUpdateOrderStatus = (arg: {
   status: Order["status"];
 }) => edenApi.endpoints.bulkUpdateOrderStatus.initiate(arg);
 
+export const bulkUpdateTracking = (arg: {
+  items: { id: string; trackingId: string }[];
+}) => edenApi.endpoints.bulkUpdateTracking.initiate(arg);
+
 export const deleteOrder = (id: string) =>
   edenApi.endpoints.deleteOrder.initiate(id);

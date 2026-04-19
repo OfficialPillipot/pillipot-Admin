@@ -13,7 +13,7 @@ import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   fetchOrders,
   selectOrders,
-  updateOrder,
+  bulkUpdateTracking,
 } from "../store/ordersSlice";
 import { Button, Card, CardHeader, Table, type Column } from "../components/ui";
 
@@ -306,19 +306,15 @@ function TrackingScannerPage() {
 
     setSaveBusy(true);
     try {
-      for (const row of queue) {
-        for (const id of row.lineIds) {
-          await dispatch(
-            updateOrder({
-              id,
-              patch: {
-                trackingId: row.trackingId,
-                status: "packed",
-              },
-            })
-          ).unwrap();
-        }
-      }
+      const items = queue.flatMap((row) =>
+        row.lineIds.map((id) => ({
+          id,
+          trackingId: row.trackingId,
+        }))
+      );
+
+      await dispatch(bulkUpdateTracking({ items })).unwrap();
+
       toast.success("Tracking saved and orders marked packed (picked up)");
       setQueue([]);
       await dispatch(fetchOrders()).unwrap();

@@ -28,6 +28,7 @@ export const endpoints = {
   orderPdf: (id: string) => `${V1}/orders/${id}/pdf`,
   ordersPdfBulk: `${V1}/orders/pdf/bulk`,
   ordersBulkUpdateStatus: `${V1}/orders/bulk-update-status`,
+  ordersBulkUpdateTracking: `${V1}/orders/bulk-update-tracking`,
   senders: `${V1}/senders`,
   senderById: (id: string) => `${V1}/senders/${id}`,
   senderSetDefault: (id: string) => `${V1}/senders/${id}/default`,

@@ -165,6 +165,19 @@ function OrdersListPage() {
         ),
       },
       {
+        key: "scheduledFor",
+        header: "Scheduled For",
+        render: (row: OrdersListGroupedRow) => {
+          const sf = row.scheduledFor;
+          if (!sf) return <span className="text-text-muted">—</span>;
+          return (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 rounded-full px-2.5 py-1">
+              📅 {formatDate(sf)}
+            </span>
+          );
+        },
+      },
+      {
         key: "orderType",
         header: "Type",
         render: (row: Order) => (
