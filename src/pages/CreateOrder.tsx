@@ -1705,7 +1705,7 @@ function CreateOrderPage() {
               type="button" onClick={applyPaste}>
               Apply to form
             </Button>
-            {/* <Button
+            <Button
               type="button"
               className="cursor-pointer"
               variant="secondary"
@@ -1713,7 +1713,7 @@ function CreateOrderPage() {
               onClick={() => void readClipboard()}
             >
               Read from clipboard
-            </Button> */}
+            </Button>
             <Button className="cursor-pointer"
               type="button" variant="secondary" onClick={() => setPasteModalOpen(false)}>
               Cancel
