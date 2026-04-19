@@ -269,7 +269,7 @@ export interface Customer {
   email: string;
   state: string;
   district: string;
-  secondaryPhone: string | null;
+  secondaryPhone?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -290,7 +290,7 @@ export interface Order {
   email: string;
   state: string;
   district: string;
-  secondaryPhone: string | null;
+  secondaryPhone?: string | null;
   orderType: OrderType;
   productId: string;
   /** From API when listing orders; use for display before catalog lookup. */
@@ -332,6 +332,7 @@ export type CreateOrderPayload = Omit<
   | "deliveryFee"
   | "deliveryMethodName"
   | "status"
+  | "secondaryPhone"
 > & {
   /** Defaults to pending on the API when omitted; use with scheduledFor for scheduled lines. */
   status?: OrderStatus;

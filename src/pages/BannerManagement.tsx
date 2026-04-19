@@ -1,5 +1,5 @@
 import { memo, useState, useCallback, useMemo, useEffect } from "react";
-import { PencilIcon, TrashIcon, XMarkIcon, EyeIcon, ArrowUpIcon, ArrowDownIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, TrashIcon, XMarkIcon, EyeIcon } from "@heroicons/react/24/outline";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   selectBanners,

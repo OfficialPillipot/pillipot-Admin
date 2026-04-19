@@ -480,6 +480,7 @@ function CreateOrderPage() {
       email: editingOrder.email ?? "",
       state: editingOrder.state ?? "",
       district: editingOrder.district ?? "",
+      secondaryPhone: editingOrder.secondaryPhone ?? "",
       orderType: editingOrder.orderType ?? "",
       notes: editingOrder.notes ?? "",
     });

@@ -4,6 +4,7 @@ import { normalizeStaff } from "../../lib/staffNormalize";
 import type {
   AppSettings,
   AssignedNumber,
+  Banner,
   Category,
   CreateOrderPayload,
   Customer,
