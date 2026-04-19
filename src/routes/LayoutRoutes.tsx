@@ -250,6 +250,16 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         }
       />
       <Route
+        path="/admin/banners"
+        element={
+          <ProtectedRoute
+            allowedRoles={["super_admin", "guest"]}
+          >
+            <Pages.BannerManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/delivery"
         element={
           <ProtectedRoute

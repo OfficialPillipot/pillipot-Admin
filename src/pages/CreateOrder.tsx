@@ -27,8 +27,6 @@ import type {
   OrderType,
   Product,
 } from "../types";
-import { LuClipboardList } from "react-icons/lu";
-
 
 interface ProductRow {
   productId: string;
@@ -48,6 +46,7 @@ const INITIAL = {
   email: "",
   state: "",
   district: "",
+  secondaryPhone: "",
   orderType: "" as OrderType | "",
   notes: "",
 };
@@ -60,15 +59,32 @@ function splitDeliveryAddress(deliveryAddress: string): { flat: string; area: st
   return { flat: t.slice(0, i).trim(), area: t.slice(i + 1).trim() };
 }
 
-/** Extract 10-digit Indian mobile from pasted text (handles +91, spaces). */
-function extractPhoneDigits(blob: string): string {
+/** Extract 10-digit Indian mobile(s) from pasted text (handles +91, spaces). Returns up to 2 unique numbers. */
+function extractAllPhoneDigits(blob: string): string[] {
   const digits = blob.replace(/\D/g, "");
-  for (let i = Math.max(0, digits.length - 12); i <= digits.length - 10; i++) {
+  const found: string[] = [];
+  
+  // Slide through all digits to find 10-digit sequences starting with 6-9
+  for (let i = 0; i <= digits.length - 10; i++) {
     const slice = digits.slice(i, i + 10);
-    if (/^[6-9]\d{9}$/.test(slice)) return slice;
+    if (/^[6-9]\d{9}$/.test(slice)) {
+      if (!found.includes(slice)) found.push(slice);
+      if (found.length >= 2) break;
+      // Skip the next 9 digits to avoid overlapping matches
+      i += 9;
+    }
   }
-  const m = blob.match(/\b(\d{10})\b/);
-  return m && /^[6-9]\d{9}$/.test(m[1]) ? m[1] : "";
+
+  if (found.length < 2) {
+    const regex = /\b([6-9]\d{9})\b/g;
+    let match;
+    while ((match = regex.exec(blob)) !== null) {
+      if (!found.includes(match[1])) found.push(match[1]);
+      if (found.length >= 2) break;
+    }
+  }
+
+  return found;
 }
 
 /** Strip WhatsApp / forward noise from a single line (timestamp brackets, sender labels). */
@@ -201,8 +217,9 @@ function parsePastedCustomerDetails(text: string): Partial<typeof INITIAL> {
     }
   }
 
-  const phone = extractPhoneDigits(blob);
-  if (phone) out.phone = phone;
+  const phones = extractAllPhoneDigits(blob);
+  if (phones[0]) out.phone = phones[0];
+  if (phones[1]) out.secondaryPhone = phones[1];
 
   if (!out.pincode) {
     const pinM = blob.match(/\b(\d{6})\b/);
@@ -217,7 +234,8 @@ function parsePastedCustomerDetails(text: string): Partial<typeof INITIAL> {
   work = work.filter((l) => {
     if (/^phone\s*[:：.-]/i.test(l) || /^mobile\s*[:：.-]/i.test(l)) return false;
     const d = l.replace(/\D/g, "");
-    if (phone && (d === phone || (d.length >= 10 && d.endsWith(phone)))) return false;
+    if (out.phone && (d === out.phone || (d.length >= 10 && d.endsWith(out.phone)))) return false;
+    if (out.secondaryPhone && (d === out.secondaryPhone || (d.length >= 10 && d.endsWith(out.secondaryPhone)))) return false;
     return true;
   });
 
@@ -930,6 +948,7 @@ function CreateOrderPage() {
             email: form.email.trim(),
             state: form.state.trim(),
             district: form.district.trim(),
+            secondaryPhone: form.secondaryPhone.trim() || undefined,
             orderType: form.orderType as OrderType,
             productId: item.productId,
             quantity: item.quantity,
@@ -984,6 +1003,7 @@ function CreateOrderPage() {
               email: emailForCreateOrderApi(form.email, form.phone),
               state: form.state.trim(),
               district: form.district.trim(),
+              secondaryPhone: form.secondaryPhone.trim() || undefined,
               orderType: form.orderType as OrderType,
               productId: item.productId,
               quantity: item.quantity,
@@ -1168,6 +1188,15 @@ function CreateOrderPage() {
                   aria-label="Phone number"
                 />
               </div>
+              <Input
+                label="Secondary Phone (optional)"
+                value={form.secondaryPhone}
+                onChange={(e) =>
+                  update("secondaryPhone", e.target.value.replace(/\D/g, "").slice(0, 10))
+                }
+                error={errors.secondaryPhone}
+                placeholder="Alternative number"
+              />
             </div>
             <div className={`relative transition-all duration-300 ${!detailsEnabled ? "opacity-50 grayscale select-none" : ""}`}>
               {!detailsEnabled && <div className="absolute inset-0 z-10 cursor-not-allowed" title="Enter 10-digit phone first" />}

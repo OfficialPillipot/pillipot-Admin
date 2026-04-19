@@ -91,3 +91,4 @@ export const PostOfficeManagement = lazyRoute(
 export const WebappUserManagement = lazyRoute(
   () => import("../pages/WebappUserManagement"),
 );
+export const BannerManagement = lazyRoute(() => import("../pages/BannerManagement"));

@@ -152,9 +152,15 @@ function OrderDetailPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <dt className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Phone</dt>
+                    <dt className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Primary Phone</dt>
                     <dd className="font-semibold text-gray-700">{currentOrder.phone}</dd>
                   </div>
+                  {currentOrder.secondaryPhone && (
+                    <div>
+                      <dt className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Secondary Phone</dt>
+                      <dd className="font-semibold text-gray-700">{currentOrder.secondaryPhone}</dd>
+                    </div>
+                  )}
                   <div>
                     <dt className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Order Type</dt>
                     <dd className="font-bold text-primary tracking-wide">{currentOrder.orderType.toUpperCase()}</dd>

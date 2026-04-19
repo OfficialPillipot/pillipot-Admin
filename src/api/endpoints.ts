@@ -13,6 +13,8 @@ export const endpoints = {
   productById: (id: string) => `${V1}/products/${id}`,
   categories: `${V1}/categories`,
   categoryById: (id: string) => `${V1}/categories/${id}`,
+  banners: `${V1}/banners`,
+  bannerById: (id: string) => `${V1}/banners/${id}`,
   deliveryMethods: `${V1}/delivery-methods`,
   deliveryMethodById: (id: string) => `${V1}/delivery-methods/${id}`,
   productDeliveryFees: `${V1}/product-delivery-fees`,

@@ -120,6 +120,7 @@ export const edenApi = createApi({
     "AssignedNumber",
     "DeliveryMethod",
     "ProductDeliveryFee",
+    "Banner",
   ],
   endpoints: (builder) => ({
     getProducts: builder.query<Product[], void>({
@@ -267,6 +268,73 @@ export const edenApi = createApi({
       invalidatesTags: (_r, _e, id) => [
         { type: "Category", id },
         { type: "Category", id: "LIST" },
+      ],
+    }),
+    getBanners: builder.query<Banner[], void>({
+      query: () => endpoints.banners,
+      providesTags: (r) =>
+        r
+          ? [
+              { type: "Banner", id: "LIST" },
+              ...r.map((b) => ({ type: "Banner" as const, id: b.id })),
+            ]
+          : [{ type: "Banner", id: "LIST" }],
+    }),
+    createBanner: builder.mutation<
+      Banner,
+      Pick<Banner, "title" | "description" | "linkUrl" | "order" | "isActive"> & {
+        image: File;
+      }
+    >({
+      query: (body) => {
+        const fd = new FormData();
+        fd.append("title", body.title);
+        if (body.description) fd.append("description", body.description);
+        if (body.linkUrl) fd.append("linkUrl", body.linkUrl);
+        fd.append("order", String(body.order));
+        fd.append("isActive", String(body.isActive));
+        fd.append("image", body.image);
+        return {
+          url: endpoints.banners,
+          method: "POST",
+          body: fd,
+        };
+      },
+      invalidatesTags: [{ type: "Banner", id: "LIST" }],
+    }),
+    updateBanner: builder.mutation<
+      Banner,
+      {
+        id: string;
+        patch: Partial<Banner> & { image?: File | null };
+      }
+    >({
+      query: ({ id, patch }) => {
+        const fd = new FormData();
+        Object.entries(patch).forEach(([key, val]) => {
+          if (val === undefined || key === "image") return;
+          fd.append(key, val === null ? "" : String(val));
+        });
+        if (patch.image) fd.append("image", patch.image);
+        return {
+          url: endpoints.bannerById(id),
+          method: "PUT",
+          body: fd,
+        };
+      },
+      invalidatesTags: (_r, _e, { id }) => [
+        { type: "Banner", id },
+        { type: "Banner", id: "LIST" },
+      ],
+    }),
+    deleteBanner: builder.mutation<void, string>({
+      query: (id) => ({
+        url: endpoints.bannerById(id),
+        method: "DELETE",
+      }),
+      invalidatesTags: (_r, _e, id) => [
+        { type: "Banner", id },
+        { type: "Banner", id: "LIST" },
       ],
     }),
 

@@ -19,6 +19,18 @@ export interface Category {
   imageUrl?: string | null;
 }
 
+export interface Banner {
+  id: string;
+  title: string;
+  description?: string;
+  imageUrl: string;
+  linkUrl?: string;
+  order: number;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface DeliveryMethod {
   id: string;
   name: string;
@@ -257,6 +269,7 @@ export interface Customer {
   email: string;
   state: string;
   district: string;
+  secondaryPhone: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -277,6 +290,7 @@ export interface Order {
   email: string;
   state: string;
   district: string;
+  secondaryPhone: string | null;
   orderType: OrderType;
   productId: string;
   /** From API when listing orders; use for display before catalog lookup. */
@@ -335,6 +349,7 @@ export type CreateOrderPayload = Omit<
   notifyCustomerEmail?: boolean;
   /** When set (future YYYY-MM-DD), order line is created as scheduled; confirmation email is deferred. */
   scheduledFor?: string;
+  secondaryPhone?: string;
 };
 
 export interface User {

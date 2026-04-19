@@ -56,6 +56,7 @@ function CustomerManagementPage() {
     () => [
       { key: "customerName", header: "Name" },
       { key: "phone", header: "Phone" },
+      { key: "secondaryPhone", header: "Phone 2" },
       { key: "email", header: "Email" },
       {
         key: "deliveryAddress",

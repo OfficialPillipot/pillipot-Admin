@@ -85,6 +85,7 @@ function OrdersListPage() {
           customer.includes(q) ||
           phone.includes(q) ||
           phoneCompact.includes(qNoSpace) ||
+          String(row.secondaryPhone ?? "").toLowerCase().includes(q) ||
           orderId.includes(q) ||
           orderIdCompact.includes(qNoSpace) ||
           row.id.toLowerCase().includes(q)
