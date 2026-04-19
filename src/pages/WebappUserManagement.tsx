@@ -87,7 +87,7 @@ function WebappUserManagementPage() {
             placeholder="Search by name or email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            icon={<MagnifyingGlassIcon className="h-4 w-4 text-text-muted" />}
+            endNode={<MagnifyingGlassIcon className="h-4 w-4" />}
           />
         </div>
 
