@@ -47,6 +47,9 @@ export const ProductManagement = lazyRoute(
 export const CategoryManagement = lazyRoute(
   () => import("../pages/CategoryManagement"),
 );
+export const SubcategoryManagement = lazyRoute(
+  () => import("../pages/SubcategoryManagement"),
+);
 export const ExportData = lazyRoute(() => import("../pages/ExportData"));
 export const CustomerManagement = lazyRoute(
   () => import("../pages/CustomerManagement"),
@@ -88,3 +91,7 @@ export const AdminStaffEnquiryDetail = lazyRoute(
 export const PostOfficeManagement = lazyRoute(
   () => import("../pages/PostOfficeManagement"),
 );
+export const WebappUserManagement = lazyRoute(
+  () => import("../pages/WebappUserManagement"),
+);
+export const BannerManagement = lazyRoute(() => import("../pages/BannerManagement"));

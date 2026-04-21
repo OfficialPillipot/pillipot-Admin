@@ -119,7 +119,7 @@ function SalaryManagementPage() {
       <Card>
         <CardHeader
           title="Staff pay"
-          subtitle="Set amount per quantity and milestone bonuses for each staff member. To review earnings and record payouts, use Payroll."
+          // subtitle="Set amount per quantity and milestone bonuses for each staff member. To review earnings and record payouts, use Payroll."
           action={
             <Link
               to="/admin/payroll-ledger"
@@ -168,7 +168,7 @@ function SalaryManagementPage() {
                               [s.id]: e.target.value,
                             }))
                           }
-                          className="box-border w-full min-w-0 max-w-full rounded-lg border border-border bg-surface-alt py-2 pl-6 pr-3 text-sm text-text outline-none transition-all focus:border-primary focus:bg-white dark:focus:bg-surface-alt focus:ring-2 focus:ring-primary/10"
+                          className="box-border w-full min-w-0 max-w-full rounded-lg border border-border bg-surface-alt py-2 pl-6 pr-3 text-sm text-text outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/10"
                           placeholder="0.00"
                         />
                       </div>
@@ -192,7 +192,7 @@ function SalaryManagementPage() {
                             [s.id]: e.target.value,
                           }))
                         }
-                        className="box-border w-full min-w-0 max-w-full rounded-lg border border-border bg-surface-alt px-3 py-2 text-sm text-text outline-none transition-all focus:border-primary focus:bg-white dark:focus:bg-surface-alt focus:ring-2 focus:ring-primary/10"
+                        className="box-border w-full min-w-0 max-w-full rounded-lg border border-border bg-surface-alt px-3 py-2 text-sm text-text outline-none transition-all focus:border-primary  focus:ring-2 focus:ring-primary/10"
                         placeholder="e.g. 5:50, 10:100"
                       />
                     </div>
@@ -202,9 +202,9 @@ function SalaryManagementPage() {
                         try {
                           const tiers = parseMilestones(
                             draftMilestones[s.id] ??
-                              milestoneText(
-                                staffById.get(s.id)?.bonusMilestones ?? [],
-                              ),
+                            milestoneText(
+                              staffById.get(s.id)?.bonusMilestones ?? [],
+                            ),
                           );
                           if (tiers.length === 0) {
                             return (
@@ -237,7 +237,7 @@ function SalaryManagementPage() {
                     </p>
                     <Button
                       size="sm"
-                      className="w-full shadow-sm shadow-primary/10"
+                      className="w-full cursor-pointer shadow-sm shadow-primary/10"
                       onClick={() => void saveStaffRule(s.id)}
                       loading={savingId === s.id}
                     >

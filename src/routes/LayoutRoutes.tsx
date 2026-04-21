@@ -122,7 +122,7 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
           </ProtectedRoute>
         }
       />
-      {/* Admin shell: super_admin + guest (API enforces fine-grained permissions) */}
+      {/* Admin shell: super_admin + guest (staff have their own routes; customers cannot access admin) */}
       <Route
         path="/admin"
         element={
@@ -231,6 +231,14 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         }
       />
       <Route
+        path="/admin/webapp-users"
+        element={
+          <ProtectedRoute allowedRoles={["super_admin"]}>
+            <Pages.WebappUserManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/categories"
         element={
           <ProtectedRoute
@@ -238,6 +246,27 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
             requiredPermissions={["categories.view"]}
           >
             <Pages.CategoryManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/subcategories"
+        element={
+          <ProtectedRoute
+            allowedRoles={["super_admin", "guest"]}
+            requiredPermissions={["categories.view"]}
+          >
+            <Pages.SubcategoryManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/banners"
+        element={
+          <ProtectedRoute
+            allowedRoles={["super_admin", "guest"]}
+          >
+            <Pages.BannerManagement />
           </ProtectedRoute>
         }
       />

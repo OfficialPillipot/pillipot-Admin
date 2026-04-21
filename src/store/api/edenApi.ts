@@ -4,6 +4,7 @@ import { normalizeStaff } from "../../lib/staffNormalize";
 import type {
   AppSettings,
   AssignedNumber,
+  Banner,
   Category,
   CreateOrderPayload,
   Customer,
@@ -15,6 +16,7 @@ import type {
   Sender,
   Staff,
   StaffPosition,
+  Subcategory,
 } from "../../types";
 import { baseQueryWithAuth } from "./baseQueryWithAuth";
 import { isIndiaPostDirectDevProxy } from "../../lib/india-post-dev-proxy";
@@ -40,6 +42,7 @@ export type OrderListPayload = { items: Order[]; total: number };
 
 export type NewProductPayload = Pick<Product, "name" | "price"> & {
   categoryId: string;
+  subcategoryId: string;
   buyingPrice?: number;
   stockQuantity?: number;
   size?: string;
@@ -120,6 +123,8 @@ export const edenApi = createApi({
     "AssignedNumber",
     "DeliveryMethod",
     "ProductDeliveryFee",
+    "Banner",
+    "Subcategory",
   ],
   endpoints: (builder) => ({
     getProducts: builder.query<Product[], void>({
@@ -137,6 +142,7 @@ export const edenApi = createApi({
         const fd = new FormData();
         fd.append("name", body.name);
         fd.append("categoryId", body.categoryId);
+        if (body.subcategoryId) fd.append("subcategoryId", body.subcategoryId);
         fd.append("price", String(body.price));
         if (body.description != null && body.description !== "") {
           fd.append("description", body.description);
@@ -267,6 +273,121 @@ export const edenApi = createApi({
       invalidatesTags: (_r, _e, id) => [
         { type: "Category", id },
         { type: "Category", id: "LIST" },
+      ],
+    }),
+    getSubcategories: builder.query<Subcategory[], void>({
+      query: () => endpoints.subcategories,
+      providesTags: (r) =>
+        r
+          ? [
+              { type: "Subcategory", id: "LIST" },
+              ...r.map((s) => ({ type: "Subcategory" as const, id: s.id })),
+            ]
+          : [{ type: "Subcategory", id: "LIST" }],
+    }),
+    createSubcategory: builder.mutation<
+      Subcategory,
+      Pick<Subcategory, "name" | "categoryId"> & { description?: string }
+    >({
+      query: (body) => ({
+        url: endpoints.subcategories,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: [{ type: "Subcategory", id: "LIST" }],
+    }),
+    updateSubcategory: builder.mutation<
+      Subcategory,
+      {
+        id: string;
+        patch: Partial<Pick<Subcategory, "name" | "description" | "categoryId">>;
+      }
+    >({
+      query: ({ id, patch }) => ({
+        url: endpoints.subcategoryById(id),
+        method: "PATCH",
+        body: patch,
+      }),
+      invalidatesTags: (_r, _e, { id }) => [
+        { type: "Subcategory", id },
+        { type: "Subcategory", id: "LIST" },
+      ],
+    }),
+    deleteSubcategory: builder.mutation<void, string>({
+      query: (id) => ({
+        url: endpoints.subcategoryById(id),
+        method: "DELETE",
+      }),
+      invalidatesTags: (_r, _e, id) => [
+        { type: "Subcategory", id },
+        { type: "Subcategory", id: "LIST" },
+      ],
+    }),
+    getBanners: builder.query<Banner[], void>({
+      query: () => endpoints.banners,
+      providesTags: (r) =>
+        r
+          ? [
+              { type: "Banner", id: "LIST" },
+              ...r.map((b) => ({ type: "Banner" as const, id: b.id })),
+            ]
+          : [{ type: "Banner", id: "LIST" }],
+    }),
+    createBanner: builder.mutation<
+      Banner,
+      Pick<Banner, "title" | "description" | "linkUrl" | "order" | "isActive"> & {
+        image: File;
+      }
+    >({
+      query: (body) => {
+        const fd = new FormData();
+        fd.append("title", body.title);
+        if (body.description) fd.append("description", body.description);
+        if (body.linkUrl) fd.append("linkUrl", body.linkUrl);
+        fd.append("order", String(body.order));
+        fd.append("isActive", String(body.isActive));
+        fd.append("image", body.image);
+        return {
+          url: endpoints.banners,
+          method: "POST",
+          body: fd,
+        };
+      },
+      invalidatesTags: [{ type: "Banner", id: "LIST" }],
+    }),
+    updateBanner: builder.mutation<
+      Banner,
+      {
+        id: string;
+        patch: Partial<Banner> & { image?: File | null };
+      }
+    >({
+      query: ({ id, patch }) => {
+        const fd = new FormData();
+        Object.entries(patch).forEach(([key, val]) => {
+          if (val === undefined || key === "image") return;
+          fd.append(key, val === null ? "" : String(val));
+        });
+        if (patch.image) fd.append("image", patch.image);
+        return {
+          url: endpoints.bannerById(id),
+          method: "PUT",
+          body: fd,
+        };
+      },
+      invalidatesTags: (_r, _e, { id }) => [
+        { type: "Banner", id },
+        { type: "Banner", id: "LIST" },
+      ],
+    }),
+    deleteBanner: builder.mutation<void, string>({
+      query: (id) => ({
+        url: endpoints.bannerById(id),
+        method: "DELETE",
+      }),
+      invalidatesTags: (_r, _e, id) => [
+        { type: "Banner", id },
+        { type: "Banner", id: "LIST" },
       ],
     }),
 

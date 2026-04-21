@@ -32,6 +32,8 @@ import {
   QrCodeIcon,
   GiftIcon,
   BuildingOffice2Icon,
+  MegaphoneIcon,
+  ListBulletIcon,
 } from "@heroicons/react/24/outline";
 import { Tooltip } from "../ui";
 import type { User } from "../../types";
@@ -163,7 +165,10 @@ const ADMIN_NAV_SECTIONS: NavSection<AdminNavItem>[] = [
     items: [
       { to: "/admin/products", label: "Products", end: true, icon: Squares2X2Icon, permission: "products.view" },
       { to: "/admin/categories", label: "Categories", end: true, icon: TagIcon, permission: "categories.view" },
+      { to: "/admin/subcategories", label: "Subcategories", end: true, icon: ListBulletIcon, permission: "categories.view" },
+      { to: "/admin/banners", label: "Banners", end: true, icon: MegaphoneIcon },
       { to: "/admin/customers", label: "Customers", end: true, icon: UserGroupIcon, permission: "customers.view" },
+      { to: "/admin/webapp-users", label: "Platform customers", end: true, icon: IdentificationIcon, permission: "customers.view" },
     ],
   },
   {

@@ -13,6 +13,11 @@ export const endpoints = {
   productById: (id: string) => `${V1}/products/${id}`,
   categories: `${V1}/categories`,
   categoryById: (id: string) => `${V1}/categories/${id}`,
+  subcategories: `${V1}/subcategories`,
+  subcategoryById: (id: string) => `${V1}/subcategories/${id}`,
+  subcategoriesByCategory: (categoryId: string) => `${V1}/subcategories/by-category/${categoryId}`,
+  banners: `${V1}/banners`,
+  bannerById: (id: string) => `${V1}/banners/${id}`,
   deliveryMethods: `${V1}/delivery-methods`,
   deliveryMethodById: (id: string) => `${V1}/delivery-methods/${id}`,
   productDeliveryFees: `${V1}/product-delivery-fees`,
@@ -57,6 +62,10 @@ export const endpoints = {
   rbacPermissions: `${V1}/rbac/permissions`,
   rbacRoles: `${V1}/rbac/roles`,
   rbacRolePermissions: (roleId: string) => `${V1}/rbac/roles/${roleId}/permissions`,
+  rbacCustomerUsers: `${V1}/rbac/customer-users`,
+  rbacCustomerUserById: (id: string) => `${V1}/rbac/customer-users/${id}`,
+  rbacCustomerUserResetPassword: (id: string) =>
+    `${V1}/rbac/customer-users/${id}/reset-password`,
   rbacGuestUsers: `${V1}/rbac/guest-users`,
   rbacGuestUserById: (id: string) => `${V1}/rbac/guest-users/${id}`,
   rbacGuestUserResetPassword: (id: string) =>

@@ -93,6 +93,7 @@ export function groupOrdersForAdminList(
     status: string;
     orderType: string;
     deliveryMethodId: string;
+    platform: string;
   },
 ): GroupedAdminOrder[] {
   let list = [...listLines].sort(
@@ -111,6 +112,9 @@ export function groupOrdersForAdminList(
   }
   if (filters.orderType) {
     list = list.filter((o) => o.orderType === filters.orderType);
+  }
+  if (filters.platform) {
+    list = list.filter((o) => o.platform === filters.platform);
   }
   if (filters.deliveryMethodId) {
     if (filters.deliveryMethodId === ADMIN_DELIVERY_FILTER_NONE) {

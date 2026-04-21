@@ -108,6 +108,22 @@ function StaffRecentOrdersPage() {
         ),
       },
       {
+        key: "platform",
+        header: "Platform",
+        render: (row) => {
+          const isWeb = row.items[0].platform === "WebApp" || row.items[0].platform === "webapp";
+          return (
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+              isWeb 
+                ? "bg-violet-500 text-white shadow-sm" 
+                : "bg-blue-500 text-white shadow-sm"
+            }`}>
+              {row.items[0].platform || "staff"}
+            </span>
+          );
+        },
+      },
+      {
         key: "scheduledFor",
         header: "Scheduled For",
         mobileLabel: "Scheduled",

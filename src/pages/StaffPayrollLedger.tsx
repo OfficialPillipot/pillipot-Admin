@@ -183,7 +183,7 @@ function StaffPayrollLedgerPage() {
       <Card>
         <CardHeader
           title="Payroll"
-          subtitle="Choose a period to see earnings, pay status, and record payouts. Pay rules are edited under Staff pay."
+          // subtitle="Choose a period to see earnings, pay status, and record payouts. Pay rules are edited under Staff pay."
           action={
             <Link
               to="/admin/salary"
@@ -198,6 +198,7 @@ function StaffPayrollLedgerPage() {
           <Button
             type="button"
             variant="outline"
+            className="cursor-pointer"
             size="sm"
             onClick={() => applyPreset(presetToday().from, presetToday().to)}
           >
@@ -207,6 +208,7 @@ function StaffPayrollLedgerPage() {
             type="button"
             variant="outline"
             size="sm"
+            className="cursor-pointer"
             onClick={() => {
               const p = presetThisWeek();
               applyPreset(p.from, p.to);
@@ -216,6 +218,7 @@ function StaffPayrollLedgerPage() {
           </Button>
           <Button
             type="button"
+            className="cursor-pointer"
             variant="outline"
             size="sm"
             onClick={() => {
@@ -228,6 +231,7 @@ function StaffPayrollLedgerPage() {
           <Button
             type="button"
             variant="outline"
+            className="cursor-pointer"
             size="sm"
             onClick={() => {
               const p = presetLastMonth();
@@ -292,7 +296,7 @@ function StaffPayrollLedgerPage() {
                 />
               </ManagementFilterField>
               <ManagementFilterField label="Apply">
-                <Button type="button" onClick={refreshAll} loading={busy}>
+                <Button className="cursor-pointer" type="button" onClick={refreshAll} loading={busy}>
                   Refresh
                 </Button>
               </ManagementFilterField>
@@ -325,7 +329,7 @@ function StaffPayrollLedgerPage() {
               },
               {
                 key: "rate",
-                header: "₹ / qty",
+                header: "₹ ",
                 render: (r: StaffEarnings) => (
                   <span className="font-mono text-sm">
                     {formatCurrency(r.payoutPerOrder)}
@@ -402,6 +406,10 @@ function StaffPayrollLedgerPage() {
                         belowMin ||
                         (payingId !== null && payingId !== r.staffId)
                       }
+                      className={`${belowMin || (payingId !== null && payingId !== r.staffId)
+                        ? "cursor-not-allowed"
+                        : "cursor-pointer"
+                        }`}
                       title={
                         belowMin
                           ? `Pay when total is ${formatCurrency(MIN_PAY_TOTAL)} or more`
@@ -425,6 +433,7 @@ function StaffPayrollLedgerPage() {
       <Card>
         <CardHeader
           title="Payment history"
+        // subtitle="Recorded payouts for the same period filters above (up to 250 rows). Staff filter applies here."
         />
         {paymentsLoading ? (
           <p className="px-4 py-6 text-sm text-text-muted md:px-6">

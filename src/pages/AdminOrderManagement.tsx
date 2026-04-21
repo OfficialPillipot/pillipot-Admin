@@ -64,6 +64,7 @@ function AdminOrderManagementPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [deliveryFilter, setDeliveryFilter] = useState("");
+  const [platformFilter, setPlatformFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [serverSearch, setServerSearch] = useState("");
@@ -102,9 +103,10 @@ function AdminOrderManagementPage() {
         staffFilter ||
         statusFilter ||
         typeFilter ||
-        deliveryFilter
+        deliveryFilter ||
+        platformFilter
       ),
-    [productFilter, staffFilter, statusFilter, typeFilter, deliveryFilter],
+    [productFilter, staffFilter, statusFilter, typeFilter, deliveryFilter, platformFilter],
   );
 
   const appliedServerQuery = useCallback((): AdminOrdersQuery => {
@@ -181,6 +183,7 @@ function AdminOrderManagementPage() {
         status: statusFilter,
         orderType: typeFilter,
         deliveryMethodId: deliveryFilter,
+        platform: platformFilter,
       }),
     [
       listLines,
@@ -189,6 +192,7 @@ function AdminOrderManagementPage() {
       statusFilter,
       typeFilter,
       deliveryFilter,
+      platformFilter,
     ],
   );
 
@@ -602,7 +606,8 @@ function AdminOrderManagementPage() {
       staffFilter ||
       statusFilter ||
       typeFilter ||
-      deliveryFilter
+      deliveryFilter ||
+      platformFilter
     );
     if (tableOn) {
       await loadOrders({});
@@ -646,6 +651,7 @@ function AdminOrderManagementPage() {
     setProductFilter("");
     setTypeFilter("");
     setDeliveryFilter("");
+    setPlatformFilter("");
   }, []);
 
   const downloadSelectedPdf = useCallback(async () => {
@@ -788,6 +794,15 @@ function AdminOrderManagementPage() {
     ],
     [deliveryMethods],
   );
+  
+  const platformOptions = useMemo(
+    () => [
+      { value: "", label: "Select all platforms" },
+      { value: "webapp", label: "WebApp" },
+      { value: "staff", label: "Staff" },
+    ],
+    [],
+  );
 
   const getAdminOrderEditHref = useCallback(
     (row: Order & { items?: Order[] }) => {
@@ -881,6 +896,9 @@ function AdminOrderManagementPage() {
           deliveryFilter={deliveryFilter}
           onDeliveryFilterChange={setDeliveryFilter}
           deliveryOptions={deliveryOptions}
+          platformFilter={platformFilter}
+          onPlatformFilterChange={setPlatformFilter}
+          platformOptions={platformOptions}
           onResetTableFilters={clearTableFilters}
           appliedDateFrom={appliedDateFrom}
           appliedDateTo={appliedDateTo}

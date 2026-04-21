@@ -76,6 +76,14 @@ function AdminOrderDetailModalComponent({
               </dt>
               <dd>{orderDetail.phone}</dd>
             </div>
+            {orderDetail.secondaryPhone && (
+              <div>
+                <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">
+                  Secondary Phone
+                </dt>
+                <dd>{orderDetail.secondaryPhone}</dd>
+              </div>
+            )}
             <div>
               <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">
                 Building/Street

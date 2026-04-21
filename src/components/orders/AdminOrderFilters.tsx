@@ -34,6 +34,9 @@ export type AdminOrderFiltersProps = {
   deliveryFilter: string;
   onDeliveryFilterChange: (v: string) => void;
   deliveryOptions: SelectOption[];
+  platformFilter: string;
+  onPlatformFilterChange: (v: string) => void;
+  platformOptions: SelectOption[];
   onResetTableFilters: () => void;
   appliedDateFrom: string;
   appliedDateTo: string;
@@ -65,6 +68,9 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
     deliveryFilter,
     onDeliveryFilterChange,
     deliveryOptions,
+    platformFilter,
+    onPlatformFilterChange,
+    platformOptions,
     onResetTableFilters,
     appliedDateFrom,
     appliedDateTo,
@@ -195,6 +201,20 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
                   key={opt.value || "all-delivery"}
                   value={opt.value}
                 >
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </ManagementFilterField>
+          <ManagementFilterField label="Platform">
+            <select
+              value={platformFilter}
+              onChange={(e) => onPlatformFilterChange(e.target.value)}
+              className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+              aria-label="Filter by platform"
+            >
+              {platformOptions.map((opt) => (
+                <option key={opt.value || "all-platforms"} value={opt.value}>
                   {opt.label}
                 </option>
               ))}

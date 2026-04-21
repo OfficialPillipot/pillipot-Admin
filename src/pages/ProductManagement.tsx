@@ -3,6 +3,7 @@ import { PencilIcon, TrashIcon, XMarkIcon, EyeIcon } from "@heroicons/react/24/o
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { selectProducts, createProduct, updateProduct, deleteProduct } from "../store/productsSlice";
 import { selectCategories, fetchCategories } from "../store/categoriesSlice";
+import { selectSubcategories, fetchSubcategories } from "../store/subcategoriesSlice";
 import {
   Card,
   CardHeader,
@@ -52,6 +53,7 @@ function ProductManagementPage() {
   const dispatch = useAppDispatch();
   const products = useAppSelector(selectProducts);
   const categories = useAppSelector(selectCategories);
+  const subcategories = useAppSelector(selectSubcategories);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -59,6 +61,7 @@ function ProductManagementPage() {
   const [price, setPrice] = useState("");
   const [stockQuantity, setStockQuantity] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [subcategoryId, setSubcategoryId] = useState("");
   const [size, setSize] = useState("");
   const [color, setColor] = useState("");
   const [description, setDescription] = useState("");
@@ -73,6 +76,7 @@ function ProductManagementPage() {
 
   useEffect(() => {
     void dispatch(fetchCategories());
+    void dispatch(fetchSubcategories());
   }, [dispatch]);
 
   useEffect(() => {
@@ -111,6 +115,7 @@ function ProductManagementPage() {
     setEditingId(null);
     setName("");
     setCategoryId("");
+    setSubcategoryId("");
     setBuyingPrice("");
     setPrice("");
     setStockQuantity("");
@@ -126,6 +131,7 @@ function ProductManagementPage() {
     setEditingId(p.id);
     setName(p.name);
     setCategoryId(p.categoryId ?? "");
+    setSubcategoryId(p.subcategoryId ?? "");
     setBuyingPrice(
       p.buyingPrice != null ? String(p.buyingPrice) : ""
     );
@@ -149,6 +155,10 @@ function ProductManagementPage() {
     if (!name.trim()) return;
     if (!categoryId) {
       toast.error("Select a category");
+      return;
+    }
+    if (!subcategoryId) {
+      toast.error("Select a subcategory");
       return;
     }
     const priceNum = parseFloat(price);
@@ -196,6 +206,7 @@ function ProductManagementPage() {
             patch: {
               name: name.trim(),
               categoryId,
+              subcategoryId: subcategoryId || undefined,
               price: priceNum,
               buyingPrice: buyingNum,
               stockQuantity: stockNum,
@@ -213,6 +224,7 @@ function ProductManagementPage() {
           createProduct({
             name: name.trim(),
             categoryId,
+            subcategoryId: subcategoryId || undefined,
             price: priceNum,
             buyingPrice: buyingNum,
             stockQuantity: stockNum,
@@ -243,8 +255,22 @@ function ProductManagementPage() {
     description,
     imageFiles,
     videoFile,
+    subcategoryId,
     dispatch,
   ]);
+
+  const filteredSubcategories = useMemo(() => {
+    if (!categoryId) return [];
+    return subcategories.filter((s) => s.categoryId === categoryId);
+  }, [subcategories, categoryId]);
+
+  const subcategoryOptions: SelectOption[] = useMemo(
+    () => [
+      { value: "", label: "Select subcategory…" },
+      ...filteredSubcategories.map((s) => ({ value: s.id, label: s.name })),
+    ],
+    [filteredSubcategories]
+  );
 
   const toggleProductActive = useCallback(
     async (p: Product, next: boolean) => {
@@ -319,7 +345,14 @@ function ProductManagementPage() {
       {
         key: "categoryName",
         header: "Category",
-        render: (row: Product) => row.categoryName ?? "—",
+        render: (row: Product) => (
+          <div className="flex flex-col">
+            <span className="font-medium text-text">{row.categoryName ?? "—"}</span>
+            {row.subcategoryName && (
+              <span className="text-[10px] text-text-muted">{row.subcategoryName}</span>
+            )}
+          </div>
+        ),
       },
       { key: "name", header: "Name" },
       {
@@ -673,9 +706,21 @@ function ProductManagementPage() {
             label="Category *"
             options={categoryOptions}
             value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
+            onChange={(e) => {
+              setCategoryId(e.target.value);
+              setSubcategoryId("");
+            }}
             placeholder="Choose a category"
           />
+          {categoryId && (
+            <Select
+              label="Subcategory *"
+              options={subcategoryOptions}
+              value={subcategoryId}
+              onChange={(e) => setSubcategoryId(e.target.value)}
+              placeholder="Choose a subcategory"
+            />
+          )}
           {categories.length === 0 && (
             <p className="text-sm text-amber-800">
               No categories yet. Open <strong>Category Management</strong> and create at least one

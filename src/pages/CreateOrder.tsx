@@ -13,6 +13,7 @@ import { useAuth } from "../context/AuthContext";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { selectProducts, fetchProducts } from "../store/productsSlice";
 import { selectCategories, fetchCategories } from "../store/categoriesSlice";
+import { selectSubcategories, fetchSubcategories } from "../store/subcategoriesSlice";
 import { createOrder, fetchOrders, selectOrders, updateOrder } from "../store/ordersSlice";
 import { Card, CardHeader, Button, Input, Modal, Select, Textarea } from "../components/ui";
 import type { SelectOption } from "../components/ui/Select";
@@ -46,6 +47,7 @@ const INITIAL = {
   email: "",
   state: "",
   district: "",
+  secondaryPhone: "",
   orderType: "" as OrderType | "",
   notes: "",
 };
@@ -58,15 +60,32 @@ function splitDeliveryAddress(deliveryAddress: string): { flat: string; area: st
   return { flat: t.slice(0, i).trim(), area: t.slice(i + 1).trim() };
 }
 
-/** Extract 10-digit Indian mobile from pasted text (handles +91, spaces). */
-function extractPhoneDigits(blob: string): string {
+/** Extract 10-digit Indian mobile(s) from pasted text (handles +91, spaces). Returns up to 2 unique numbers. */
+function extractAllPhoneDigits(blob: string): string[] {
   const digits = blob.replace(/\D/g, "");
-  for (let i = Math.max(0, digits.length - 12); i <= digits.length - 10; i++) {
+  const found: string[] = [];
+  
+  // Slide through all digits to find 10-digit sequences starting with 6-9
+  for (let i = 0; i <= digits.length - 10; i++) {
     const slice = digits.slice(i, i + 10);
-    if (/^[6-9]\d{9}$/.test(slice)) return slice;
+    if (/^[6-9]\d{9}$/.test(slice)) {
+      if (!found.includes(slice)) found.push(slice);
+      if (found.length >= 2) break;
+      // Skip the next 9 digits to avoid overlapping matches
+      i += 9;
+    }
   }
-  const m = blob.match(/\b(\d{10})\b/);
-  return m && /^[6-9]\d{9}$/.test(m[1]) ? m[1] : "";
+
+  if (found.length < 2) {
+    const regex = /\b([6-9]\d{9})\b/g;
+    let match;
+    while ((match = regex.exec(blob)) !== null) {
+      if (!found.includes(match[1])) found.push(match[1]);
+      if (found.length >= 2) break;
+    }
+  }
+
+  return found;
 }
 
 /** Strip WhatsApp / forward noise from a single line (timestamp brackets, sender labels). */
@@ -199,8 +218,9 @@ function parsePastedCustomerDetails(text: string): Partial<typeof INITIAL> {
     }
   }
 
-  const phone = extractPhoneDigits(blob);
-  if (phone) out.phone = phone;
+  const phones = extractAllPhoneDigits(blob);
+  if (phones[0]) out.phone = phones[0];
+  if (phones[1]) out.secondaryPhone = phones[1];
 
   if (!out.pincode) {
     const pinM = blob.match(/\b(\d{6})\b/);
@@ -215,7 +235,8 @@ function parsePastedCustomerDetails(text: string): Partial<typeof INITIAL> {
   work = work.filter((l) => {
     if (/^phone\s*[:：.-]/i.test(l) || /^mobile\s*[:：.-]/i.test(l)) return false;
     const d = l.replace(/\D/g, "");
-    if (phone && (d === phone || (d.length >= 10 && d.endsWith(phone)))) return false;
+    if (out.phone && (d === out.phone || (d.length >= 10 && d.endsWith(out.phone)))) return false;
+    if (out.secondaryPhone && (d === out.secondaryPhone || (d.length >= 10 && d.endsWith(out.secondaryPhone)))) return false;
     return true;
   });
 
@@ -331,6 +352,7 @@ function CreateOrderPage() {
     [products],
   );
   const categories = useAppSelector(selectCategories);
+  const subcategories = useAppSelector(selectSubcategories);
   const [form, setForm] = useState(INITIAL);
   const [productRows, setProductRows] = useState<ProductRow[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -341,6 +363,7 @@ function CreateOrderPage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [orderCategory, setOrderCategory] = useState("");
+  const [orderSubcategory, setOrderSubcategory] = useState("");
   const [addOn, setAddOn] = useState<{ amount: string; note: string } | null>(null);
   const [isAddOnModalOpen, setIsAddOnModalOpen] = useState(false);
   const [tempAddOn, setTempAddOn] = useState({ amount: "", note: "" });
@@ -427,6 +450,7 @@ function CreateOrderPage() {
   useEffect(() => {
     void dispatch(fetchProducts());
     void dispatch(fetchCategories());
+    void dispatch(fetchSubcategories());
   }, [dispatch]);
 
   /** Track last hydrated order so the layout effect only sets form+rows once per order. */
@@ -449,6 +473,7 @@ function CreateOrderPage() {
     setIsDropdownOpen(false);
     const lineProduct = products.find((p) => p.id === editingOrder.productId);
     setOrderCategory(lineProduct ? productCategoryKey(lineProduct) : "");
+    setOrderSubcategory(lineProduct?.subcategoryId ?? "");
     const { flat, area } = splitDeliveryAddress(editingOrder.deliveryAddress);
     setForm({
       customerName: editingOrder.customerName ?? "",
@@ -460,6 +485,7 @@ function CreateOrderPage() {
       email: editingOrder.email ?? "",
       state: editingOrder.state ?? "",
       district: editingOrder.district ?? "",
+      secondaryPhone: editingOrder.secondaryPhone ?? "",
       orderType: editingOrder.orderType ?? "",
       notes: editingOrder.notes ?? "",
     });
@@ -491,7 +517,7 @@ function CreateOrderPage() {
     );
     setScheduleOrder(
       Boolean(editingOrder.scheduledFor?.trim()) ||
-        editingOrder.status === "scheduled",
+      editingOrder.status === "scheduled",
     );
   }, [editingOrder, products, productRows.length]);
 
@@ -536,6 +562,7 @@ function CreateOrderPage() {
         const firstP = products.find((p) => p.id === prev[0].productId);
         if (firstP) {
           setOrderCategory(productCategoryKey(firstP));
+          setOrderSubcategory(firstP.subcategoryId ?? "");
         }
       }
       return prev;
@@ -792,12 +819,29 @@ function CreateOrderPage() {
     return opts;
   }, [categories, catalogProducts]);
 
+  const filteredSubcategories = useMemo(() => {
+    if (!orderCategory || orderCategory === UNCATEGORIZED_KEY) return [];
+    return subcategories.filter((s) => s.categoryId === orderCategory);
+  }, [subcategories, orderCategory]);
+
+  const subcategoryOptions: SelectOption[] = useMemo(
+    () => [
+      { value: "", label: "All subcategories" },
+      ...filteredSubcategories.map((s) => ({ value: s.id, label: s.name })),
+    ],
+    [filteredSubcategories]
+  );
+
   const productsInCategory = useMemo(() => {
-    if (!orderCategory) return catalogProducts;
-    return catalogProducts.filter(
-      (p) => productCategoryKey(p) === orderCategory,
-    );
-  }, [catalogProducts, orderCategory]);
+    let filtered = catalogProducts;
+    if (orderCategory) {
+      filtered = filtered.filter((p) => productCategoryKey(p) === orderCategory);
+    }
+    if (orderSubcategory) {
+      filtered = filtered.filter((p) => p.subcategoryId === orderSubcategory);
+    }
+    return filtered;
+  }, [catalogProducts, orderCategory, orderSubcategory]);
 
   const validate = useCallback((): boolean => {
     const e: Record<string, string> = {};
@@ -928,6 +972,7 @@ function CreateOrderPage() {
             email: form.email.trim(),
             state: form.state.trim(),
             district: form.district.trim(),
+            secondaryPhone: form.secondaryPhone.trim() || undefined,
             orderType: form.orderType as OrderType,
             productId: item.productId,
             quantity: item.quantity,
@@ -982,6 +1027,7 @@ function CreateOrderPage() {
               email: emailForCreateOrderApi(form.email, form.phone),
               state: form.state.trim(),
               district: form.district.trim(),
+              secondaryPhone: form.secondaryPhone.trim() || undefined,
               orderType: form.orderType as OrderType,
               productId: item.productId,
               quantity: item.quantity,
@@ -1133,10 +1179,10 @@ function CreateOrderPage() {
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="shrink-0 self-start sm:self-auto"
+                className="shrink-0 self-start cursor-pointer sm:self-auto"
                 onClick={() => setPasteModalOpen(true)}
               >
-                Paste from clipboard
+                Paste From Clipboard
               </Button>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1166,6 +1212,15 @@ function CreateOrderPage() {
                   aria-label="Phone number"
                 />
               </div>
+              <Input
+                label="Secondary Phone (optional)"
+                value={form.secondaryPhone}
+                onChange={(e) =>
+                  update("secondaryPhone", e.target.value.replace(/\D/g, "").slice(0, 10))
+                }
+                error={errors.secondaryPhone}
+                placeholder="Alternative number"
+              />
             </div>
             <div className={`relative transition-all duration-300 ${!detailsEnabled ? "opacity-50 grayscale select-none" : ""}`}>
               {!detailsEnabled && <div className="absolute inset-0 z-10 cursor-not-allowed" title="Enter 10-digit phone first" />}
@@ -1248,6 +1303,7 @@ function CreateOrderPage() {
               value={orderCategory}
               onChange={(e) => {
                 setOrderCategory(e.target.value);
+                setOrderSubcategory("");
                 setErrors((er) => ({ ...er, products: "" }));
                 setIsDropdownOpen(false);
                 setProductSearch("");
@@ -1255,6 +1311,22 @@ function CreateOrderPage() {
               placeholder={!detailsEnabled ? disabledHint : "All categories"}
               disabled={!detailsEnabled}
             />
+
+            {orderCategory && subcategoryOptions.length > 1 && (
+              <Select
+                label="Subcategory filter (optional)"
+                options={subcategoryOptions}
+                value={orderSubcategory}
+                onChange={(e) => {
+                  setOrderSubcategory(e.target.value);
+                  setErrors((er) => ({ ...er, products: "" }));
+                  setIsDropdownOpen(false);
+                  setProductSearch("");
+                }}
+                placeholder={!detailsEnabled ? disabledHint : "All subcategories"}
+                disabled={!detailsEnabled}
+              />
+            )}
 
             <div className="relative">
               <label className="mb-1 block text-sm font-medium text-text-heading">
@@ -1586,10 +1658,7 @@ function CreateOrderPage() {
                     }
                   }}
                 />
-                <span className="text-sm leading-snug text-text">
-                  Schedule this order for a future fulfilment date (confirmation email is sent when
-                  the order moves to pending).
-                </span>
+
               </label>
               {scheduleOrder && (
                 <Input
@@ -1700,19 +1769,23 @@ function CreateOrderPage() {
               </span>
             )}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 justify-end">
+
+            <Button className="cursor-pointer"
+              type="button" onClick={applyPaste}>
+              Apply to form
+            </Button>
             <Button
               type="button"
+              className="cursor-pointer"
               variant="secondary"
               loading={pasteReading}
               onClick={() => void readClipboard()}
             >
               Read from clipboard
             </Button>
-            <Button type="button" onClick={applyPaste}>
-              Apply to form
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => setPasteModalOpen(false)}>
+            <Button className="cursor-pointer"
+              type="button" variant="secondary" onClick={() => setPasteModalOpen(false)}>
               Cancel
             </Button>
           </div>
