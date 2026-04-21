@@ -45,7 +45,7 @@ export type NewProductPayload = Pick<Product, "name" | "price"> & {
   size?: string;
   color?: string;
   description?: string;
-  image?: File;
+  image?: File | File[];
   video?: File;
 };
 
@@ -149,7 +149,13 @@ export const edenApi = createApi({
         }
         if (body.size) fd.append("size", body.size);
         if (body.color) fd.append("color", body.color);
-        if (body.image) fd.append("image", body.image);
+        if (body.image) {
+          if (Array.isArray(body.image)) {
+            body.image.forEach((f) => fd.append("image", f));
+          } else {
+            fd.append("image", body.image);
+          }
+        }
         if (body.video) fd.append("video", body.video);
         return {
           url: endpoints.products,
@@ -161,13 +167,28 @@ export const edenApi = createApi({
     }),
     updateProduct: builder.mutation<
       Product,
-      { id: string; patch: Partial<Product> }
+      { id: string; patch: Partial<Product> & { image?: File | File[]; video?: File } }
     >({
-      query: ({ id, patch }) => ({
-        url: endpoints.productById(id),
-        method: "PUT",
-        body: patch,
-      }),
+      query: ({ id, patch }) => {
+        const fd = new FormData();
+        Object.entries(patch).forEach(([key, val]) => {
+          if (val === undefined || key === "image" || key === "video") return;
+          fd.append(key, val === null ? "" : String(val));
+        });
+        if (patch.image) {
+          if (Array.isArray(patch.image)) {
+            patch.image.forEach((f) => fd.append("image", f));
+          } else {
+            fd.append("image", patch.image);
+          }
+        }
+        if (patch.video) fd.append("video", patch.video);
+        return {
+          url: endpoints.productById(id),
+          method: "PUT",
+          body: fd,
+        };
+      },
       invalidatesTags: (_r, _e, { id }) => [
         { type: "Product", id },
         { type: "Product", id: "LIST" },
@@ -196,27 +217,43 @@ export const edenApi = createApi({
     }),
     createCategory: builder.mutation<
       Category,
-      Pick<Category, "name"> & { description?: string }
+      Pick<Category, "name"> & { description?: string; image?: File }
     >({
-      query: (body) => ({
-        url: endpoints.categories,
-        method: "POST",
-        body,
-      }),
+      query: (body) => {
+        const fd = new FormData();
+        fd.append("name", body.name);
+        if (body.description) fd.append("description", body.description);
+        if (body.image) fd.append("image", body.image);
+        return {
+          url: endpoints.categories,
+          method: "POST",
+          body: fd,
+        };
+      },
       invalidatesTags: [{ type: "Category", id: "LIST" }],
     }),
     updateCategory: builder.mutation<
       Category,
       {
         id: string;
-        patch: Partial<Pick<Category, "name" | "description">>;
+        patch: Partial<Pick<Category, "name" | "description" | "imageUrl">> & {
+          image?: File | null;
+        };
       }
     >({
-      query: ({ id, patch }) => ({
-        url: endpoints.categoryById(id),
-        method: "PUT",
-        body: patch,
-      }),
+      query: ({ id, patch }) => {
+        const fd = new FormData();
+        Object.entries(patch).forEach(([key, val]) => {
+          if (val === undefined || key === "image") return;
+          fd.append(key, val === null ? "" : String(val));
+        });
+        if (patch.image) fd.append("image", patch.image);
+        return {
+          url: endpoints.categoryById(id),
+          method: "PUT",
+          body: fd,
+        };
+      },
       invalidatesTags: (_r, _e, { id }) => [
         { type: "Category", id },
         { type: "Category", id: "LIST" },

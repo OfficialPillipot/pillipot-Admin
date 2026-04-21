@@ -124,9 +124,11 @@ function AdminOrderManagementPage() {
     try {
       const data = await fetchOrdersList(q);
       if (seq !== loadSeqRef.current) return;
-      setListLines(data.items);
-      setListTotal(data.total);
-      setListPage(q.page != null ? q.page : 1);
+      if (data) {
+        setListLines(data.items ?? []);
+        setListTotal(data.total ?? 0);
+        setListPage(q.page != null ? q.page : 1);
+      }
     } catch (err) {
       if (seq !== loadSeqRef.current) return;
       toast.fromError(err, "Failed to load orders");

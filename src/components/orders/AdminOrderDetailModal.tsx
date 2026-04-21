@@ -112,25 +112,27 @@ function AdminOrderDetailModalComponent({
               </dt>
               <dd className="space-y-2">
                 {(() => {
-                  const od = orderDetail as Order & {
+                  const od = orderDetail as (Order & {
                     items?: {
                       id: string;
                       productId: string;
                       quantity: number;
                       sellingAmount: unknown;
                     }[];
-                  };
+                  }) | null;
                   const itemRows =
-                    od.items?.length ?
+                    od?.items?.length ?
                       od.items
-                    : [
+                    : od ?
+                      [
                         {
                           id: od.id,
                           productId: od.productId,
                           quantity: od.quantity,
                           sellingAmount: od.sellingAmount,
                         },
-                      ];
+                      ]
+                    : [];
                   return (
                     <div className="space-y-2 sm:hidden">
                       {itemRows.map((item) => {
@@ -176,7 +178,7 @@ function AdminOrderDetailModalComponent({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {orderDetail.items?.map((item) => (
+                      {orderDetail?.items?.map((item) => (
                         <tr key={item.id}>
                           <td className="px-3 py-2 font-medium">
                             <div>
@@ -194,10 +196,10 @@ function AdminOrderDetailModalComponent({
                         <tr>
                           <td className="px-3 py-2 font-medium">
                             <div>
-                              {orderLineProductLabel(
+                              {orderDetail ? orderLineProductLabel(
                                 orderDetail as Order,
                                 products,
-                              )}
+                              ) : "—"}
                             </div>
                           </td>
                           <td className="px-3 py-2 text-center font-bold text-gray-600">

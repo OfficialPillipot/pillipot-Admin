@@ -19,8 +19,10 @@ export const fetchProducts = () =>
 export const createProduct = (payload: NewProductPayload) =>
   edenApi.endpoints.createProduct.initiate(payload);
 
-export const updateProduct = (arg: { id: string; patch: Partial<Product> }) =>
-  edenApi.endpoints.updateProduct.initiate(arg);
+export const updateProduct = (arg: {
+  id: string;
+  patch: Partial<Product> & { image?: File | File[]; video?: File };
+}) => edenApi.endpoints.updateProduct.initiate(arg);
 
 export const deleteProduct = (id: string) =>
   edenApi.endpoints.deleteProduct.initiate(id);

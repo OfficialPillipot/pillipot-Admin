@@ -1,5 +1,5 @@
 import { memo, useState, useCallback, useMemo, useEffect } from "react";
-import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, TrashIcon, XMarkIcon, EyeIcon } from "@heroicons/react/24/outline";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { selectProducts, createProduct, updateProduct, deleteProduct } from "../store/productsSlice";
 import { selectCategories, fetchCategories } from "../store/categoriesSlice";
@@ -62,29 +62,30 @@ function ProductManagementPage() {
   const [size, setSize] = useState("");
   const [color, setColor] = useState("");
   const [description, setDescription] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [togglingActiveId, setTogglingActiveId] = useState<string | null>(null);
+  const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     void dispatch(fetchCategories());
   }, [dispatch]);
 
   useEffect(() => {
-    if (!imageFile) {
-      setImagePreviewUrl(null);
+    if (imageFiles.length === 0) {
+      setImagePreviewUrls([]);
       return;
     }
-    const url = URL.createObjectURL(imageFile);
-    setImagePreviewUrl(url);
+    const urls = imageFiles.map((file) => URL.createObjectURL(file));
+    setImagePreviewUrls(urls);
     return () => {
-      URL.revokeObjectURL(url);
+      urls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [imageFile]);
+  }, [imageFiles]);
 
   useEffect(() => {
     if (!videoFile) {
@@ -116,7 +117,7 @@ function ProductManagementPage() {
     setSize("");
     setColor("");
     setDescription("");
-    setImageFile(null);
+    setImageFiles([]);
     setVideoFile(null);
     setModalOpen(true);
   }, []);
@@ -132,10 +133,16 @@ function ProductManagementPage() {
     setStockQuantity(String(p.stockQuantity ?? 0));
     setSize(p.size ?? "");
     setColor(p.color ?? "");
+    setSize(p.size ?? "");
+    setColor(p.color ?? "");
     setDescription(p.description ?? "");
-    setImageFile(null);
+    setImageFiles([]);
     setVideoFile(null);
     setModalOpen(true);
+  }, []);
+
+  const openView = useCallback((p: Product) => {
+    setViewingProduct(p);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -163,11 +170,13 @@ function ProductManagementPage() {
       toast.error("Enter a valid stock quantity");
       return;
     }
-    if (imageFile) {
-      const err = validateImageFile(imageFile);
-      if (err) {
-        toast.error(err);
-        return;
+    if (imageFiles.length > 0) {
+      for (const f of imageFiles) {
+        const err = validateImageFile(f);
+        if (err) {
+          toast.error(err);
+          return;
+        }
       }
     }
     if (videoFile) {
@@ -193,6 +202,8 @@ function ProductManagementPage() {
               size: size.trim() || undefined,
               color: color.trim() || undefined,
               description: description.trim() || undefined,
+              image: imageFiles.length > 0 ? imageFiles : undefined,
+              video: videoFile ?? undefined,
             },
           })
         ).unwrap();
@@ -208,7 +219,7 @@ function ProductManagementPage() {
             size: size.trim() || undefined,
             color: color.trim() || undefined,
             description: description.trim() || undefined,
-            image: imageFile ?? undefined,
+            image: imageFiles.length > 0 ? imageFiles : undefined,
             video: videoFile ?? undefined,
           })
         ).unwrap();
@@ -230,7 +241,7 @@ function ProductManagementPage() {
     size,
     color,
     description,
-    imageFile,
+    imageFiles,
     videoFile,
     dispatch,
   ]);
@@ -401,6 +412,16 @@ function ProductManagementPage() {
         mobileHeaderEnd: true,
         render: (row: Product) => (
           <div className="flex items-center gap-1">
+            <Tooltip content="View" side="top">
+              <button
+                type="button"
+                onClick={() => openView(row)}
+                className="rounded-[var(--radius-md)] p-2 text-text-muted hover:bg-primary-muted hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label="View product"
+              >
+                <EyeIcon className="h-4 w-4" />
+              </button>
+            </Tooltip>
             <Tooltip content="Edit" side="top">
               <button
                 type="button"
@@ -425,7 +446,7 @@ function ProductManagementPage() {
         ),
       },
     ],
-    [openEdit, handleDelete, toggleProductActive, togglingActiveId]
+    [openEdit, openView, handleDelete, toggleProductActive, togglingActiveId]
   );
 
   return (
@@ -490,38 +511,56 @@ function ProductManagementPage() {
               placeholder="Optional details for catalog or staff"
             />
           </label>
-          {!editingId && (
-            <div className="space-y-3 rounded-[var(--radius-md)] border border-border bg-surface-muted/40 p-3">
-              <p className="text-sm font-medium text-text">Media (optional)</p>
+          <div className="space-y-3 rounded-[var(--radius-md)] border border-border bg-surface-muted/40 p-3">
+            <p className="text-sm font-medium text-text">Upload new media (optional)</p>
               <div>
                 <label className="mb-1 block text-xs text-text-muted">
-                  Image (JPG, PNG, WebP — max 5MB)
+                  Images (Up to 3 — JPG, PNG, WebP — max 5MB each)
                 </label>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="block w-full text-sm text-text-muted file:mr-2 file:rounded file:border-0 file:bg-primary-muted file:px-2 file:py-1 file:text-sm file:text-primary"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) {
-                      const err = validateImageFile(f);
-                      if (err) {
-                        toast.error(err);
-                        e.target.value = "";
-                        return;
-                      }
-                    }
-                    setImageFile(f ?? null);
-                    e.target.value = "";
-                  }}
-                />
-                {imagePreviewUrl && (
-                  <img
-                    src={imagePreviewUrl}
-                    alt="Selected product"
-                    className="mt-2 max-h-40 rounded border border-border object-contain"
-                  />
-                )}
+                <div className="grid grid-cols-3 gap-2">
+                  {imagePreviewUrls.map((url, idx) => (
+                    <div key={idx} className="group relative aspect-square w-full">
+                      <img
+                        src={url}
+                        alt={`Preview ${idx + 1}`}
+                        className="h-full w-full rounded border border-border object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageFiles((prev) => prev.filter((_, i) => i !== idx));
+                        }}
+                        className="absolute -right-2 -top-2 rounded-full bg-error p-1 text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Remove image"
+                      >
+                        <XMarkIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {imageFiles.length < 3 && (
+                    <label className="flex aspect-square w-full cursor-pointer flex-col items-center justify-center rounded border-2 border-dashed border-border bg-surface-muted/20 hover:bg-surface-muted/40 transition-colors">
+                      <span className="text-xl font-bold text-primary">+</span>
+                      <span className="text-[10px] text-text-muted">Add Image</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) {
+                            const err = validateImageFile(f);
+                            if (err) {
+                              toast.error(err);
+                              return;
+                            }
+                            setImageFiles((prev) => [...prev, f]);
+                          }
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="mb-1 block text-xs text-text-muted">
@@ -554,23 +593,79 @@ function ProductManagementPage() {
                 )}
               </div>
             </div>
-          )}
-          {editingId &&
-            (editingProduct?.imageUrl || editingProduct?.videoUrl) && (
-              <div className="space-y-2 rounded-[var(--radius-md)] border border-border p-3">
+            {editingId &&
+            (editingProduct?.imageUrl ||
+              editingProduct?.imageUrl2 ||
+              editingProduct?.imageUrl3 ||
+              editingProduct?.videoUrl) && (
+              <div className="space-y-3 rounded-[var(--radius-md)] border border-border p-3">
                 <p className="text-sm font-medium text-text">Current media</p>
-                {editingProduct?.imageUrl && (
-                  <img
-                    src={editingProduct.imageUrl}
-                    alt=""
-                    width={50}
-                    className="rounded object-cover"
-                  />
-                )}
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { url: editingProduct.imageUrl, key: "imageUrl" },
+                    { url: editingProduct.imageUrl2, key: "imageUrl2" },
+                    { url: editingProduct.imageUrl3, key: "imageUrl3" },
+                  ].map(
+                    (item, idx) =>
+                      item.url && (
+                        <div key={idx} className="group relative">
+                          <img
+                            src={item.url}
+                            alt={`Current ${idx + 1}`}
+                            className="h-20 w-20 rounded border border-border object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!window.confirm("Delete this image permanently?")) return;
+                              try {
+                                await dispatch(
+                                  updateProduct({
+                                    id: editingId,
+                                    patch: { [item.key]: null },
+                                  }),
+                                ).unwrap();
+                                toast.success("Image deleted");
+                              } catch (err) {
+                                toast.fromError(err, "Failed to delete image");
+                              }
+                            }}
+                            className="absolute -right-2 -top-2 rounded-full bg-error p-1 text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Delete permanently"
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ),
+                  )}
+                </div>
                 {editingProduct?.videoUrl && (
-                  <video width={100} controls className="max-h-24 rounded">
-                    <source src={editingProduct.videoUrl} />
-                  </video>
+                  <div className="group relative w-fit">
+                    <video width={120} controls className="max-h-24 rounded border border-border">
+                      <source src={editingProduct.videoUrl} />
+                    </video>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!window.confirm("Delete this video permanently?")) return;
+                        try {
+                          await dispatch(
+                            updateProduct({
+                              id: editingId,
+                              patch: { videoUrl: null },
+                            }),
+                          ).unwrap();
+                          toast.success("Video deleted");
+                        } catch (err) {
+                          toast.fromError(err, "Failed to delete video");
+                        }
+                      }}
+                      className="absolute -right-2 -top-2 z-10 rounded-full bg-error p-1 text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Delete video permanently"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
+                  </div>
                 )}
               </div>
             )}
@@ -646,6 +741,87 @@ function ProductManagementPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!viewingProduct}
+        onClose={() => setViewingProduct(null)}
+        title="View Product"
+      >
+        {viewingProduct && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4 border-b border-border pb-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Name</p>
+                <p className="text-sm font-medium text-text">{viewingProduct.name}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Category</p>
+                <p className="text-sm font-medium text-text">{viewingProduct.categoryName || "Uncategorized"}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-sm font-semibold text-text">Product Media</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {[
+                  viewingProduct.imageUrl,
+                  viewingProduct.imageUrl2,
+                  viewingProduct.imageUrl3,
+                ].map(
+                  (url, idx) =>
+                    url && (
+                      <div key={idx} className="aspect-square overflow-hidden rounded-lg border border-border bg-surface-muted">
+                        <img
+                          src={url}
+                          alt={`Product image ${idx + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    ),
+                )}
+              </div>
+              {viewingProduct.videoUrl && (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">Video Preview</p>
+                  <video
+                    controls
+                    className="w-full rounded-lg border border-border shadow-sm max-h-64"
+                    src={viewingProduct.videoUrl}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 rounded-lg bg-surface-muted/50 p-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase text-text-muted">Price</p>
+                <p className="text-sm font-bold text-primary">₹{viewingProduct.price}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase text-text-muted">Stock</p>
+                <p className="text-sm font-medium text-text">{viewingProduct.stockQuantity}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase text-text-muted">Status</p>
+                <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${viewingProduct.isActive !== false ? "bg-success/10 text-success" : "bg-error/10 text-error"}`}>
+                  {viewingProduct.isActive !== false ? "Active" : "Hidden"}
+                </span>
+              </div>
+            </div>
+
+            {viewingProduct.description && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Description</p>
+                <p className="mt-1 text-sm text-text-muted leading-relaxed whitespace-pre-wrap">{viewingProduct.description}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <Button onClick={() => setViewingProduct(null)}>Close</Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

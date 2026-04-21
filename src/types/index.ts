@@ -16,6 +16,7 @@ export interface Category {
   id: string;
   name: string;
   description?: string;
+  imageUrl?: string | null;
 }
 
 export interface DeliveryMethod {
@@ -48,8 +49,10 @@ export interface Product {
   productCode?: string;
   name: string;
   description?: string;
-  imageUrl?: string;
-  videoUrl?: string;
+  imageUrl?: string | null;
+  imageUrl2?: string | null;
+  imageUrl3?: string | null;
+  videoUrl?: string | null;
   createdAt?: string;
   categoryId?: string;
   categoryName?: string;
