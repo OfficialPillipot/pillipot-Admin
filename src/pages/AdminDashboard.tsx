@@ -294,30 +294,82 @@ function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <CardHeader
-        title="Admin Dashboard"
-        subtitle={
-          dateFilter === "custom"
-            ? `Period: ${customStart ? formatDate(activeStart.toISOString()) : "Start"} – ${customEnd ? formatDate(activeEnd.toISOString()) : "End"}`
-            : `Period: ${formatDate(activeStart.toISOString())} – ${formatDate(activeEnd.toISOString())}`
-        }
-        action={
-          isMdUp ? (
-            <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
-              <AdminDashboardPeriodControls
-                dateFilter={dateFilter}
-                setDateFilter={setDateFilter}
-                customStart={customStart}
-                setCustomStart={setCustomStart}
-                customEnd={customEnd}
-                setCustomEnd={setCustomEnd}
-              />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(20rem,0.9fr)]">
+        <Card className="overflow-hidden border-border-strong bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-primary)_10%,white)_0%,var(--color-surface-elevated)_54%,color-mix(in_srgb,var(--color-info)_10%,white)_100%)]" padding="lg">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <Badge variant="info" className="mb-4">Operations overview</Badge>
+              <h2 className="text-2xl font-semibold tracking-tight text-text-heading sm:text-3xl">
+                Admin dashboard
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-muted sm:text-base">
+                Monitor order velocity, payroll exposure, and inventory pressure from one responsive control surface.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Badge variant="muted">
+                  {dateFilter === "custom"
+                    ? `${customStart ? formatDate(activeStart.toISOString()) : "Start"} - ${customEnd ? formatDate(activeEnd.toISOString()) : "End"}`
+                    : `${formatDate(activeStart.toISOString())} - ${formatDate(activeEnd.toISOString())}`}
+                </Badge>
+                <Badge variant="default">
+                  Active staff {staff.filter((s) => s.isActive).length}
+                </Badge>
+                <Badge variant="default">
+                  Recent groups {recentOrders.length}
+                </Badge>
+              </div>
             </div>
-          ) : null
-        }
-      />
+            {isMdUp ? (
+              <div className="w-full max-w-md">
+                <AdminDashboardPeriodControls
+                  dateFilter={dateFilter}
+                  setDateFilter={setDateFilter}
+                  customStart={customStart}
+                  setCustomStart={setCustomStart}
+                  customEnd={customEnd}
+                  setCustomEnd={setCustomEnd}
+                />
+              </div>
+            ) : null}
+          </div>
+        </Card>
+
+        <Card padding="md">
+          <CardHeader
+            title="Watchlist"
+            subtitle="Critical items that need attention first."
+          />
+          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+            <div className="rounded-[var(--radius-lg)] border border-border bg-surface-soft p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+                Pending orders
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-warning">
+                {filteredOrders.filter((o) => o.status === "pending").length}
+              </p>
+            </div>
+            <div className="rounded-[var(--radius-lg)] border border-border bg-surface-soft p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+                Low stock items
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-error">
+                {lowOrOutProducts.length}
+              </p>
+            </div>
+            <div className="rounded-[var(--radius-lg)] border border-border bg-surface-soft p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+                Salary exposure
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-earnings">
+                {formatCurrency(totalSalaryPayable)}
+              </p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
       {!isMdUp && (
-        <div className="mb-4">
+        <Card padding="md">
           <AdminDashboardPeriodControls
             dateFilter={dateFilter}
             setDateFilter={setDateFilter}
@@ -326,41 +378,52 @@ function AdminDashboardPage() {
             customEnd={customEnd}
             setCustomEnd={setCustomEnd}
           />
-        </div>
+        </Card>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <p className="text-sm text-text-muted">Total Orders</p>
-          <p className="mt-1 text-2xl font-semibold text-text-heading">
+        <Card className="dashboard-metric-card" padding="md">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+            Total orders
+          </p>
+          <p className="mt-2 text-3xl font-semibold text-text-heading">
             {totalOrders}
           </p>
+          <p className="mt-2 text-sm text-text-muted">
+            Unique order groups in the selected period.
+          </p>
         </Card>
-        {/* <Card>
-          <p className="text-sm text-text-muted">Active Staff</p>
-          <p className="mt-1 text-2xl font-semibold text-text-heading">
+        <Card className="dashboard-metric-card" padding="md">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+            Staff active
+          </p>
+          <p className="mt-2 text-3xl font-semibold text-text-heading">
             {staff.filter((s) => s.isActive).length}
           </p>
-        </Card> */}
-        <Card>
-          <p className="text-sm text-text-muted">Total salary (period)</p>
-          <p className="mt-1 text-2xl font-semibold text-earnings">
+          <p className="mt-2 text-sm text-text-muted">
+            Team members currently enabled for work.
+          </p>
+        </Card>
+        <Card className="dashboard-metric-card" padding="md">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+            Salary payable
+          </p>
+          <p className="mt-2 text-3xl font-semibold text-earnings">
             {formatCurrency(totalSalaryPayable)}
           </p>
-        </Card>
-        <Card>
-          <p className="text-sm text-text-muted">Pending orders</p>
-          <p className="mt-1 text-2xl font-semibold text-warning">
-            {filteredOrders.filter((o) => o.status === "pending").length}
+          <p className="mt-2 text-sm text-text-muted">
+            Earnings calculated for the active period.
           </p>
         </Card>
-        <Card>
-          <p className="text-sm text-text-muted">Low / out of stock</p>
-          <p className="mt-1 text-2xl font-semibold text-error">
-            {lowOrOutProducts.length}
+        <Card className="dashboard-metric-card" padding="md">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+            Stock threshold
           </p>
-          <p className="mt-1 text-xs text-text-muted">
-            Stock ≤ {lowStockThreshold} (set in Settings)
+          <p className="mt-2 text-3xl font-semibold text-error">
+            {lowStockThreshold}
+          </p>
+          <p className="mt-2 text-sm text-text-muted">
+            Products at or below this value are flagged.
           </p>
         </Card>
       </div>
@@ -380,7 +443,7 @@ function AdminDashboardPage() {
           />
           <Table
             columns={[
-              { key: "name", header: "Product" },
+              { key: "name", header: "Product", mobileCardTitle: true },
               {
                 key: "categoryName",
                 header: "Category",
@@ -432,6 +495,7 @@ function AdminDashboardPage() {
       <Card>
         <CardHeader
           title="Staff summary"
+          subtitle="Performance snapshot for the same selected period."
           action={
             <Link to="/admin/staff">
               <Button variant="outline" size="sm">
@@ -451,6 +515,7 @@ function AdminDashboardPage() {
       <Card>
         <CardHeader
           title="Recent orders"
+          subtitle="Latest grouped orders across the catalog."
           action={
             <Link to="/admin/orders">
               <Button variant="outline" size="sm">
@@ -461,7 +526,7 @@ function AdminDashboardPage() {
         />
         <Table
           columns={[
-            { key: "orderId", header: "Order ID" },
+            { key: "orderId", header: "Order ID", mobileCardTitle: true },
             {
               key: "createdAt",
               header: "Date",

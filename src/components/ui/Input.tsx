@@ -25,11 +25,11 @@ const InputComponent = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             className={[
-              "h-9 w-full rounded-[var(--radius-md)] border border-border bg-surface text-xs text-text shadow-sm transition-colors placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-0 md:h-10 md:text-sm",
+              "h-11 w-full rounded-[var(--radius-md)] border border-border bg-surface-elevated/85 text-sm text-text shadow-sm transition-all placeholder:text-text-muted focus:outline-none md:h-11",
               endNode ? "pl-3 pr-10" : "px-3",
               error
-                ? "border-error focus:ring-error"
-                : "border-border focus:border-primary",
+                ? "border-error focus:shadow-[0_0_0_4px_rgba(194,65,12,0.12)]"
+                : "border-border focus:border-primary focus:shadow-[var(--shadow-focus)]",
               className,
             ]
               .filter(Boolean)

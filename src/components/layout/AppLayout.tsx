@@ -90,7 +90,9 @@ function AppLayoutComponent({
   };
 
   return (
-    <div className="flex h-[100dvh] min-h-0 overflow-hidden bg-surface-alt">
+    <div className="admin-shell-noise relative flex h-[100dvh] min-h-0 overflow-hidden bg-surface-alt">
+      <div className="admin-glow-orb left-[-5rem] top-[-4rem] h-40 w-40 bg-sky-300/30 sm:h-56 sm:w-56" />
+      <div className="admin-glow-orb bottom-[12%] right-[-5rem] h-44 w-44 bg-blue-500/20 sm:h-64 sm:w-64" />
       {/* Mobile Sidebar Backdrop */}
       {mobileMenuOpen && (
         <div
@@ -107,7 +109,7 @@ function AppLayoutComponent({
           setMobileOpen={setMobileMenuOpen}
         />
       </div>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Header
           title={title}
           user={user}
@@ -118,7 +120,7 @@ function AppLayoutComponent({
           onToggleTheme={toggleTheme}
         />
         <main className="flex-1 overflow-y-auto overflow-x-hidden px-[max(0.625rem,env(safe-area-inset-left))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 pr-[max(0.625rem,env(safe-area-inset-right))] sm:px-[max(1rem,env(safe-area-inset-left))] sm:pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pt-5 sm:pr-[max(1rem,env(safe-area-inset-right))] md:px-[max(1.5rem,env(safe-area-inset-left))] md:pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pt-6 md:pr-[max(1.5rem,env(safe-area-inset-right))]">
-          <div className="w-full max-w-none">
+          <div className="mx-auto w-full max-w-[1700px]">
             <MainPane>{children}</MainPane>
           </div>
         </main>

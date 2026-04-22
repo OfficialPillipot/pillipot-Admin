@@ -272,37 +272,40 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
   }, [user]);
 
   const linkBase =
-    "flex min-h-10 items-center gap-2 rounded-[var(--radius-md)] border-l-2 border-transparent py-1.5 pl-2 pr-2.5 text-xs font-medium transition-colors duration-150 ease-out max-md:gap-2.5 md:min-h-0 md:gap-3 md:py-2 md:pl-2.5 md:pr-3 md:text-sm ";
+    "group flex min-h-11 items-center gap-2 rounded-[var(--radius-md)] border border-transparent py-2 pl-2.5 pr-3 text-xs font-medium transition-all duration-150 ease-out max-md:gap-2.5 md:min-h-0 md:gap-3 md:py-2.5 md:px-3 md:text-sm ";
   const linkActive =
-    "border-l-sidebar-accent bg-white/[0.08] text-sidebar-text-active md:bg-white/[0.06]";
+    "border-sidebar-border bg-white/[0.09] text-sidebar-text-active shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
   const linkInactive =
-    "text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-active";
-
-
+    "text-sidebar-text hover:border-sidebar-border hover:bg-sidebar-hover/90 hover:text-sidebar-text-active";
 
   return (
     <aside
       className={
-        "flex h-full flex-col bg-sidebar-bg text-sidebar-text transition-[transform,width] duration-300 ease-out z-50 " +
+        "z-50 flex h-full flex-col bg-gradient-to-b from-sidebar-bg to-sidebar-bg-end text-sidebar-text transition-[transform,width] duration-300 ease-out " +
         "max-md:shadow-[4px_0_24px_rgba(15,23,42,0.12)] " +
         "fixed inset-y-0 left-0 transform md:relative md:translate-x-0 md:shadow-none " +
         (mobileOpen ? "translate-x-0 " : "-translate-x-full ") +
-        (collapsed ? "w-[min(16rem,85vw)] md:w-[4.5rem] " : "w-[min(16rem,85vw)] md:w-56 lg:w-64 ")
+        (collapsed ? "w-[min(16rem,85vw)] md:w-[4.5rem] " : "w-[min(16rem,85vw)] md:w-56 lg:w-72 ")
       }
     >
       <div
-        className={`flex h-14 shrink-0 items-center border-b border-sidebar-hover/80 px-2 pl-[max(0.5rem,env(safe-area-inset-left))] ${collapsed ? "md:justify-center justify-between" : "justify-between"}`}
+        className={`flex h-20 shrink-0 items-center border-b border-sidebar-border px-3 pl-[max(0.75rem,env(safe-area-inset-left))] ${collapsed ? "md:justify-center justify-between" : "justify-between"}`}
       >
-        <div className={`flex min-w-0 items-center gap-2 px-1 ${collapsed ? "md:hidden" : ""}`}>
+        <div className={`flex min-w-0 items-center gap-3 px-1 ${collapsed ? "md:hidden" : ""}`}>
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-sidebar-accent/20 text-xs font-bold text-sidebar-accent"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-lg)] bg-white/8 text-sm font-bold text-sidebar-accent ring-1 ring-white/10"
             aria-hidden
           >
-            P
+            EC
           </span>
-          <span className="truncate text-sm font-semibold tracking-tight text-sidebar-text-active">
-            Pillipot
-          </span>
+          <div className="min-w-0">
+            <p className="truncate text-[11px] uppercase tracking-[0.22em] text-sidebar-text/70">
+              2026 Admin
+            </p>
+            <span className="truncate text-base font-semibold tracking-tight text-sidebar-text-active">
+              EdeneCart
+            </span>
+          </div>
         </div>
 
         <Tooltip
@@ -313,7 +316,7 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
           <button
             type="button"
             onClick={toggleCollapsed}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-active focus:outline-none focus:ring-2 focus:ring-sidebar-text-active/50"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-transparent text-sidebar-text hover:border-sidebar-border hover:bg-sidebar-hover hover:text-sidebar-text-active focus:outline-none focus:ring-2 focus:ring-sidebar-text-active/20"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? (
@@ -324,19 +327,19 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
           </button>
         </Tooltip>
       </div>
-      <nav className="sidebar-scroll flex-1 overflow-y-auto overflow-x-hidden p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <nav className="sidebar-scroll flex-1 overflow-y-auto overflow-x-hidden px-2 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {navSections.map((section, sectionIndex) => (
           <div
             key={section.title}
             className={
               sectionIndex > 0
-                ? "mt-3 border-t border-sidebar-hover/50 pt-3 md:mt-2.5 md:pt-2.5"
+                ? "mt-4 border-t border-sidebar-border pt-4 md:mt-3 md:pt-3"
                 : ""
             }
           >
             <p
               className={
-                "mb-1.5 truncate px-2 text-[10px] font-semibold uppercase tracking-wider text-sidebar-text/50 " +
+                "mb-2 truncate px-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-sidebar-text/55 " +
                 (collapsed ? "md:sr-only" : "")
               }
             >
@@ -353,10 +356,10 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
                       linkBase +
                       " w-full " +
                       (isActive ? linkActive : linkInactive) +
-                      (collapsed ? " md:justify-center md:px-2" : "")
+                      (collapsed ? " md:justify-center md:px-2.5" : "")
                     }
                   >
-                    <item.icon className="h-4 w-4 shrink-0 md:h-5 md:w-5" aria-hidden />
+                    <item.icon className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-105 md:h-5 md:w-5" aria-hidden />
                     <span className={collapsed ? "block md:hidden" : "block"}>
                       {item.label}
                     </span>
@@ -378,13 +381,21 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
           </div>
         ))}
       </nav>
-      <div className="border-t border-sidebar-hover p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <div className="border-t border-sidebar-border p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        {!collapsed && (
+          <div className="mb-3 rounded-[var(--radius-lg)] border border-sidebar-border bg-white/5 p-3">
+            <p className="text-xs font-medium text-sidebar-text-active">{user.name}</p>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-sidebar-text">
+              {user.role.replace("_", " ")}
+            </p>
+          </div>
+        )}
         {collapsed ? (
           <Tooltip content="Logout" side="right" className="flex w-full">
             <button
               type="button"
               onClick={() => { handleMobileNavClick(); onLogout(); }}
-              className="flex w-full items-center md:justify-center rounded-[var(--radius-md)] md:p-2 px-3 py-2 text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-active"
+              className="flex w-full items-center rounded-[var(--radius-md)] border border-transparent px-3 py-2 text-sidebar-text hover:border-sidebar-border hover:bg-sidebar-hover hover:text-sidebar-text-active md:justify-center md:p-2.5"
               aria-label="Logout"
             >
               <ArrowLeftOnRectangleIcon className="h-5 w-5 shrink-0" />
@@ -397,7 +408,7 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
           <button
             type="button"
             onClick={() => { handleMobileNavClick(); onLogout(); }}
-            className="flex w-full items-center gap-2 rounded-[var(--radius-md)] px-2.5 py-1.5 text-left text-xs text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-text-active md:gap-3 md:px-3 md:py-2 md:text-sm"
+            className="flex w-full items-center gap-2 rounded-[var(--radius-md)] border border-transparent px-3 py-2.5 text-left text-xs text-sidebar-text hover:border-sidebar-border hover:bg-sidebar-hover hover:text-sidebar-text-active md:gap-3 md:text-sm"
           >
             <ArrowLeftOnRectangleIcon className="h-4 w-4 shrink-0 md:h-5 md:w-5" />
             Logout
@@ -409,4 +420,3 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
 }
 
 export const Sidebar = memo(SidebarComponent);
-

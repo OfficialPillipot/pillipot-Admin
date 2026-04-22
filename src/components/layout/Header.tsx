@@ -43,30 +43,36 @@ function HeaderComponent({
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface/90 px-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] shadow-[var(--shadow-header)] backdrop-blur-md supports-[backdrop-filter]:bg-surface/75 sm:h-14 sm:gap-3 sm:px-[max(1rem,env(safe-area-inset-left))] sm:pr-[max(1rem,env(safe-area-inset-right))] md:px-[max(1.5rem,env(safe-area-inset-left))] md:pr-[max(1.5rem,env(safe-area-inset-right))]">
-        <div className="flex min-w-0 items-center gap-2 md:max-w-[min(20rem,28vw)] md:shrink-0 lg:max-w-[min(24rem,32vw)]">
+      <header className="sticky top-0 z-30 border-b border-border/70 bg-surface/70 px-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] shadow-[var(--shadow-header)] backdrop-blur-xl supports-[backdrop-filter]:bg-surface/55 sm:px-[max(1rem,env(safe-area-inset-left))] sm:pr-[max(1rem,env(safe-area-inset-right))] md:px-[max(1.5rem,env(safe-area-inset-left))] md:pr-[max(1.5rem,env(safe-area-inset-right))]">
+        <div className="flex min-h-16 items-center gap-2 py-2 sm:min-h-[4.5rem] sm:gap-3">
+        <div className="flex min-w-0 items-center gap-2 md:max-w-[min(24rem,30vw)] md:shrink-0 lg:max-w-[min(28rem,34vw)]">
           {onMenuClick && (
             <button
               type="button"
               onClick={onMenuClick}
-              className="-ml-1 inline-flex min-h-9 min-w-9 items-center justify-center rounded-[var(--radius-md)] text-text-muted transition-colors hover:bg-surface-alt hover:text-text-heading focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface sm:-ml-2 sm:min-h-10 sm:min-w-10 md:hidden"
+              className="-ml-1 inline-flex min-h-10 min-w-10 items-center justify-center rounded-[var(--radius-md)] border border-border/70 bg-surface-elevated/75 text-text-muted transition-colors hover:bg-surface-soft hover:text-text-heading focus:outline-none sm:-ml-2 md:hidden"
               aria-label="Open menu"
             >
               <Bars3Icon className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
             </button>
           )}
-          <h1
-            key={pathname}
-            className="animate-admin-header-title min-w-0 truncate text-sm font-semibold tracking-tight text-text-heading sm:text-base md:text-lg"
-          >
-            {title}
-          </h1>
+          <div className="min-w-0">
+            <p className="mb-1 hidden text-[11px] font-medium uppercase tracking-[0.24em] text-text-muted sm:block">
+              EdeneCart Control Center
+            </p>
+            <h1
+              key={pathname}
+              className="animate-admin-header-title min-w-0 truncate text-base font-semibold tracking-tight text-text-heading sm:text-lg md:text-[1.35rem]"
+            >
+              {title}
+            </h1>
+          </div>
         </div>
         <div className="flex min-w-0 flex-1 justify-end md:justify-center">
           <button
             type="button"
             onClick={openCommand}
-            className="inline-flex h-9 min-w-9 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface-alt text-text-muted shadow-inner transition-colors hover:border-border-strong hover:bg-surface hover:text-text-heading md:hidden"
+            className="inline-flex h-10 min-w-10 items-center justify-center rounded-[var(--radius-md)] border border-border/70 bg-surface-elevated/75 text-text-muted shadow-sm transition-colors hover:border-border-strong hover:bg-surface-soft hover:text-text-heading md:hidden"
             aria-label="Open search"
             title="Search pages"
           >
@@ -75,13 +81,13 @@ function HeaderComponent({
           <button
             type="button"
             onClick={openCommand}
-            className="hidden h-9 w-full max-w-md items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface-alt px-3 text-left text-sm text-text-muted shadow-inner transition-colors hover:border-border-strong hover:bg-surface md:flex"
+            className="hidden h-11 w-full max-w-xl items-center gap-3 rounded-[var(--radius-lg)] border border-border/70 bg-surface-elevated/85 px-4 text-left text-sm text-text-muted shadow-sm transition-colors hover:border-border-strong hover:bg-surface-soft md:flex"
             aria-label="Open command palette"
             title="Search pages (⌘K or Ctrl+K)"
           >
             <MagnifyingGlassIcon className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
-            <span className="truncate">Search anything…</span>
-            <kbd className="ml-auto hidden rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-[10px] font-medium text-text-muted lg:inline-block">
+            <span className="truncate">Jump to pages, orders, staff tools...</span>
+            <kbd className="ml-auto hidden rounded-md border border-border/70 bg-surface px-1.5 py-0.5 font-mono text-[10px] font-medium text-text-muted lg:inline-block">
               ⌘K
             </kbd>
           </button>
@@ -91,7 +97,7 @@ function HeaderComponent({
           <button
             type="button"
             onClick={onToggleTheme}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface-alt text-text-muted shadow-sm transition-colors hover:text-text-heading focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:h-9 sm:w-9"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border border-border/70 bg-surface-elevated/80 text-text-muted shadow-sm transition-colors hover:bg-surface-soft hover:text-text-heading focus:outline-none sm:h-10 sm:w-10"
             aria-label={themeMode === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             title={themeMode === "dark" ? "Light mode" : "Dark mode"}
           >
@@ -106,11 +112,12 @@ function HeaderComponent({
             <p className="text-xs text-text-muted">{userRole}</p>
           </div>
           <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-muted text-xs font-semibold text-primary ring-2 ring-border sm:h-9 sm:w-9 sm:text-sm"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-gradient-to-br from-primary-muted to-surface text-xs font-semibold text-primary shadow-sm ring-2 ring-white/30 sm:h-10 sm:w-10 sm:text-sm"
             aria-hidden
           >
             {userDisplayName.charAt(0).toUpperCase()}
           </div>
+        </div>
         </div>
       </header>
       <CommandPalette open={commandOpen} onClose={closeCommand} user={user} />

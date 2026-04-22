@@ -75,7 +75,7 @@ function TableComponent<T>({
     return (
       <div
         className={
-          "rounded-[var(--radius-xl)] border border-border/80 bg-surface py-12 text-center text-sm text-text-muted md:rounded-[var(--radius-2xl)] md:py-16 md:text-base " +
+          "rounded-[var(--radius-xl)] border border-border/80 bg-surface py-12 text-center text-sm text-text-muted shadow-[var(--shadow-card)] md:rounded-[var(--radius-2xl)] md:py-16 md:text-base " +
           className
         }
       >
@@ -114,7 +114,7 @@ function TableComponent<T>({
               <th
                 key={col.key}
                 className={
-                  "whitespace-nowrap px-3 py-4 text-left text-sm font-semibold tracking-tight text-text-heading first:pl-4 last:pr-4 md:px-4 md:py-[1.125rem] " +
+                  "whitespace-nowrap px-3 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted first:pl-4 last:pr-4 md:px-4 md:py-[1.125rem] " +
                   (col.className ?? "")
                 }
               >
@@ -159,7 +159,7 @@ function TableComponent<T>({
             key={keyExtractor(row)}
             className="overflow-hidden rounded-[var(--radius-xl)] border border-border/80 bg-surface shadow-[var(--shadow-card)] [touch-action:manipulation]"
           >
-            <div className="flex items-center gap-1.5 border-b border-border/80 bg-[var(--color-table-header-bg)] px-3 py-2.5 sm:gap-2 sm:px-4 sm:py-3">
+            <div className="flex items-center gap-1.5 border-b border-border/80 bg-[var(--color-table-header-bg)] px-3 py-3 sm:gap-2 sm:px-4 sm:py-3.5">
               {headerStartColumns.length > 0 ? (
                 <div className="flex shrink-0 items-center gap-1">
                   {headerStartColumns.map((col) => (

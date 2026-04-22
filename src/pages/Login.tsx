@@ -83,20 +83,22 @@ function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-surface-alt px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] sm:p-6">
-      <Card className="w-full max-w-md border-border-strong shadow-[var(--shadow-card-lg)]" padding="lg">
+    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-surface-alt px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] sm:p-6">
+      <div className="admin-glow-orb left-[10%] top-[10%] h-44 w-44 bg-sky-300/30 sm:h-72 sm:w-72" />
+      <div className="admin-glow-orb bottom-[6%] right-[10%] h-48 w-48 bg-blue-500/20 sm:h-80 sm:w-80" />
+      <Card className="animate-admin-float-in relative w-full max-w-md border-border-strong shadow-[var(--shadow-card-lg)] backdrop-blur-xl" padding="lg">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] bg-primary-muted text-lg font-bold text-primary">
-            P
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-xl)] bg-gradient-to-br from-primary to-sky-300 text-lg font-bold text-white shadow-[var(--shadow-card)]">
+            EC
           </div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            Pillipot
+          <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">
+            EdeneCart Admin
           </p>
-          {/* <h1 className="mt-2 text-xl font-semibold tracking-tight text-text-heading sm:text-2xl">
-            Order management
-          </h1> */}
-          <p className="mt-2 text-sm text-text-muted">
-            Sign in to your account
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-text-heading sm:text-[2rem]">
+            Command your operations
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-text-muted">
+            Sign in to review orders, staff activity, stock, and delivery workflows from one responsive workspace.
           </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -133,25 +135,24 @@ function LoginPage() {
           {error && (
             <p className="text-sm text-error">{error}</p>
           )}
-          <div className="flex flex-col gap-2  sm:items-stretch">
+          <div className="flex flex-col gap-2 sm:items-stretch">
             <Button
               type="submit"
               size="lg"
               loading={submitting}
-              className="sm:flex-1 sm:flex-row cursor-pointer"
+              className="cursor-pointer sm:flex-1 sm:flex-row"
             >
               Sign in
             </Button>
             <div
               onClick={handleForgotOpen}
-              className="w-full text-right "
-            ><span className="cursor-pointer hover:text-blue-500">
+              className="w-full text-right"
+            ><span className="cursor-pointer text-sm text-text-muted transition-colors hover:text-primary">
                 Forgot password
               </span>
             </div>
           </div>
         </form>
-
       </Card>
 
       <Modal

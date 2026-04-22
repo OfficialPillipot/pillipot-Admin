@@ -12,21 +12,21 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-primary text-text-inverse shadow-sm hover:bg-primary-hover focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface",
+    "border border-primary bg-primary text-text-inverse shadow-[var(--shadow-card)] hover:border-primary-hover hover:bg-primary-hover focus:outline-none",
   secondary:
-    "border border-border-strong bg-surface text-text shadow-sm hover:bg-surface-alt focus:ring-2 focus:ring-border-strong focus:ring-offset-2 focus:ring-offset-surface",
+    "border border-border-strong bg-surface-elevated/90 text-text shadow-sm hover:bg-surface-soft focus:outline-none",
   outline:
-    "border-2 border-primary text-primary hover:bg-primary-muted focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface",
+    "border border-primary/35 bg-primary/5 text-primary hover:bg-primary/10 focus:outline-none",
   ghost:
-    "text-text hover:bg-surface-alt focus:ring-2 focus:ring-border focus:ring-offset-2 focus:ring-offset-surface",
+    "border border-transparent text-text hover:bg-surface-soft focus:outline-none",
   danger:
-    "bg-error text-text-inverse shadow-sm hover:bg-red-700 focus:ring-2 focus:ring-error focus:ring-offset-2 focus:ring-offset-surface",
+    "border border-error bg-error text-text-inverse shadow-sm hover:brightness-95 focus:outline-none",
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: "px-2.5 py-1 text-xs rounded-[var(--radius-sm)] md:px-3 md:py-1.5 md:text-sm",
-  md: "px-3 py-1.5 text-xs rounded-[var(--radius-md)] md:px-4 md:py-2 md:text-sm",
-  lg: "px-4 py-2 text-sm rounded-[var(--radius-lg)] md:px-6 md:py-3 md:text-base",
+  sm: "min-h-9 px-3 py-1.5 text-xs rounded-[var(--radius-sm)] md:min-h-10 md:px-3.5 md:text-sm",
+  md: "min-h-10 px-4 py-2 text-xs rounded-[var(--radius-md)] md:min-h-11 md:px-4.5 md:text-sm",
+  lg: "min-h-11 px-5 py-2.5 text-sm rounded-[var(--radius-lg)] md:min-h-12 md:px-6 md:py-3 md:text-base",
 };
 
 function ButtonComponent({
@@ -44,7 +44,7 @@ function ButtonComponent({
       type="button"
       disabled={disabled || loading}
       className={[
-        "inline-flex touch-manipulation items-center justify-center font-medium transition-colors duration-150 ease-out active:transition-none disabled:opacity-50 disabled:pointer-events-none",
+        "inline-flex touch-manipulation items-center justify-center gap-2 font-medium transition-all duration-150 ease-out active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 focus-visible:shadow-[var(--shadow-focus)]",
         variantClasses[variant],
         sizeClasses[size],
         fullWidth ? "w-full" : "",
