@@ -42,7 +42,7 @@ export type OrderListPayload = { items: Order[]; total: number };
 
 export type NewProductPayload = Pick<Product, "name" | "price"> & {
   categoryId: string;
-  subcategoryId: string;
+  subcategoryId?: string;
   buyingPrice?: number;
   stockQuantity?: number;
   size?: string;

@@ -43,7 +43,6 @@ interface CardHeaderProps {
 
 export const CardHeader = memo(function CardHeaderInner({
   title,
-  subtitle,
   action,
 }: CardHeaderProps) {
   return (
@@ -52,11 +51,11 @@ export const CardHeader = memo(function CardHeaderInner({
         <h2 className="text-lg font-semibold tracking-tight text-text-heading md:text-xl">
           {title}
         </h2>
-        {subtitle && (
+        {/* {subtitle && (
           <p className="mt-1.5 text-sm text-text-muted leading-relaxed md:text-[0.9375rem]">
             {subtitle}
           </p>
-        )}
+        )} */}
       </div>
       {action && (
         <div className="ml-auto cursor-pointer shrink-0 sm:self-start">{action}</div>

@@ -1,5 +1,5 @@
 import { memo, useState, useCallback, useMemo, useEffect } from "react";
-import { PencilIcon, TrashIcon, EyeIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
   selectSubcategories,
@@ -12,7 +12,7 @@ import { selectCategories, fetchCategories } from "../store/categoriesSlice";
 import { fetchProducts, selectProducts } from "../store/productsSlice";
 import { Card, CardHeader, Button, Table, Modal, Input, Tooltip, Select } from "../components/ui";
 import { toast } from "../lib/toast";
-import type { Subcategory, Category } from "../types";
+import type { Subcategory } from "../types";
 
 function SubcategoryManagementPage() {
   const dispatch = useAppDispatch();
@@ -36,7 +36,6 @@ function SubcategoryManagementPage() {
   const [categoryId, setCategoryId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewingSubcategory, setViewingSubcategory] = useState<Subcategory | null>(null);
 
   const filteredSubcategories = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

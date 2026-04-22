@@ -38,7 +38,7 @@ const pdfOptions = [
 function SettingsSection({
   icon: Icon,
   title,
-  description,
+  // description,
   children,
 }: {
   icon: ComponentType<{ className?: string }>;
@@ -59,9 +59,9 @@ function SettingsSection({
           <h3 className="text-sm font-semibold text-text-heading md:text-base">
             {title}
           </h3>
-          <p className="mt-1 text-xs leading-relaxed text-text-muted md:text-sm">
+          {/* <p className="mt-1 text-xs leading-relaxed text-text-muted md:text-sm">
             {description}
-          </p>
+          </p> */}
         </div>
       </div>
       <div className="space-y-4 md:space-y-5">{children}</div>
@@ -219,11 +219,7 @@ function AdminSettingsPage() {
               />
             </SettingsSection>
 
-            <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-text-muted">
-                Changes apply after you save. Staff may need to refresh to see
-                new PDF defaults.
-              </p>
+            <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:justify-end">
               <Button
                 type="button"
                 variant="secondary"
