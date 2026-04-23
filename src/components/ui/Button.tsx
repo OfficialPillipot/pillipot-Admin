@@ -8,6 +8,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size;
   fullWidth?: boolean;
   loading?: boolean;
+  icon?: React.ReactNode;
 }
 
 const variantClasses: Record<Variant, string> = {
@@ -57,7 +58,10 @@ function ButtonComponent({
       {loading ? (
         <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
       ) : (
-        children
+        <>
+          {icon && <span className="shrink-0">{icon}</span>}
+          {children}
+        </>
       )}
     </button>
   );

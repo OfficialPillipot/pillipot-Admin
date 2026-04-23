@@ -102,7 +102,11 @@ export default function OfferManagementPage() {
       <span className="text-xs font-bold text-success">{row.discountPercentage}%</span>
     )},
     { key: "isActive", header: "Status", render: (row: ProductOffer) => (
-      <ToggleSwitch checked={row.isActive} onChange={(next) => handleToggle(row.id, next)} />
+      <ToggleSwitch 
+        checked={row.isActive} 
+        onChange={(next) => handleToggle(row.id, next)} 
+        aria-label={`Toggle active status for ${row.title}`}
+      />
     )},
     { key: "actions", header: "", render: (row: ProductOffer) => (
       <Tooltip content="Delete">

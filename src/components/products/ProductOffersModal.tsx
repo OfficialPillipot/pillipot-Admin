@@ -112,6 +112,7 @@ export function ProductOffersModal({ product, onClose }: ProductOffersModalProps
         <ToggleSwitch
           checked={row.isActive}
           onChange={(next) => void handleToggleActive(row, next)}
+          aria-label={`Toggle active status for ${row.title}`}
         />
       ),
     },
