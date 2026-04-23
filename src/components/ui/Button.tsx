@@ -35,6 +35,7 @@ function ButtonComponent({
   size = "md",
   fullWidth,
   loading,
+  icon,
   disabled,
   className = "",
   children,
