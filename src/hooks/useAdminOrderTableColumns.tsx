@@ -211,19 +211,10 @@ export function useAdminOrderTableColumns({
       {
         key: "staffId",
         header: "Staff",
+        className: "md:min-w-[12rem]",
         render: (row: Order) => {
-          const isWeb = row.platform === "WebApp" || row.platform === "webapp";
           const staffName = row.staffId ? (staff.find((s) => s.id === row.staffId)?.name ?? row.staffId) : "—";
-          return (
-            <div className="flex flex-col gap-1 items-start">
-              <span className="font-medium">{staffName}</span>
-              {!isWeb && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-blue-500 text-white shadow-sm">
-                  {row.platform || "staff"}
-                </span>
-              )}
-            </div>
-          );
+          return <span className="font-medium">{staffName}</span>;
         },
       },
       {
