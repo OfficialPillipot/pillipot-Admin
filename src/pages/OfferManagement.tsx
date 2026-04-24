@@ -4,8 +4,7 @@ import {
   PlusIcon, 
   TrashIcon, 
   PencilIcon, 
-  MagnifyingGlassIcon,
-  ChevronRightIcon
+  MagnifyingGlassIcon
 } from "@heroicons/react/24/outline";
 import {
   Card,
@@ -167,7 +166,7 @@ export default function OfferManagementPage() {
                 placeholder="Find by name or product code..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                icon={<MagnifyingGlassIcon className="h-4 w-4" />}
+                endNode={<MagnifyingGlassIcon className="h-4 w-4" />}
               />
             </div>
             <div className="flex-1 text-right text-[10px] font-black uppercase tracking-[0.2em] text-text-muted/60 mb-2.5">
@@ -300,6 +299,7 @@ function OfferEditModal({ productId, productName, onClose }: { productId: string
         <ToggleSwitch 
           checked={row.isActive} 
           onChange={(next) => handleToggle(row.id, next)} 
+          aria-label={`Toggle status for ${row.title}`}
         />
       )
     },
