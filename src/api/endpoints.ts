@@ -93,4 +93,6 @@ export const endpoints = {
   indiaPostTrackingBulk: `${V1}/india-post/tracking/bulk`,
   productOffers: `${V1}/admin/offers`,
   productOfferById: (id: string) => `${V1}/admin/offers/${id}`,
+  adminReviews: `${V1}/admin/reviews`,
+  adminReviewById: (id: string) => `${V1}/admin/reviews/${id}`,
 } as const;

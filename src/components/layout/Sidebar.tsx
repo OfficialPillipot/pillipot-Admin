@@ -31,9 +31,10 @@ import {
   IdentificationIcon,
   QrCodeIcon,
   GiftIcon,
-  BuildingOffice2Icon,
+  // BuildingOffice2Icon,
   MegaphoneIcon,
   ListBulletIcon,
+  StarIcon,
 } from "@heroicons/react/24/outline";
 import { Tooltip } from "../ui";
 import type { User } from "../../types";
@@ -108,13 +109,13 @@ const ADMIN_NAV_SECTIONS: NavSection<AdminNavItem>[] = [
         icon: QrCodeIcon,
         permission: "orders.update",
       },
-      {
-        to: "/admin/post-office",
-        label: "India Post",
-        end: true,
-        icon: BuildingOffice2Icon,
-        permission: "orders.view",
-      },
+      // {
+      //   to: "/admin/post-office",
+      //   label: "India Post",
+      //   end: true,
+      //   icon: BuildingOffice2Icon,
+      //   permission: "orders.view",
+      // },
       { to: "/admin/senders", label: "Senders", end: true, icon: TruckIcon, permission: "senders.view" },
       { to: "/admin/delivery", label: "Delivery", end: true, icon: PaperAirplaneIcon, permission: "deliveries.view" },
     ],
@@ -168,6 +169,7 @@ const ADMIN_NAV_SECTIONS: NavSection<AdminNavItem>[] = [
       { to: "/admin/subcategories", label: "Subcategories", end: true, icon: ListBulletIcon, permission: "categories.view" },
       { to: "/admin/offers", label: "Product Offers", end: true, icon: TagIcon, permission: "products.view" },
       { to: "/admin/banners", label: "Banners", end: true, icon: MegaphoneIcon },
+      { to: "/admin/reviews", label: "Reviews", end: true, icon: StarIcon, permission: "products.view" },
       { to: "/admin/customers", label: "Customers", end: true, icon: UserGroupIcon, permission: "customers.view" },
       { to: "/admin/webapp-users", label: "Platform customers", end: true, icon: IdentificationIcon, permission: "customers.view" },
     ],

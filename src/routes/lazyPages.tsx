@@ -96,3 +96,4 @@ export const WebappUserManagement = lazyRoute(
   () => import("../pages/WebappUserManagement"),
 );
 export const BannerManagement = lazyRoute(() => import("../pages/BannerManagement"));
+export const ReviewManagement = lazyRoute(() => import("../pages/ReviewManagement"));
