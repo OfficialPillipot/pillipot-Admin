@@ -1429,7 +1429,7 @@ export const edenApi = createApi({
       query: () => endpoints.vendorPortalCategories,
       providesTags: [{ type: "Category", id: "LIST" }],
     }),
-    createVendorPortalCategory: builder.mutation<Category, { name: string; description?: string }>({
+    createVendorPortalCategory: builder.mutation<Category, FormData>({
       query: (body) => ({
         url: endpoints.vendorPortalCategories,
         method: "POST",
@@ -1447,6 +1447,25 @@ export const edenApi = createApi({
         body,
       }),
       invalidatesTags: [{ type: "Category", id: "LIST" }, { type: "Subcategory", id: "LIST" }],
+    }),
+    updateVendorPortalCategory: builder.mutation<Category, { id: string; formData: FormData }>({
+      query: ({ id, formData }) => ({
+        url: `${endpoints.vendorPortalCategories}/${id}`,
+        method: "PUT",
+        body: formData,
+      }),
+      invalidatesTags: (_r, _e, { id }) => [{ type: "Category", id: "LIST" }, { type: "Category", id }],
+    }),
+    updateVendorPortalSubcategory: builder.mutation<
+      Subcategory,
+      { id: string; name?: string; categoryId?: string; description?: string }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `${endpoints.vendorPortalSubcategories}/${id}`,
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: (_r, _e, { id }) => [{ type: "Category", id: "LIST" }, { type: "Subcategory", id: "LIST" }, { type: "Subcategory", id }],
     }),
     getVendorPortalOffers: builder.query<ProductOffer[], void>({
       query: () => endpoints.vendorPortalOffers,
@@ -1571,7 +1590,9 @@ export const {
   useUpdateVendorPortalOrderStatusMutation,
   useGetVendorPortalCategoriesQuery,
   useCreateVendorPortalCategoryMutation,
+  useUpdateVendorPortalCategoryMutation,
   useCreateVendorPortalSubcategoryMutation,
+  useUpdateVendorPortalSubcategoryMutation,
   useGetVendorPortalOffersQuery,
   useCreateVendorPortalOfferMutation,
   useUpdateVendorPortalOfferMutation,

@@ -19,6 +19,7 @@ export interface Category {
   description?: string;
   imageUrl?: string | null;
   subcategories?: Subcategory[];
+  isOwner?: boolean;
 }
 
 export interface Subcategory {
@@ -27,6 +28,7 @@ export interface Subcategory {
   description?: string;
   categoryId: string;
   category?: Category;
+  isOwner?: boolean;
 }
 
 export interface Banner {
@@ -372,6 +374,12 @@ export interface Order {
   /** Set on POST /orders: API has full SMTP credentials; if false, no email is actually sent. */
   outboundEmailReady?: boolean;
   platform?: string;
+  /** Payment method: "cod" or "razorpay" */
+  paymentMethod?: string;
+  /** Payment lifecycle: "pending", "paid", or "failed" */
+  paymentStatus?: string;
+  /** Razorpay payment id for online payments */
+  razorpayPaymentId?: string | null;
 }
 
 /** Payload for POST /orders; total is computed from product price on the server. */

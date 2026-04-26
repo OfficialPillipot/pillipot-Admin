@@ -1,4 +1,5 @@
 import { memo, useState, useCallback, useMemo } from "react";
+import { PencilIcon } from "@heroicons/react/24/outline";
 import {
   Card,
   CardHeader,
@@ -10,7 +11,8 @@ import {
 } from "../components/ui";
 import {
   useGetVendorPortalCategoriesQuery,
-  useCreateVendorPortalSubcategoryMutation
+  useCreateVendorPortalSubcategoryMutation,
+  useUpdateVendorPortalSubcategoryMutation
 } from "../store/api/edenApi";
 import { toast } from "../lib/toast";
 import type { Category, Subcategory } from "../types";
@@ -18,8 +20,10 @@ import type { Category, Subcategory } from "../types";
 function VendorSubcategoryManagement() {
   const { data: categories = [], isLoading } = useGetVendorPortalCategoriesQuery();
   const [createSubcategory] = useCreateVendorPortalSubcategoryMutation();
+  const [updateSubcategory] = useUpdateVendorPortalSubcategoryMutation();
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -41,28 +45,74 @@ function VendorSubcategoryManagement() {
     }
     setSubmitting(true);
     try {
-      await createSubcategory({
-        categoryId,
-        name: name.trim(),
-        description: description.trim()
-      }).unwrap();
-      toast.success("Subcategory created");
+      if (editingId) {
+        await updateSubcategory({
+          id: editingId,
+          categoryId,
+          name: name.trim(),
+          description: description.trim()
+        }).unwrap();
+        toast.success("Subcategory updated");
+      } else {
+        await createSubcategory({
+          categoryId,
+          name: name.trim(),
+          description: description.trim()
+        }).unwrap();
+        toast.success("Subcategory created");
+      }
       setModalOpen(false);
+      setEditingId(null);
       setName("");
       setDescription("");
+      setCategoryId("");
     } catch (err) {
-      toast.fromError(err, "Failed to create subcategory");
+      toast.fromError(err, editingId ? "Failed to update subcategory" : "Failed to create subcategory");
     } finally {
       setSubmitting(false);
     }
-  }, [categoryId, name, description, createSubcategory]);
+  }, [editingId, categoryId, name, description, createSubcategory, updateSubcategory]);
+
+  const openEdit = useCallback((sub: any) => {
+    setEditingId(sub.id);
+    setCategoryId(sub.categoryId);
+    setName(sub.name);
+    setDescription(sub.description || "");
+    setModalOpen(true);
+  }, []);
+
+  const openAdd = useCallback(() => {
+    setEditingId(null);
+    setCategoryId("");
+    setName("");
+    setDescription("");
+    setModalOpen(true);
+  }, []);
 
   const columns = useMemo(() => [
     { key: "name", header: "Subcategory Name" },
     { key: "category", header: "Parent Category", render: (row: any) => row.categoryName },
     { key: "description", header: "Description", render: (row: Subcategory) => row.description || "—" },
     { key: "status", header: "Status", render: () => <span className="text-xs bg-success/10 text-success px-2 py-1 rounded">Active</span> },
-  ], []);
+    {
+      key: "actions",
+      header: "",
+      render: (row: any) => (
+        <div className="flex items-center gap-1">
+          {row.isOwner && (
+            <button
+              type="button"
+              onClick={() => openEdit(row)}
+              className="rounded-[var(--radius-md)] p-2 text-text-muted hover:bg-primary-muted hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary"
+              title="Edit subcategory"
+            >
+              <PencilIcon className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ], [openEdit]);
 
   const categoryOptions = useMemo(() => [
     { value: "", label: "Select parent category..." },
@@ -75,7 +125,7 @@ function VendorSubcategoryManagement() {
         <CardHeader
           title="Product Subcategories"
           subtitle="Manage specific sub-types for your products"
-          action={<Button onClick={() => setModalOpen(true)}>Add Subcategory</Button>}
+          action={<Button onClick={openAdd}>Add Subcategory</Button>}
         />
         <Table
           isLoading={isLoading}
@@ -89,7 +139,7 @@ function VendorSubcategoryManagement() {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="Add New Subcategory"
+        title={editingId ? "Edit Subcategory" : "Add New Subcategory"}
       >
         <div className="space-y-4">
           <Select
@@ -111,7 +161,7 @@ function VendorSubcategoryManagement() {
             placeholder="Optional details"
           />
           <div className="pt-2 flex gap-2">
-            <Button onClick={handleSave} disabled={submitting}>{submitting ? "Creating..." : "Create Subcategory"}</Button>
+            <Button onClick={handleSave} disabled={submitting}>{submitting ? "Saving..." : editingId ? "Save Changes" : "Create Subcategory"}</Button>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
           </div>
         </div>

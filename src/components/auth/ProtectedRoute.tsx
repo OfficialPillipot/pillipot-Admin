@@ -24,7 +24,7 @@ function ProtectedRouteComponent({
   }
 
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    const redirect = user.role === "staff" ? "/" : "/admin";
+    const redirect = user.role === "staff" || user.role === "vendor" ? "/" : "/admin";
     return <Navigate to={redirect} replace />;
   }
 
@@ -33,7 +33,8 @@ function ProtectedRouteComponent({
     requiredPermissions.length > 0 &&
     !hasEveryPermission(user, requiredPermissions)
   ) {
-    return <Navigate to="/admin" replace />;
+    const permRedirect = user.role === "staff" || user.role === "vendor" ? "/" : "/admin";
+    return <Navigate to={permRedirect} replace />;
   }
 
   return <>{children}</>;
