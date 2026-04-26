@@ -100,6 +100,7 @@ const VENDOR_NAV_SECTIONS: NavSection<StaffNavItem>[] = [
       { to: "/", label: "Dashboard", end: true, icon: HomeIcon },
       { to: "/vendor/products", label: "My Products", end: true, icon: Squares2X2Icon },
       { to: "/vendor/orders", label: "Product Orders", end: true, icon: ClipboardDocumentListIcon },
+      { to: "/admin/tracking-scan", label: "Tracking scan", end: true, icon: QrCodeIcon },
       { to: "/vendor/offers", label: "Offers", end: true, icon: TagIcon },
     ],
   },

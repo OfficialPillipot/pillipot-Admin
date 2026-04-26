@@ -242,8 +242,8 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
           path="/admin/tracking-scan"
           element={
             <ProtectedRoute
-              allowedRoles={["super_admin", "guest"]}
-              requiredPermissions={["orders.update"]}
+              allowedRoles={["super_admin", "guest", "vendor"]}
+              requiredPermissions={user.role === "vendor" ? [] : ["orders.update"]}
             >
               <Pages.TrackingScanner />
             </ProtectedRoute>
