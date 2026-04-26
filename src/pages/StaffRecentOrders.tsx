@@ -131,7 +131,7 @@ function StaffRecentOrdersPage() {
           const sf = row.items[0].scheduledFor ?? row.items.find((i) => i.scheduledFor)?.scheduledFor;
           if (!sf) return <span className="text-text-muted">—</span>;
           return (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 rounded-full px-2.5 py-1">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap">
               📅 {formatDate(sf)}
             </span>
           );

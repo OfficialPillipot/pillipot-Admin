@@ -209,32 +209,39 @@ export function useAdminOrderTableColumns({
         }
       },
       {
-        key: "paymentStatus",
+        key: "paymentMethod",
         header: "Payment",
-        className: "md:min-w-[8rem]",
+        className: "md:min-w-[6rem]",
         render: (row: Order) => {
           const method = row.paymentMethod ?? "cod";
-          const status = row.paymentStatus ?? "pending";
           const isOnline = method === "razorpay";
+          return (
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit ${
+              isOnline
+                ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
+                : "bg-amber-100 text-amber-700 border border-amber-200"
+            }`}>
+              {isOnline ? "Online" : "COD"}
+            </span>
+          );
+        },
+      },
+      {
+        key: "paymentStatus",
+        header: "Payment Status",
+        className: "md:min-w-[8rem]",
+        render: (row: Order) => {
+          const status = row.paymentStatus ?? "pending";
           const isPaid = status === "paid";
           const isFailed = status === "failed";
           return (
-            <div className="flex flex-col gap-1">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit ${
-                isOnline
-                  ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
-                  : "bg-amber-100 text-amber-700 border border-amber-200"
-              }`}>
-                {isOnline ? "Online" : "COD"}
-              </span>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit ${
-                isPaid ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                : isFailed ? "bg-red-100 text-red-700 border border-red-200"
-                : "bg-slate-100 text-slate-500 border border-slate-200"
-              }`}>
-                {isPaid ? "✓ Paid" : isFailed ? "✗ Failed" : "Pending"}
-              </span>
-            </div>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit ${
+              isPaid ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+              : isFailed ? "bg-red-100 text-red-700 border border-red-200"
+              : "bg-slate-100 text-slate-500 border border-slate-200"
+            }`}>
+              {isPaid ? "✓ Paid" : isFailed ? "✗ Failed" : "Pending"}
+            </span>
           );
         },
       },
@@ -266,7 +273,7 @@ export function useAdminOrderTableColumns({
           const sf = lines.find((i) => i.scheduledFor)?.scheduledFor;
           if (!sf) return <span className="text-text-muted">—</span>;
           return (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 rounded-full px-2.5 py-1 whitespace-nowrap">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap">
               📅 {formatDate(sf)}
             </span>
           );
