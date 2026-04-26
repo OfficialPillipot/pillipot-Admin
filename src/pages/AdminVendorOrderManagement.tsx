@@ -49,7 +49,6 @@ function AdminVendorOrderManagementPage() {
   // ── Use the dedicated vendor orders API ──
   const { data, isLoading, refetch } = useGetAdminVendorOrdersQuery();
   const listLines = useMemo(() => (data?.items ?? []) as Order[], [data]);
-  const listTotal = data?.total ?? 0;
 
   const staff = useAppSelector(selectStaff);
   const products = useAppSelector(selectProducts);
@@ -617,19 +616,6 @@ function AdminVendorOrderManagementPage() {
     [],
   );
 
-  const statusOptions = useMemo(
-    () => [
-      { value: "", label: "All statuses" },
-      { value: "scheduled", label: "Scheduled" },
-      { value: "pending", label: "Pending" },
-      { value: "packed", label: "Packed" },
-      { value: "dispatch", label: "Dispatch" },
-      { value: "delivered", label: "Delivered" },
-      { value: "cancelled", label: "Cancelled" },
-      { value: "returned", label: "Returned" },
-    ],
-    [],
-  );
 
   const handleRevokePacked = useCallback(
     async (row: Order & { items?: Order[] }) => {
