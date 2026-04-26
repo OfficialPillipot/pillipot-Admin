@@ -89,17 +89,13 @@ function LoginPage() {
       <Card className="animate-admin-float-in relative w-full max-w-md border-border-strong shadow-[var(--shadow-card-lg)] backdrop-blur-xl" padding="lg">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-xl)] bg-gradient-to-br from-primary to-sky-300 text-lg font-bold text-white shadow-[var(--shadow-card)]">
-            EC
+            P
           </div>
           <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">
             PilliPot Admin
           </p>
-          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-text-heading sm:text-[2rem]">
-            Command your operations
-          </h1>
-          <p className="mt-2 text-sm leading-relaxed text-text-muted">
-            Sign in to review orders, staff activity, stock, and delivery workflows from one responsive workspace.
-          </p>
+
+
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input

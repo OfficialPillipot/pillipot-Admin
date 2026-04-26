@@ -21,6 +21,7 @@ import {
   selectDeliveryMethods,
 } from "../store/deliveriesSlice";
 import { fetchSettings, selectSettings } from "../store/settingsSlice";
+import { fetchSenders, selectSenders } from "../store/sendersSlice";
 import { Card, CardHeader, Table } from "../components/ui";
 import { toast } from "../lib/toast";
 import { downloadBulkOrdersPdf, downloadOrderPdf } from "../lib/download-order-pdf";
@@ -58,6 +59,7 @@ function AdminOrderManagementPage() {
   const products = useAppSelector(selectProducts);
   const deliveryMethods = useAppSelector(selectDeliveryMethods);
   const settings = useAppSelector(selectSettings);
+  const senders = useAppSelector(selectSenders);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [productFilter, setProductFilter] = useState("");
   const [staffFilter, setStaffFilter] = useState("");
@@ -85,6 +87,7 @@ function AdminOrderManagementPage() {
     string | null
   >(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+
   const selectAllHeaderRef = useRef<HTMLInputElement>(null);
   const listLinesRef = useRef(listLines);
   listLinesRef.current = listLines;
@@ -305,6 +308,10 @@ function AdminOrderManagementPage() {
 
   useEffect(() => {
     void dispatch(fetchDeliveryMethods());
+  }, [dispatch]);
+
+  useEffect(() => {
+    void dispatch(fetchSenders());
   }, [dispatch]);
 
   useEffect(() => {
@@ -737,7 +744,7 @@ function AdminOrderManagementPage() {
           const first = res.errors[0]?.message;
           toast.error(
             first ??
-              `None of the ${res.failed} line(s) could be moved to ${next}. Check tracking and rules per order.`,
+            `None of the ${res.failed} line(s) could be moved to ${next}. Check tracking and rules per order.`,
           );
         } else {
           toast.warning(
@@ -794,7 +801,7 @@ function AdminOrderManagementPage() {
     ],
     [deliveryMethods],
   );
-  
+
   const platformOptions = useMemo(
     () => [
       { value: "", label: "Select all platforms" },
@@ -851,6 +858,7 @@ function AdminOrderManagementPage() {
   );
 
   const columns = useAdminOrderTableColumns({
+
     selectAllHeaderRef,
     staff,
     products,
@@ -867,6 +875,7 @@ function AdminOrderManagementPage() {
       : undefined,
     revokePackedLoadingId,
   });
+  console.log("filteredOrders", selectedIds);
 
   return (
     <div className="space-y-4">
@@ -905,6 +914,9 @@ function AdminOrderManagementPage() {
           appliedServerSearch={appliedServerSearch}
         />
         <AdminOrderBulkBar
+          filteredOrders={filteredOrders}
+          selectedIds={selectedIds}
+          defaultSender={senders.find(s => s.id === settings?.defaultSenderId)}
           selectedCount={selectedVisibleCount}
           bulkAdvanceAction={bulkAdvanceAction}
           bulkStatusLoading={bulkStatusLoading}
@@ -912,7 +924,9 @@ function AdminOrderManagementPage() {
           onBulkAdvance={(next) => void applyBulkAdvance(next)}
           onDownloadSelectedPdf={() => void downloadSelectedPdf()}
           onClearSelection={clearRowSelection}
+
         />
+
         <AdminOrderMobileSelectAll
           allVisibleSelected={allVisibleSelected}
           onToggleAll={toggleAllVisibleSelected}
@@ -922,7 +936,9 @@ function AdminOrderManagementPage() {
           data={filteredOrders}
           keyExtractor={(o) => o.id}
           emptyMessage="No orders."
+
         />
+
         <AdminOrderPagination
           visible={showApiPagination}
           listTotal={listTotal}
@@ -931,6 +947,7 @@ function AdminOrderManagementPage() {
           loading={filtersLoading}
           onGoToPage={goToOrdersPage}
         />
+
       </Card>
 
       <AdminOrderDetailModal

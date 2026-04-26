@@ -50,55 +50,50 @@ const AdminDashboardPeriodControls = memo(function AdminDashboardPeriodControls(
         <button
           type="button"
           onClick={() => setDateFilter("today")}
-          className={`px-2.5 py-1.5 text-sm transition-colors md:px-3 ${
-            dateFilter === "today"
-              ? "bg-primary font-medium text-white"
-              : "text-text-muted hover:text-text-heading"
-          }`}
+          className={`px-2.5 py-1.5 text-sm transition-colors md:px-3 ${dateFilter === "today"
+            ? "bg-primary font-medium text-white"
+            : "text-text-muted hover:text-text-heading"
+            }`}
         >
           Today
         </button>
         <button
           type="button"
           onClick={() => setDateFilter("week")}
-          className={`border-l border-border px-2.5 py-1.5 text-sm transition-colors md:px-3 ${
-            dateFilter === "week"
-              ? "bg-primary font-medium text-white"
-              : "text-text-muted hover:text-text-heading"
-          }`}
+          className={`border-l border-border px-2.5 py-1.5 text-sm transition-colors md:px-3 ${dateFilter === "week"
+            ? "bg-primary font-medium text-white"
+            : "text-text-muted hover:text-text-heading"
+            }`}
         >
           Week
         </button>
         <button
           type="button"
           onClick={() => setDateFilter("month")}
-          className={`border-l border-border px-2.5 py-1.5 text-sm transition-colors md:px-3 ${
-            dateFilter === "month"
-              ? "bg-primary font-medium text-white"
-              : "text-text-muted hover:text-text-heading"
-          }`}
+          className={`border-l border-border px-2.5 py-1.5 text-sm transition-colors md:px-3 ${dateFilter === "month"
+            ? "bg-primary font-medium text-white"
+            : "text-text-muted hover:text-text-heading"
+            }`}
         >
           Month
         </button>
         <button
           type="button"
           onClick={() => setDateFilter("year")}
-          className={`border-l border-border px-2.5 py-1.5 text-sm transition-colors md:px-3 ${
-            dateFilter === "year"
-              ? "bg-primary font-medium text-white"
-              : "text-text-muted hover:text-text-heading"
-          }`}
+          className={`border-l border-border px-2.5 py-1.5 text-sm transition-colors md:px-3 ${dateFilter === "year"
+            ? "bg-primary font-medium text-white"
+            : "text-text-muted hover:text-text-heading"
+            }`}
         >
           Year
         </button>
         <button
           type="button"
           onClick={() => setDateFilter("custom")}
-          className={`border-l border-border px-2.5 py-1.5 text-sm transition-colors md:px-3 ${
-            dateFilter === "custom"
-              ? "bg-primary font-medium text-white"
-              : "text-text-muted hover:text-text-heading"
-          }`}
+          className={`border-l border-border px-2.5 py-1.5 text-sm transition-colors md:px-3 ${dateFilter === "custom"
+            ? "bg-primary font-medium text-white"
+            : "text-text-muted hover:text-text-heading"
+            }`}
         >
           Custom
         </button>
@@ -294,23 +289,18 @@ function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(20rem,0.9fr)]">
-        <Card className="overflow-hidden border-border-strong bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-primary)_10%,white)_0%,var(--color-surface-elevated)_54%,color-mix(in_srgb,var(--color-info)_10%,white)_100%)]" padding="lg">
+      <div className="w-full">
+        <Card className="overflow-hidden border-border-strong bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-primary)_10%,white)_0%,var(--color-surface-elevated)_54%,color-mix(in_srgb,var(--color-info)_10%,white)_100%)] " padding="lg">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1">
-              <Badge variant="info" className="mb-4">Operations overview</Badge>
-              <h2 className="text-2xl font-semibold tracking-tight text-text-heading sm:text-3xl">
-                Admin dashboard
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-muted sm:text-base">
-                Monitor order velocity, payroll exposure, and inventory pressure from one responsive control surface.
-              </p>
+              <Badge variant="info" className="mb-4 mr-2">Operations overview</Badge>
+              <Badge variant="muted">
+                {dateFilter === "custom"
+                  ? `${customStart ? formatDate(activeStart.toISOString()) : "Start"} - ${customEnd ? formatDate(activeEnd.toISOString()) : "End"}`
+                  : `${formatDate(activeStart.toISOString())} - ${formatDate(activeEnd.toISOString())}`}
+              </Badge>
               <div className="mt-5 flex flex-wrap gap-2">
-                <Badge variant="muted">
-                  {dateFilter === "custom"
-                    ? `${customStart ? formatDate(activeStart.toISOString()) : "Start"} - ${customEnd ? formatDate(activeEnd.toISOString()) : "End"}`
-                    : `${formatDate(activeStart.toISOString())} - ${formatDate(activeEnd.toISOString())}`}
-                </Badge>
+
                 <Badge variant="default">
                   Active staff {staff.filter((s) => s.isActive).length}
                 </Badge>
@@ -334,40 +324,40 @@ function AdminDashboardPage() {
           </div>
         </Card>
 
-        <Card padding="md">
-          <CardHeader
-            title="Watchlist"
-            subtitle="Critical items that need attention first."
-          />
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            <div className="rounded-[var(--radius-lg)] border border-border bg-surface-soft p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
-                Pending orders
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-warning">
-                {filteredOrders.filter((o) => o.status === "pending").length}
-              </p>
-            </div>
-            <div className="rounded-[var(--radius-lg)] border border-border bg-surface-soft p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
-                Low stock items
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-error">
-                {lowOrOutProducts.length}
-              </p>
-            </div>
-            <div className="rounded-[var(--radius-lg)] border border-border bg-surface-soft p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
-                Salary exposure
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-earnings">
-                {formatCurrency(totalSalaryPayable)}
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
 
+      </div>
+      <Card className="dashboard-metric-card w-full" padding="md">
+        <CardHeader
+          title="Watchlist"
+          subtitle="Critical items that need attention first."
+        />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-[var(--radius-lg)] border border-border bg-surface-soft p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+              Pending orders
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-warning">
+              {filteredOrders.filter((o) => o.status === "pending").length}
+            </p>
+          </div>
+          <div className="rounded-[var(--radius-lg)] border border-border bg-surface-soft p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+              Low stock items
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-error">
+              {lowOrOutProducts.length}
+            </p>
+          </div>
+          <div className="rounded-[var(--radius-lg)] border border-border bg-surface-soft p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+              Salary exposure
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-earnings">
+              {formatCurrency(totalSalaryPayable)}
+            </p>
+          </div>
+        </div>
+      </Card>
       {!isMdUp && (
         <Card padding="md">
           <AdminDashboardPeriodControls
@@ -389,9 +379,7 @@ function AdminDashboardPage() {
           <p className="mt-2 text-3xl font-semibold text-text-heading">
             {totalOrders}
           </p>
-          <p className="mt-2 text-sm text-text-muted">
-            Unique order groups in the selected period.
-          </p>
+
         </Card>
         <Card className="dashboard-metric-card" padding="md">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
@@ -400,9 +388,7 @@ function AdminDashboardPage() {
           <p className="mt-2 text-3xl font-semibold text-text-heading">
             {staff.filter((s) => s.isActive).length}
           </p>
-          <p className="mt-2 text-sm text-text-muted">
-            Team members currently enabled for work.
-          </p>
+
         </Card>
         <Card className="dashboard-metric-card" padding="md">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
@@ -411,9 +397,7 @@ function AdminDashboardPage() {
           <p className="mt-2 text-3xl font-semibold text-earnings">
             {formatCurrency(totalSalaryPayable)}
           </p>
-          <p className="mt-2 text-sm text-text-muted">
-            Earnings calculated for the active period.
-          </p>
+
         </Card>
         <Card className="dashboard-metric-card" padding="md">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
@@ -422,9 +406,7 @@ function AdminDashboardPage() {
           <p className="mt-2 text-3xl font-semibold text-error">
             {lowStockThreshold}
           </p>
-          <p className="mt-2 text-sm text-text-muted">
-            Products at or below this value are flagged.
-          </p>
+
         </Card>
       </div>
 
