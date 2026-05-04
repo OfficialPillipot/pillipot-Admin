@@ -62,6 +62,7 @@ export type NewProductPayload = Pick<Product, "name" | "price"> & {
   description?: string;
   image?: File | File[];
   video?: File;
+  tags?: string[];
 };
 
 /** POST /staff body (shared with legacy slice exports). */
@@ -185,6 +186,9 @@ export const edenApi = createApi({
             fd.append("image", body.image);
           }
         }
+        if (body.tags && Array.isArray(body.tags)) {
+          body.tags.forEach((t) => fd.append("tags", String(t)));
+        }
         if (body.video) fd.append("video", body.video);
         return {
           url: endpoints.products,
@@ -196,12 +200,17 @@ export const edenApi = createApi({
     }),
     updateProduct: builder.mutation<
       Product,
-      { id: string; patch: Partial<Product> & { image?: File | File[]; video?: File } }
+      { id: string; patch: Partial<Product> & { image?: File | File[]; video?: File; tags?: string[] } }
     >({
       query: ({ id, patch }) => {
         const fd = new FormData();
         Object.entries(patch).forEach(([key, val]) => {
           if (val === undefined || key === "image" || key === "video") return;
+          if (key === "tags" && Array.isArray(val)) {
+            // append multiple tag entries
+            (val as string[]).forEach((t) => fd.append("tags", String(t)));
+            return;
+          }
           console.log(`[edenApi] Appending to FormData: ${key}=${val === null ? "null" : String(val)}`);
           fd.append(key, val === null ? "" : String(val));
         });
@@ -233,6 +242,23 @@ export const edenApi = createApi({
         { type: "Product", id },
         { type: "Product", id: "LIST" },
       ],
+    }),
+
+    getTags: builder.query<{ id: string; name: string }[], void>({
+      query: () => endpoints.tags,
+      providesTags: (r) => (r ? [{ type: "Category", id: "TAGS" }] : [{ type: "Category", id: "TAGS" }]),
+    }),
+    createTag: builder.mutation<{ id: string; name: string }, { name: string }>({
+      query: (body) => ({ url: endpoints.tags, method: "POST", body }),
+      invalidatesTags: [{ type: "Category", id: "TAGS" }],
+    }),
+    updateTag: builder.mutation<{ id: string; name: string }, { id: string; patch: { name?: string } }>({
+      query: ({ id, patch }) => ({ url: endpoints.tagById(id), method: "PUT", body: patch }),
+      invalidatesTags: [{ type: "Category", id: "TAGS" }],
+    }),
+    deleteTag: builder.mutation<void, string>({
+      query: (id) => ({ url: endpoints.tagById(id), method: "DELETE" }),
+      invalidatesTags: [{ type: "Category", id: "TAGS" }],
     }),
 
     getCategories: builder.query<Category[], void>({
@@ -1541,6 +1567,10 @@ export const {
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
+  useGetTagsQuery,
+  useCreateTagMutation,
+  useUpdateTagMutation,
+  useDeleteTagMutation,
   useGetCategoriesQuery,
   useGetOrdersQuery,
   useGetStaffQuery,

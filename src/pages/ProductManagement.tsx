@@ -1,5 +1,7 @@
 import { memo, useState, useCallback, useMemo, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { PencilIcon, TrashIcon, XMarkIcon, EyeIcon, TagIcon } from "@heroicons/react/24/outline";
+import { useGetTagsQuery } from "../store/api/edenApi";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { selectProducts, createProduct, updateProduct, deleteProduct } from "../store/productsSlice";
 import { selectCategories, fetchCategories } from "../store/categoriesSlice";
@@ -69,6 +71,12 @@ function ProductManagementPage() {
   const [description, setDescription] = useState("");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const { data: allTags = [] } = useGetTagsQuery();
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagQuery, setTagQuery] = useState("");
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -127,8 +135,22 @@ function ProductManagementPage() {
     setDescription("");
     setImageFiles([]);
     setVideoFile(null);
+    // Prefill tags from query param if present
+    try {
+      const q = new URLSearchParams(location.search);
+      const preTag = q.get("tag");
+      if (preTag) {
+        setSelectedTags([preTag]);
+        q.delete("tag");
+        navigate({ pathname: "/admin/products", search: q.toString() }, { replace: true });
+      } else {
+        setSelectedTags([]);
+      }
+    } catch {
+      setSelectedTags([]);
+    }
     setModalOpen(true);
-  }, []);
+  }, [location.search, navigate]);
 
   const openEdit = useCallback((p: Product) => {
     setEditingId(p.id);
@@ -147,6 +169,7 @@ function ProductManagementPage() {
     setDescription(p.description ?? "");
     setImageFiles([]);
     setVideoFile(null);
+    setSelectedTags(p.tags || []);
     setModalOpen(true);
   }, []);
 
@@ -218,6 +241,7 @@ function ProductManagementPage() {
               description: description.trim() || undefined,
               image: imageFiles.length > 0 ? imageFiles : undefined,
               video: videoFile ?? undefined,
+              tags: selectedTags.length ? selectedTags : undefined,
             },
           })
         ).unwrap();
@@ -236,6 +260,7 @@ function ProductManagementPage() {
             description: description.trim() || undefined,
             image: imageFiles.length > 0 ? imageFiles : undefined,
             video: videoFile ?? undefined,
+            tags: selectedTags.length ? selectedTags : undefined,
           })
         ).unwrap();
         toast.success("Product created");
@@ -258,6 +283,7 @@ function ProductManagementPage() {
     description,
     imageFiles,
     videoFile,
+    selectedTags,
     subcategoryId,
     dispatch,
   ]);
@@ -427,6 +453,18 @@ function ProductManagementPage() {
         key: "color",
         header: "Color",
         render: (row: Product) => row.color ?? "—",
+      },
+      {
+        key: "tags",
+        header: "Tags",
+        render: (row: Product) => (
+          <div className="flex flex-wrap gap-1">
+            {(row.tags || []).slice(0, 3).map((t) => (
+              <span key={t} className="inline-block rounded bg-surface-muted px-2 py-0.5 text-xs text-text-muted">{t}</span>
+            ))}
+            {(row.tags || []).length > 3 && <span className="text-xs text-text-muted">+{(row.tags || []).length - 3}</span>}
+          </div>
+        ),
       },
       {
         key: "isActive",
@@ -789,6 +827,27 @@ function ProductManagementPage() {
             onChange={(e) => setColor(e.target.value)}
             placeholder="e.g. Navy"
           />
+          <div>
+            <label className="mb-0.5 block text-xs font-medium text-text-heading md:mb-1 md:text-sm">Tags</label>
+            <div className="mb-2 flex flex-wrap gap-2">
+              {selectedTags.map((t) => (
+                <span key={t} className="inline-flex items-center gap-2 rounded bg-surface-muted px-2 py-1 text-sm">
+                  <span className="text-text">{t}</span>
+                  <button type="button" onClick={() => setSelectedTags((s) => s.filter(x => x !== t))} className="text-text-muted">×</button>
+                </span>
+              ))}
+            </div>
+            <Input label="Add tag" value={tagQuery} onChange={(e) => setTagQuery(e.target.value)} placeholder="Search or type to add…" />
+            {tagQuery && (
+              <div className="mt-1 max-h-40 overflow-auto rounded border border-border bg-surface py-1">
+                {(allTags.filter(a => a.name.toLowerCase().includes(tagQuery.toLowerCase()) && !selectedTags.includes(a.name)).slice(0,10)).map((a) => (
+                  <button key={a.id} type="button" onClick={() => { setSelectedTags((s) => Array.from(new Set([...s, a.name]))); setTagQuery(""); }} className="w-full text-left px-3 py-2 text-sm hover:bg-surface-soft">{a.name}</button>
+                ))}
+                <div className="px-3 py-2 text-sm text-text-muted">Press Enter to add "{tagQuery}"</div>
+              </div>
+            )}
+          </div>
+          
           {/* {editingId && (
             <p className="text-xs text-text-muted">
               Product ID and SKU are assigned automatically and can be adjusted later via API if needed.

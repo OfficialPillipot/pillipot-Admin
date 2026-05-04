@@ -335,6 +335,17 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
           }
         />
         <Route
+          path="/admin/tags"
+          element={
+            <ProtectedRoute
+              allowedRoles={["super_admin", "guest"]}
+              requiredPermissions={["products.view"]}
+            >
+              <Pages.TagManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin/subcategories"
           element={
             <ProtectedRoute

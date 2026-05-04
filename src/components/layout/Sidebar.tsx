@@ -191,6 +191,7 @@ const ADMIN_NAV_SECTIONS: NavSection<AdminNavItem>[] = [
     title: "Catalog & customers",
     items: [
       { to: "/admin/products", label: "Products", end: true, icon: Squares2X2Icon, permission: "products.view" },
+          { to: "/admin/tags", label: "Tags", end: true, icon: HashtagIcon, permission: "products.view" },
       { to: "/admin/categories", label: "Categories", end: true, icon: TagIcon, permission: "categories.view" },
       { to: "/admin/subcategories", label: "Subcategories", end: true, icon: ListBulletIcon, permission: "categories.view" },
       { to: "/admin/offers", label: "Product Offers", end: true, icon: TagIcon, permission: "products.view" },

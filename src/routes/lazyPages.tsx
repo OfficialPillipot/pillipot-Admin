@@ -50,6 +50,7 @@ export const CategoryManagement = lazyRoute(
 export const SubcategoryManagement = lazyRoute(
   () => import("../pages/SubcategoryManagement"),
 );
+export const TagManagement = lazyRoute(() => import("../pages/TagManagement"));
 export const OfferManagement = lazyRoute(() => import("../pages/OfferManagement"));
 export const ExportData = lazyRoute(() => import("../pages/ExportData"));
 export const CustomerManagement = lazyRoute(

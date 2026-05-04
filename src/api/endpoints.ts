@@ -110,4 +110,6 @@ export const endpoints = {
   vendorPortalSubcategories: `${V1}/vendor-portal/subcategories`,
   vendorPortalOffers: `${V1}/vendor-portal/offers`,
   vendorPortalOfferById: (id: string) => `${V1}/vendor-portal/offers/${id}`,
+  tags: `${V1}/tags`,
+  tagById: (id: string) => `${V1}/tags/${id}`,
 } as const;

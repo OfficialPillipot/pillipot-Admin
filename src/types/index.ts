@@ -90,6 +90,7 @@ export interface Product {
   stockQuantity: number;
   size?: string;
   color?: string;
+  tags?: string[];
   /** false = hidden from staff catalog; admin still sees all. */
   isActive?: boolean;
   categoryEntity?: Category | null;
