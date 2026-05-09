@@ -44,7 +44,7 @@ import { useAdminOrderTableColumns } from "../hooks/useAdminOrderTableColumns";
 import { useAuth } from "../context/AuthContext";
 import { hasPermission } from "../lib/permissions";
 
-function AdminOrderManagementPage() {
+function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_failed" }) {
   const dispatch = useAppDispatch();
   const { user } = useAuth();
   const [listLines, setListLines] = useState<Order[]>([]);
@@ -53,6 +53,7 @@ function AdminOrderManagementPage() {
   const lastQueryRef = useRef<AdminOrdersQuery>({
     page: 1,
     limit: ADMIN_ORDERS_PAGE_SIZE,
+    onlineOrderMode: mode,
   });
   const loadSeqRef = useRef(0);
   const staff = useAppSelector(selectStaff);
@@ -119,8 +120,9 @@ function AdminOrderManagementPage() {
       ...(appliedServerSearch.trim()
         ? { search: appliedServerSearch.trim() }
         : {}),
+      onlineOrderMode: mode,
     };
-  }, [appliedDateFrom, appliedDateTo, appliedServerSearch]);
+  }, [appliedDateFrom, appliedDateTo, appliedServerSearch, mode]);
 
   const loadOrders = useCallback(async (q: AdminOrdersQuery) => {
     const seq = ++loadSeqRef.current;
@@ -145,8 +147,8 @@ function AdminOrderManagementPage() {
   }, []);
 
   useEffect(() => {
-    void loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE });
-  }, [loadOrders]);
+    void loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE, onlineOrderMode: mode });
+  }, [loadOrders, mode]);
 
   const hadTableFiltersRef = useRef(false);
   useEffect(() => {
@@ -161,6 +163,7 @@ function AdminOrderManagementPage() {
         void loadOrders({
           page: 1,
           limit: ADMIN_ORDERS_PAGE_SIZE,
+          onlineOrderMode: mode,
         });
       }
     }
@@ -239,9 +242,9 @@ function AdminOrderManagementPage() {
   const goToOrdersPage = useCallback(
     (page: number) => {
       const p = Math.min(Math.max(1, page), totalPages);
-      void loadOrders({ page: p, limit: ADMIN_ORDERS_PAGE_SIZE });
+      void loadOrders({ page: p, limit: ADMIN_ORDERS_PAGE_SIZE, onlineOrderMode: mode });
     },
-    [loadOrders, totalPages],
+    [loadOrders, totalPages, mode],
   );
 
   const allVisibleSelected =
@@ -562,8 +565,9 @@ function AdminOrderManagementPage() {
       ...(dateFrom ? { dateFrom } : {}),
       ...(dateTo ? { dateTo } : {}),
       ...(serverSearch.trim() ? { search: serverSearch.trim() } : {}),
+      onlineOrderMode: mode,
     };
-    if (Object.keys(q).length === 0) {
+    if (Object.keys(q).length === 1) { // only onlineOrderMode
       const tableOn = !!(
         productFilter ||
         staffFilter ||
@@ -572,9 +576,9 @@ function AdminOrderManagementPage() {
         deliveryFilter
       );
       if (tableOn) {
-        await loadOrders({});
+        await loadOrders({ onlineOrderMode: mode });
       } else {
-        await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE });
+        await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE, onlineOrderMode: mode });
       }
       setAppliedDateFrom("");
       setAppliedDateTo("");
@@ -598,6 +602,7 @@ function AdminOrderManagementPage() {
     statusFilter,
     typeFilter,
     deliveryFilter,
+    mode,
   ]);
 
   const clearDateFilters = useCallback(async () => {
@@ -617,9 +622,9 @@ function AdminOrderManagementPage() {
       platformFilter
     );
     if (tableOn) {
-      await loadOrders({});
+      await loadOrders({ onlineOrderMode: mode });
     } else {
-      await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE });
+      await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE, onlineOrderMode: mode });
     }
     toast.success("Showing all orders");
   }, [
@@ -629,6 +634,7 @@ function AdminOrderManagementPage() {
     statusFilter,
     typeFilter,
     deliveryFilter,
+    mode,
   ]);
 
   const downloadPdf = useCallback(
@@ -880,7 +886,7 @@ function AdminOrderManagementPage() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Order Management" />
+        <CardHeader title={mode === "pending_failed" ? "Online Orders" : "Order Management"} />
         <AdminOrderFilters
           serverSearch={serverSearch}
           onServerSearchChange={setServerSearch}

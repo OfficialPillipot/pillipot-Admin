@@ -48,6 +48,7 @@ export type OrderListFilters = {
   page?: number;
   limit?: number;
   isVendorOrder?: boolean;
+  onlineOrderMode?: 'main' | 'pending_failed';
 };
 
 export type OrderListPayload = { items: Order[]; total: number };
@@ -106,6 +107,8 @@ function ordersQueryParams(filters: OrderListFilters | undefined): string {
     params.append("search", filters.search.trim());
   if (filters?.isVendorOrder != null)
     params.append("isVendorOrder", String(filters.isVendorOrder));
+  if (filters?.onlineOrderMode)
+    params.append("onlineOrderMode", filters.onlineOrderMode);
   const narrowed = !!(
     filters?.dateFrom ||
     filters?.dateTo ||
@@ -211,8 +214,11 @@ export const edenApi = createApi({
             (val as string[]).forEach((t) => fd.append("tags", String(t)));
             return;
           }
-          console.log(`[edenApi] Appending to FormData: ${key}=${val === null ? "null" : String(val)}`);
-          fd.append(key, val === null ? "" : String(val));
+          if (typeof val === "object" && val !== null) {
+            fd.append(key, JSON.stringify(val));
+          } else {
+            fd.append(key, val === null ? "" : String(val));
+          }
         });
         if (patch.image) {
           if (Array.isArray(patch.image)) {

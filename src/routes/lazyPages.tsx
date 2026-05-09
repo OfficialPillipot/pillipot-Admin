@@ -38,8 +38,14 @@ export const AssignedNumbersManagement = lazyRoute(
   () => import("../pages/AssignedNumbersManagement"),
 );
 export const StaffProfile = lazyRoute(() => import("../pages/StaffProfile"));
-export const AdminOrderManagement = lazyRoute(
-  () => import("../pages/AdminOrderManagement"),
+export const AdminOrderManagement = lazyRoute<any>(
+  () => import("../pages/AdminOrderManagement") as any,
+);
+export const AdminOnlineOrderManagement = lazyRoute(
+  () => import("../pages/AdminOnlineOrderManagement"),
+);
+export const AdminCODManagement = lazyRoute(
+  () => import("../pages/CODManagement"),
 );
 export const ProductManagement = lazyRoute(
   () => import("../pages/ProductManagement"),

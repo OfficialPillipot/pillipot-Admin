@@ -12,6 +12,7 @@ export type AdminOrdersQuery = {
   /** API `search`: order id, name, phone, or pincode. */
   search?: string;
   isVendorOrder?: boolean;
+  onlineOrderMode?: 'main' | 'pending_failed';
 };
 
 const DEFAULT_PAGE_SIZE = 15;
@@ -26,6 +27,7 @@ function toOrderListFilters(q: AdminOrdersQuery): OrderListFilters {
     orderId: q.orderId,
     search: q.search,
     isVendorOrder: q.isVendorOrder,
+    onlineOrderMode: q.onlineOrderMode,
   };
   if (!narrowed && q.page != null) {
     filters.page = q.page;

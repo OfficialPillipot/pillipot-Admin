@@ -91,6 +91,8 @@ export interface Product {
   size?: string;
   color?: string;
   tags?: string[];
+  codDeliveryCharge?: number;
+  codDeliveryMilestones?: { quantity: number; charge: number }[];
   /** false = hidden from staff catalog; admin still sees all. */
   isActive?: boolean;
   categoryEntity?: Category | null;

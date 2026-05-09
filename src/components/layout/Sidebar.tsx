@@ -128,6 +128,7 @@ const ADMIN_NAV_SECTIONS: NavSection<AdminNavItem>[] = [
     title: "Orders & delivery",
     items: [
       { to: "/admin/orders", label: "Orders", end: true, icon: CubeIcon, permission: "orders.view" },
+      { to: "/admin/online-orders", label: "Online Orders", end: true, icon: CubeIcon, permission: "orders.view" },
       {
         to: "/admin/tracking-scan",
         label: "Tracking scan",
@@ -144,6 +145,7 @@ const ADMIN_NAV_SECTIONS: NavSection<AdminNavItem>[] = [
       // },
       { to: "/admin/senders", label: "Senders", end: true, icon: TruckIcon, permission: "senders.view" },
       { to: "/admin/delivery", label: "Delivery", end: true, icon: PaperAirplaneIcon, permission: "deliveries.view" },
+      { to: "/admin/cod", label: "COD Management", end: true, icon: CurrencyRupeeIcon, permission: "deliveries.view" },
     ],
   },
   {

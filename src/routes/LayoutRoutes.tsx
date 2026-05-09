@@ -228,6 +228,28 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
           }
         />
         <Route
+          path="/admin/online-orders"
+          element={
+            <ProtectedRoute
+              allowedRoles={["super_admin", "guest"]}
+              requiredPermissions={["orders.view"]}
+            >
+              <Pages.AdminOnlineOrderManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/cod"
+          element={
+            <ProtectedRoute
+              allowedRoles={["super_admin", "guest"]}
+              requiredPermissions={["deliveries.view"]}
+            >
+              <Pages.AdminCODManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin/orders/:id/edit"
           element={
             <ProtectedRoute
