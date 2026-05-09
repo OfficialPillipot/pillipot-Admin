@@ -95,6 +95,7 @@ export interface Product {
   codDeliveryMilestones?: { quantity: number; charge: number }[];
   /** false = hidden from staff catalog; admin still sees all. */
   isActive?: boolean;
+  originalPrice?: number;
   categoryEntity?: Category | null;
   subcategoryEntity?: Subcategory | null;
 }

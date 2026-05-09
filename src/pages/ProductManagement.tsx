@@ -63,6 +63,7 @@ function ProductManagementPage() {
   const [name, setName] = useState("");
   const [buyingPrice, setBuyingPrice] = useState("");
   const [price, setPrice] = useState("");
+  const [originalPrice, setOriginalPrice] = useState("");
   const [stockQuantity, setStockQuantity] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
@@ -129,6 +130,7 @@ function ProductManagementPage() {
     setSubcategoryId("");
     setBuyingPrice("");
     setPrice("");
+    setOriginalPrice("");
     setStockQuantity("");
     setSize("");
     setColor("");
@@ -157,11 +159,10 @@ function ProductManagementPage() {
     setName(p.name);
     setCategoryId(p.categoryId ?? "");
     setSubcategoryId(p.subcategoryId ?? "");
-    setBuyingPrice(
-      p.buyingPrice != null ? String(p.buyingPrice) : ""
-    );
-    setPrice(String(p.price ?? 0));
-    setStockQuantity(String(p.stockQuantity ?? 0));
+    setBuyingPrice(p.buyingPrice?.toString() || "");
+    setPrice(p.price.toString());
+    setOriginalPrice(p.originalPrice?.toString() || "");
+    setStockQuantity(p.stockQuantity.toString());
     setSize(p.size ?? "");
     setColor(p.color ?? "");
     setSize(p.size ?? "");
@@ -206,6 +207,13 @@ function ProductManagementPage() {
       toast.error("Enter a valid stock quantity");
       return;
     }
+    const originalPriceTrim = originalPrice.trim();
+    const originalPriceNum =
+      originalPriceTrim === "" ? 0 : parseFloat(originalPriceTrim);
+    if (originalPriceTrim !== "" && (Number.isNaN(originalPriceNum) || originalPriceNum < 0)) {
+      toast.error("Enter a valid actual price");
+      return;
+    }
     if (imageFiles.length > 0) {
       for (const f of imageFiles) {
         const err = validateImageFile(f);
@@ -239,6 +247,7 @@ function ProductManagementPage() {
               size: size.trim() || undefined,
               color: color.trim() || undefined,
               description: description.trim() || undefined,
+              originalPrice: originalPriceNum,
               image: imageFiles.length > 0 ? imageFiles : undefined,
               video: videoFile ?? undefined,
               tags: selectedTags.length ? selectedTags : undefined,
@@ -258,6 +267,7 @@ function ProductManagementPage() {
             size: size.trim() || undefined,
             color: color.trim() || undefined,
             description: description.trim() || undefined,
+            originalPrice: originalPriceNum,
             image: imageFiles.length > 0 ? imageFiles : undefined,
             video: videoFile ?? undefined,
             tags: selectedTags.length ? selectedTags : undefined,
@@ -277,6 +287,7 @@ function ProductManagementPage() {
     categoryId,
     buyingPrice,
     price,
+    originalPrice,
     stockQuantity,
     size,
     color,
@@ -438,6 +449,14 @@ function ProductManagementPage() {
         header: "Selling (₹)",
         mobileLabel: "Selling",
         render: (row: Product) => `₹${Number(row.price).toFixed(2)}`,
+      },
+      {
+        key: "originalPrice",
+        header: "Actual (₹)",
+        render: (row: Product) =>
+          row.originalPrice != null
+            ? `₹${Number(row.originalPrice).toFixed(2)}`
+            : "—",
       },
       {
         key: "stockQuantity",
@@ -803,6 +822,15 @@ function ProductManagementPage() {
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             placeholder="0.00 — catalog / order price"
+          />
+          <Input
+            label="Actual price (MRP) (₹)"
+            type="number"
+            min={0}
+            step="0.01"
+            value={originalPrice}
+            onChange={(e) => setOriginalPrice(e.target.value)}
+            placeholder="0.00 — original price before discount"
           />
           <Input
             label="Stock quantity"

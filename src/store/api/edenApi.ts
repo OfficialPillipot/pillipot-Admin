@@ -64,6 +64,7 @@ export type NewProductPayload = Pick<Product, "name" | "price"> & {
   image?: File | File[];
   video?: File;
   tags?: string[];
+  originalPrice?: number;
 };
 
 /** POST /staff body (shared with legacy slice exports). */
@@ -182,6 +183,9 @@ export const edenApi = createApi({
         }
         if (body.size) fd.append("size", body.size);
         if (body.color) fd.append("color", body.color);
+        if (body.originalPrice != null && body.originalPrice !== undefined) {
+          fd.append("originalPrice", String(body.originalPrice));
+        }
         if (body.image) {
           if (Array.isArray(body.image)) {
             body.image.forEach((f) => fd.append("image", f));

@@ -68,6 +68,7 @@ function VendorProductManagement() {
   const [name, setName] = useState("");
   const [buyingPrice, setBuyingPrice] = useState("");
   const [price, setPrice] = useState("");
+  const [originalPrice, setOriginalPrice] = useState("");
   const [stockQuantity, setStockQuantity] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
@@ -133,6 +134,7 @@ function VendorProductManagement() {
     setSubcategoryId("");
     setBuyingPrice("");
     setPrice("");
+    setOriginalPrice("");
     setStockQuantity("");
     setSize("");
     setColor("");
@@ -149,6 +151,7 @@ function VendorProductManagement() {
     setSubcategoryId(p.subcategoryId ?? "");
     setBuyingPrice(p.buyingPrice != null ? String(p.buyingPrice) : "");
     setPrice(String(p.price ?? 0));
+    setOriginalPrice(p.originalPrice?.toString() || "");
     setStockQuantity(String(p.stockQuantity ?? 0));
     setSize(p.size ?? "");
     setColor(p.color ?? "");
@@ -178,6 +181,7 @@ function VendorProductManagement() {
         subcategoryId: subcategoryId || undefined,
         price: priceNum,
         buyingPrice: buyingPrice ? parseFloat(buyingPrice) : 0,
+        originalPrice: originalPrice ? parseFloat(originalPrice) : 0,
         stockQuantity: stockQuantity ? parseInt(stockQuantity, 10) : 0,
         size: size.trim() || undefined,
         color: color.trim() || undefined,
@@ -199,7 +203,7 @@ function VendorProductManagement() {
     } finally {
       setSubmitting(false);
     }
-  }, [editingId, name, categoryId, subcategoryId, price, buyingPrice, stockQuantity, size, color, description, imageFiles, videoFile, createProduct, updateProduct]);
+  }, [editingId, name, categoryId, subcategoryId, price, buyingPrice, originalPrice, stockQuantity, size, color, description, imageFiles, videoFile, createProduct, updateProduct]);
 
   const handleDelete = useCallback(async (id: string) => {
     if (!window.confirm("Delete this product permanently?")) return;
@@ -216,6 +220,7 @@ function VendorProductManagement() {
     { key: "name", header: "Name" },
     { key: "category", header: "Category", render: (row: Product) => row.categoryEntity?.name ?? "—" },
     { key: "price", header: "Selling", render: (row: Product) => `₹${Number(row.price).toFixed(2)}` },
+    { key: "originalPrice", header: "Actual", render: (row: Product) => row.originalPrice != null ? `₹${Number(row.originalPrice).toFixed(2)}` : "—" },
     { key: "stock", header: "Stock", render: (row: Product) => row.stockQuantity ?? 0 },
     { key: "image", header: "Image", render: (row: Product) => row.imageUrl ? <img src={row.imageUrl} className="h-10 w-10 rounded object-cover" /> : "—" },
     { key: "status", header: "Status", render: (row: Product) => (
@@ -325,6 +330,7 @@ function VendorProductManagement() {
 
           <Input label="Buying price (₹)" type="number" value={buyingPrice} onChange={(e) => setBuyingPrice(e.target.value)} placeholder="Cost to you" />
           <Input label="Selling price (₹) *" type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price for customers" />
+          <Input label="Actual price (MRP) (₹)" type="number" value={originalPrice} onChange={(e) => setOriginalPrice(e.target.value)} placeholder="Original price before discount" />
           <Input label="Stock quantity" type="number" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} placeholder="Available stock" />
           <Input label="Size" value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. Medium, 1kg" />
           <Input label="Color" value={color} onChange={(e) => setColor(e.target.value)} placeholder="e.g. Red, Blue" />
