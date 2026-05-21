@@ -647,6 +647,7 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
       try {
         await downloadOrderPdf(internalId, `${displayOrderId}.pdf`, {
           size: sizeOverride ?? settings?.defaultPdfSize ?? "thermal",
+          senderId: settings?.defaultSenderId || undefined,
         });
         toast.success("PDF downloaded");
       } catch (err) {
@@ -655,7 +656,7 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
         setPdfLoadingId(null);
       }
     },
-    [settings?.defaultPdfSize],
+    [settings?.defaultPdfSize, settings?.defaultSenderId],
   );
 
   const clearTableFilters = useCallback(() => {
@@ -677,6 +678,7 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
     try {
       await downloadBulkOrdersPdf(unique, `orders-${Date.now()}.pdf`, {
         size: settings?.defaultPdfSize ?? "thermal",
+        senderId: settings?.defaultSenderId || undefined,
       });
       toast.success("Selected orders PDF downloaded");
     } catch (err) {
@@ -684,7 +686,7 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
     } finally {
       setBulkPdfLoading(false);
     }
-  }, [selectedIds, filteredOrders, settings?.defaultPdfSize]);
+  }, [selectedIds, filteredOrders, settings?.defaultPdfSize, settings?.defaultSenderId]);
 
   const bulkAdvanceAction = useMemo((): AdminBulkAdvanceAction => {
     if (selectedVisibleCount === 0) return null;

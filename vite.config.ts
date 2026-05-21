@@ -49,7 +49,7 @@ export default defineConfig({
       },
       // When VITE_API_BASE_URL is unset, use relative /v1/api and this proxy to the Nest app.
       "/v1/api": {
-        target: "http://localhost:3000",
+        target: "http://127.0.0.1:3000",
         changeOrigin: true,
       },
     },

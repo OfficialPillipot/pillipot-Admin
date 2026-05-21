@@ -52,8 +52,86 @@ const INITIAL = {
   notes: "",
 };
 
+const INDIAN_STATES_AND_UTS = [
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
+  "Bihar",
+  "Chhattisgarh",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
+  "Tamil Nadu",
+  "Telangana",
+  "Tripura",
+  "Uttar Pradesh",
+  "Uttarakhand",
+  "West Bengal",
+  "Andaman and Nicobar Islands",
+  "Chandigarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi",
+  "Jammu and Kashmir",
+  "Ladakh",
+  "Lakshadweep",
+  "Puducherry"
+];
+
+// Compile regex pattern for case-insensitive matching of all states with flexible spacing
+const escapedStatePatterns = INDIAN_STATES_AND_UTS.map((s) => {
+  const escaped = s
+    .replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")
+    .replace(/\s+/g, "\\s+");
+  return `(?:${escaped})`;
+});
+
+const STATE_REGEX = new RegExp(`\\b(${escapedStatePatterns.join("|")})\\b`, "i");
+
+function extractAndRemoveState(text: string): { state: string; cleanedText: string } {
+  let detectedState = "";
+  let cleanedText = text;
+
+  const match = text.match(STATE_REGEX);
+  if (match) {
+    const matchedText = match[1].toLowerCase().replace(/\s+/g, " ");
+    const foundState = INDIAN_STATES_AND_UTS.find(
+      (s) => s.toLowerCase() === matchedText
+    );
+    detectedState = foundState || match[1];
+
+    // Remove all case-insensitive occurrences of the matched state
+    const escapedMatch = match[1].replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+    const pattern = new RegExp(`\\b${escapedMatch}\\b`, "gi");
+    cleanedText = text.replace(pattern, "");
+  }
+
+  return { state: detectedState, cleanedText };
+}
+
+function cleanCommas(addr: string): string {
+  return addr
+    .replace(/,[\s,]*,/g, ",")
+    .replace(/\s*,\s*/g, ", ")
+    .replace(/^[\s,]+|[\s,]+$/g, "")
+    .trim();
+}
+
 function splitDeliveryAddress(deliveryAddress: string): { flat: string; area: string } {
-  const t = deliveryAddress.trim();
+  const t = cleanCommas(deliveryAddress);
   if (!t) return { flat: "", area: "" };
   const i = t.indexOf(",");
   if (i === -1) return { flat: t, area: "" };
@@ -62,27 +140,37 @@ function splitDeliveryAddress(deliveryAddress: string): { flat: string; area: st
 
 /** Extract 10-digit Indian mobile(s) from pasted text (handles +91, spaces). Returns up to 2 unique numbers. */
 function extractAllPhoneDigits(blob: string): string[] {
-  const digits = blob.replace(/\D/g, "");
   const found: string[] = [];
-  
-  // Slide through all digits to find 10-digit sequences starting with 6-9
-  for (let i = 0; i <= digits.length - 10; i++) {
-    const slice = digits.slice(i, i + 10);
-    if (/^[6-9]\d{9}$/.test(slice)) {
-      if (!found.includes(slice)) found.push(slice);
-      if (found.length >= 2) break;
-      // Skip the next 9 digits to avoid overlapping matches
-      i += 9;
-    }
-  }
 
-  if (found.length < 2) {
-    const regex = /\b([6-9]\d{9})\b/g;
-    let match;
-    while ((match = regex.exec(blob)) !== null) {
-      if (!found.includes(match[1])) found.push(match[1]);
-      if (found.length >= 2) break;
+  // Match 10-digit numbers (starting with 6-9) optionally prefixed with +91, 91, or 0.
+  // Allowed separators within the number are spaces, hyphens, slashes, and dots.
+  // Commas are excluded as they separate independent phone numbers.
+  const regex = /(?:\+?91|0)?[-\s./]*(?:[6-9][-\s./]*\d[-\s./]*\d[-\s./]*\d[-\s./]*\d[-\s./]*\d[-\s./]*\d[-\s./]*\d[-\s./]*\d[-\s./]*\d)\b/g;
+
+  let match;
+  while ((match = regex.exec(blob)) !== null) {
+    const clean = match[0].replace(/\D/g, "");
+    let num = clean;
+
+    if (clean.length === 12 && clean.startsWith("91")) {
+      num = clean.slice(2);
+    } else if (clean.length === 11 && clean.startsWith("0")) {
+      num = clean.slice(1);
+    } else if (clean.length > 10) {
+      // If it has extra prefix digits, take the last 10 if it starts with 6-9
+      const last10 = clean.slice(-10);
+      if (/^[6-9]\d{9}$/.test(last10)) {
+        num = last10;
+      }
     }
+
+    if (num.length === 10 && /^[6-9]\d{9}$/.test(num)) {
+      if (!found.includes(num)) {
+        found.push(num);
+      }
+    }
+
+    if (found.length >= 2) break;
   }
 
   return found;
@@ -96,9 +184,29 @@ function stripWhatsAppLinePrefix(line: string): string {
     .trim();
 }
 
-/** True if line starts a *LABEL : value block (WhatsApp bold labels). */
-function isStarLabelLine(line: string): boolean {
-  return /^\*+\s*[a-zA-Z]{2,}[\w\s]*\s*[:：]/.test(line.trim());
+/** True if line starts a LABEL : value block (WhatsApp/plain labels). */
+function isLabelLine(line: string): boolean {
+  const cleaned = line.replace(/\*/g, "").trim();
+  return /^[a-zA-Z]{2,}[\w\s]*\s*[:：\-–—]/.test(cleaned);
+}
+
+/** Helper to strip emojis, labels, colons, and leading/trailing punctuation. */
+function cleanParsedValue(val: string): string {
+  if (!val) return "";
+
+  // 1. Strip emojis using Unicode ranges
+  let cleaned = val.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}]/gu, "");
+
+  // 2. Strip leading standard label prefixes (like "Name: ", "District: ", "Post office - ", etc.)
+  cleaned = cleaned.replace(/^(name|namae|address|addr|addres|delivery|shipping|pincode|pin\s*code|pin|state|district|dist|post\s*office|post|phone|mobile)\s*([:：\-–—.]|\s{2,})\s*/i, "");
+
+  // 3. Strip any colons or full-width colons anywhere in the string
+  cleaned = cleaned.replace(/[:：]/g, "");
+
+  // 4. Strip any leading/trailing symbols, hyphens, or commas
+  cleaned = cleaned.replace(/^[\s\-–—,.*#]+/g, "").replace(/[\s\-–—,.*#]+$/g, "");
+
+  return cleaned.trim();
 }
 
 /**
@@ -107,112 +215,142 @@ function isStarLabelLine(line: string): boolean {
  */
 function parsePastedCustomerDetails(text: string): Partial<typeof INITIAL> {
   const out: Partial<typeof INITIAL> = {};
-  const rawLines = text.split(/\r?\n/).map((l) => stripWhatsAppLinePrefix(l.trim()));
+
+  // Strip all asterisks first to make bold parsing transparent
+  let textWithoutStars = text.replace(/\*/g, "");
+
+  // Strip emojis at the very beginning so they don't interfere with label matching or heading filtering
+  textWithoutStars = textWithoutStars.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}]/gu, "");
+
+  // Extract and remove any standard state/UT name from the pasted text
+  const { state, cleanedText } = extractAndRemoveState(textWithoutStars);
+  if (state) {
+    out.state = cleanParsedValue(state);
+  }
+
+  const rawLines = cleanedText.split(/\r?\n/).map((l) => stripWhatsAppLinePrefix(l.trim()));
 
   const lines = rawLines.filter((l) => {
     if (!l) return false;
     if (/^\|+$/.test(l)) return false;
     if (/^\[[^\]]+\]\s*.*whatsapp/i.test(l)) return false;
     if (/^[^\d\w\s@*.,\-–—/:()&]+$/u.test(l) && l.length <= 6) return false;
+
+    // Filter out common header/title lines like "Shipping Address Details" or "Customer details"
+    const cleanedLine = l.trim();
+    if (/^(shipping|delivery|customer|billing|address|order)\s+(address\s+)?(details|information|info|details|name\s*&\s*address)?\s*$/i.test(cleanedLine)) {
+      return false;
+    }
     return true;
   });
 
   const blob = lines.join("\n");
 
   const labelField =
-    /^\*+\s*(name|namae|address|addr|addres|delivery|pincode|pin|state|district|post\s*office|post)\s*[:：]\s*(.*)$/i;
+    /^\s*(name|namae|address|addr|addres|delivery|pincode|pin|state|district|dist|post\s*office|post)\s*[:：\-–—]\s*(.*)$/i;
 
   const consumed = new Set<number>();
 
   for (let i = 0; i < lines.length; i++) {
     if (consumed.has(i)) continue;
 
-    const dm = lines[i].match(/^district\s*[-–—]\s*(.+)$/i);
+    // Check labelField first!
+    const m = lines[i].match(labelField);
+    if (m) {
+      const rawKey = m[1].toLowerCase().replace(/\s+/g, "");
+      let rest = (m[2] ?? "").trim();
+
+      const takeContinuation = (): string[] => {
+        const acc: string[] = [];
+        if (rest) acc.push(rest);
+        let j = i + 1;
+        while (j < lines.length) {
+          const nl = lines[j];
+          if (!nl) {
+            j++;
+            continue;
+          }
+          if (labelField.test(nl)) break;
+          if (/^(district|dist)\s*[-–—]/i.test(nl) || /^post\s*[-–—]/i.test(nl)) break;
+          if (isLabelLine(nl)) break;
+          acc.push(nl);
+          consumed.add(j);
+          j++;
+        }
+        return acc;
+      };
+
+      if (rawKey === "name" || rawKey === "namae") {
+        const parts = takeContinuation();
+        const nameVal = parts.join(" ").replace(/\s+/g, " ").trim();
+        if (nameVal) out.customerName = nameVal;
+        consumed.add(i);
+        continue;
+      }
+
+      if (
+        rawKey.includes("address") ||
+        rawKey === "addr" ||
+        rawKey === "addres" ||
+        rawKey === "delivery"
+      ) {
+        const parts = takeContinuation();
+        let addr = cleanCommas(parts.join(", "));
+        addr = addr.replace(/\b(Tamil Nadu|Kerala|Karnataka|Maharashtra|Gujarat|Delhi|India)\s+(\d{6})\b/gi, "$1");
+        addr = cleanCommas(addr);
+        if (addr) {
+          const sp = splitDeliveryAddress(addr);
+          out.flatBuilding = sp.flat || addr;
+          out.areaSector = sp.area;
+        }
+        consumed.add(i);
+        continue;
+      }
+
+      if (rawKey === "pincode" || rawKey === "pin") {
+        const six = (rest + blob).match(/\b(\d{6})\b/);
+        if (six) out.pincode = six[1];
+        consumed.add(i);
+        continue;
+      }
+
+      if (rawKey === "state") {
+        if (rest && !out.state) out.state = rest;
+        consumed.add(i);
+        continue;
+      }
+
+      if (rawKey === "district" || rawKey === "dist") {
+        if (rest) out.district = rest;
+        consumed.add(i);
+        continue;
+      }
+
+      if (rawKey === "post" || rawKey === "postoffice") {
+        if (rest) out.postOffice = rest;
+        consumed.add(i);
+        continue;
+      }
+    }
+
+    // Fallback checks for lines without standard labels
+    const dm = lines[i].match(/^(?:district|dist)\s*[-–—]\s*(.+)$/i);
     if (dm) {
       out.district = dm[1].trim();
       consumed.add(i);
       continue;
     }
-    const pm = lines[i].match(/^post\s*[-–—]\s*(.+)$/i);
-    if (pm) {
-      out.postOffice = pm[1].trim();
+    // Match suffix post office like: Ulliyeri (po), Ulliyeri po, Ulliyeri (p.o), Choondal po
+    const pmSuffix = lines[i].match(/\b([a-zA-Z\s.-]{2,})\s*\(?\b(?:po|p\.o\.|p\.o)\b\)?/i);
+    if (pmSuffix) {
+      out.postOffice = `${pmSuffix[1].trim()} PO`;
       consumed.add(i);
       continue;
     }
-
-    const m = lines[i].match(labelField);
-    if (!m) continue;
-
-    const rawKey = m[1].toLowerCase().replace(/\s+/g, "");
-    let rest = (m[2] ?? "").trim();
-
-    const takeContinuation = (): string[] => {
-      const acc: string[] = [];
-      if (rest) acc.push(rest);
-      let j = i + 1;
-      while (j < lines.length) {
-        const nl = lines[j];
-        if (!nl) {
-          j++;
-          continue;
-        }
-        if (labelField.test(nl)) break;
-        if (/^district\s*[-–—]/i.test(nl) || /^post\s*[-–—]/i.test(nl)) break;
-        if (isStarLabelLine(nl)) break;
-        acc.push(nl);
-        consumed.add(j);
-        j++;
-      }
-      return acc;
-    };
-
-    if (rawKey === "name" || rawKey === "namae") {
-      const parts = takeContinuation();
-      const nameVal = parts.join(" ").replace(/\s+/g, " ").trim();
-      if (nameVal) out.customerName = nameVal;
-      consumed.add(i);
-      continue;
-    }
-
-    if (
-      rawKey.includes("address") ||
-      rawKey === "addr" ||
-      rawKey === "addres" ||
-      rawKey === "delivery"
-    ) {
-      const parts = takeContinuation();
-      let addr = parts.join(", ").replace(/\s+/g, " ").trim();
-      addr = addr.replace(/\b(Tamil Nadu|Kerala|Karnataka|Maharashtra|Gujarat|Delhi|India)\s+(\d{6})\b/gi, "$1");
-      if (addr) {
-        const sp = splitDeliveryAddress(addr);
-        out.flatBuilding = sp.flat || addr;
-        out.areaSector = sp.area;
-      }
-      consumed.add(i);
-      continue;
-    }
-
-    if (rawKey === "pincode" || rawKey === "pin") {
-      const six = (rest + blob).match(/\b(\d{6})\b/);
-      if (six) out.pincode = six[1];
-      consumed.add(i);
-      continue;
-    }
-
-    if (rawKey === "state") {
-      if (rest) out.state = rest;
-      consumed.add(i);
-      continue;
-    }
-
-    if (rawKey === "district") {
-      if (rest) out.district = rest;
-      consumed.add(i);
-      continue;
-    }
-
-    if (rawKey === "post" || rawKey === "postoffice") {
-      if (rest) out.postOffice = rest;
+    // Match prefix post office like: Post office:Choondal, Post office - Choondal, Post: Choondal
+    const pmPrefix = lines[i].match(/^(?:post\s*office|post)\s*[:：\-–—\s]\s*(.+)$/i);
+    if (pmPrefix) {
+      out.postOffice = pmPrefix[1].trim();
       consumed.add(i);
       continue;
     }
@@ -274,11 +412,23 @@ function parsePastedCustomerDetails(text: string): Partial<typeof INITIAL> {
   }
 
   if (!out.flatBuilding && !out.areaSector) {
-    const addrStr = work.join(", ").replace(/\s+/g, " ").trim();
+    const addrStr = cleanCommas(work.join(", "));
     if (addrStr) {
       const { flat, area } = splitDeliveryAddress(addrStr);
       out.flatBuilding = flat || addrStr;
       out.areaSector = area;
+    }
+  }
+
+  if (out.flatBuilding) out.flatBuilding = cleanCommas(out.flatBuilding);
+  if (out.areaSector) out.areaSector = cleanCommas(out.areaSector);
+
+  // Clean all fields to strip emojis, labels, and colons
+  for (const key of Object.keys(out)) {
+    const k = key as keyof typeof INITIAL;
+    const val = out[k];
+    if (typeof val === "string") {
+      out[k] = cleanParsedValue(val);
     }
   }
 
