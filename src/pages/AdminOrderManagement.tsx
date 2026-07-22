@@ -190,6 +190,7 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
         orderType: typeFilter,
         deliveryMethodId: deliveryFilter,
         platform: platformFilter,
+        mode,
       }),
     [
       listLines,
@@ -199,6 +200,7 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
       typeFilter,
       deliveryFilter,
       platformFilter,
+      mode,
     ],
   );
 

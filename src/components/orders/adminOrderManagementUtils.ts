@@ -1,4 +1,5 @@
 import type { Order, OrderStatus } from "../../types";
+import { isCompletedOrCodOrder } from "../../lib/orderUtils";
 
 /** Select value for "lines with no delivery method" in admin order filters. */
 export const ADMIN_DELIVERY_FILTER_NONE = "__none__";
@@ -94,12 +95,24 @@ export function groupOrdersForAdminList(
     orderType: string;
     deliveryMethodId: string;
     platform: string;
+    paymentStatus?: string;
+    mode?: "main" | "pending_failed";
   },
 ): GroupedAdminOrder[] {
   let list = [...listLines].sort(
     (a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
+
+  // In Online Orders mode (pending_failed) or prepaid filtering, exclude unpaid online checkout attempts.
+  // COD orders remain visible. Online payment orders must be paid (paymentStatus === "paid").
+  if (filters.mode === "pending_failed" || filters.orderType === "prepaid") {
+    list = list.filter(isCompletedOrCodOrder);
+  }
+
+  if (filters.paymentStatus) {
+    list = list.filter((o) => (o.paymentStatus ?? "pending") === filters.paymentStatus);
+  }
 
   if (filters.productId) {
     list = list.filter((o) => o.productId === filters.productId);

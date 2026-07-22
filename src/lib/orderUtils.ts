@@ -192,3 +192,30 @@ export function formatOrderStatusLabel(status: OrderStatus | "mixed"): string {
   if (status === "scheduled") return "Scheduled";
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
+
+/**
+ * Returns true if an order line uses an online payment method (e.g. Razorpay, prepaid, non-COD).
+ */
+export function isOnlinePaymentOrder(order: Pick<Order, "paymentMethod" | "orderType">): boolean {
+  const method = order.paymentMethod?.toLowerCase().trim();
+  if (method === "cod" || order.orderType === "cod") return false;
+  if (method === "razorpay" || order.orderType === "prepaid") return true;
+  return Boolean(method && method !== "cod");
+}
+
+/**
+ * Returns true if an order should be listed in online order views:
+ * - COD orders are always valid (cash collected on delivery).
+ * - Online payment orders (Razorpay/prepaid) are listed ONLY if payment was completed (`paymentStatus === "paid"`).
+ *   Unpaid online checkout attempts (e.g. customer clicked Buy but went back without paying) are excluded.
+ */
+export function isCompletedOrCodOrder(
+  order: Pick<Order, "paymentMethod" | "orderType" | "paymentStatus">,
+): boolean {
+  if (isOnlinePaymentOrder(order)) {
+    const pStatus = order.paymentStatus?.toLowerCase().trim();
+    return pStatus === "paid";
+  }
+  return true;
+}
+

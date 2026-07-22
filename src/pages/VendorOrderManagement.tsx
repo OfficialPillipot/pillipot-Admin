@@ -14,7 +14,7 @@ import {
   ResponsiveManagementFilters
 } from "../components/ui";
 import { OrderStatusBadge } from "../components/orders/OrderStatusBadge";
-import { formatDate } from "../lib/orderUtils";
+import { formatDate, isCompletedOrCodOrder } from "../lib/orderUtils";
 import { downloadOrderPdf } from "../lib/download-order-pdf";
 import { 
   useGetVendorPortalOrdersQuery, 
@@ -62,7 +62,7 @@ function VendorOrderManagement() {
 
   // ── Filtered orders (table-level) ──
   const orders = useMemo(() => {
-    let result = allOrders;
+    let result = allOrders.filter(isCompletedOrCodOrder);
     if (statusFilter) result = result.filter(o => o.status === statusFilter);
     if (typeFilter) result = result.filter(o => o.orderType === typeFilter);
     if (productFilter) result = result.filter(o => o.productId === productFilter);
