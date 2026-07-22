@@ -48,12 +48,10 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
   const dispatch = useAppDispatch();
   const { user } = useAuth();
   const [listLines, setListLines] = useState<Order[]>([]);
-  const [listTotal, setListTotal] = useState(0);
   const [listPage, setListPage] = useState(1);
   const lastQueryRef = useRef<AdminOrdersQuery>({
     page: 1,
     limit: ADMIN_ORDERS_PAGE_SIZE,
-    onlineOrderMode: mode,
   });
   const loadSeqRef = useRef(0);
   const staff = useAppSelector(selectStaff);
@@ -120,9 +118,8 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
       ...(appliedServerSearch.trim()
         ? { search: appliedServerSearch.trim() }
         : {}),
-      onlineOrderMode: mode,
     };
-  }, [appliedDateFrom, appliedDateTo, appliedServerSearch, mode]);
+  }, [appliedDateFrom, appliedDateTo, appliedServerSearch]);
 
   const loadOrders = useCallback(async (q: AdminOrdersQuery) => {
     const seq = ++loadSeqRef.current;
@@ -133,7 +130,6 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
       if (seq !== loadSeqRef.current) return;
       if (data) {
         setListLines(data.items ?? []);
-        setListTotal(data.total ?? 0);
         setListPage(q.page != null ? q.page : 1);
       }
     } catch (err) {
@@ -147,8 +143,8 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
   }, []);
 
   useEffect(() => {
-    void loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE, onlineOrderMode: mode });
-  }, [loadOrders, mode]);
+    void loadOrders({});
+  }, [loadOrders]);
 
   const hadTableFiltersRef = useRef(false);
   useEffect(() => {
@@ -160,11 +156,7 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
     if (hadTableFiltersRef.current) {
       hadTableFiltersRef.current = false;
       if (!serverNarrowed) {
-        void loadOrders({
-          page: 1,
-          limit: ADMIN_ORDERS_PAGE_SIZE,
-          onlineOrderMode: mode,
-        });
+        void loadOrders({});
       }
     }
   }, [
@@ -232,21 +224,28 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
     [filteredOrders, selectedIds],
   );
 
+  const totalFilteredCount = filteredOrders.length;
   const totalPages = Math.max(
     1,
-    Math.ceil(listTotal / ADMIN_ORDERS_PAGE_SIZE),
+    Math.ceil(totalFilteredCount / ADMIN_ORDERS_PAGE_SIZE),
   );
-  const showApiPagination =
-    !serverNarrowed &&
-    !hasTableFilters &&
-    listTotal > ADMIN_ORDERS_PAGE_SIZE;
+  const safePage = Math.min(Math.max(1, listPage), totalPages);
+
+  const paginatedOrders = useMemo(
+    () =>
+      filteredOrders.slice(
+        (safePage - 1) * ADMIN_ORDERS_PAGE_SIZE,
+        safePage * ADMIN_ORDERS_PAGE_SIZE,
+      ),
+    [filteredOrders, safePage],
+  );
 
   const goToOrdersPage = useCallback(
     (page: number) => {
       const p = Math.min(Math.max(1, page), totalPages);
-      void loadOrders({ page: p, limit: ADMIN_ORDERS_PAGE_SIZE, onlineOrderMode: mode });
+      setListPage(p);
     },
-    [loadOrders, totalPages, mode],
+    [totalPages],
   );
 
   const allVisibleSelected =
@@ -567,32 +566,12 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
       ...(dateFrom ? { dateFrom } : {}),
       ...(dateTo ? { dateTo } : {}),
       ...(serverSearch.trim() ? { search: serverSearch.trim() } : {}),
-      onlineOrderMode: mode,
     };
-    if (Object.keys(q).length === 1) {
-      const tableOn = !!(
-        productFilter ||
-        staffFilter ||
-        statusFilter ||
-        typeFilter ||
-        deliveryFilter
-      );
-      if (tableOn) {
-        await loadOrders({ onlineOrderMode: mode });
-      } else {
-        await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE, onlineOrderMode: mode });
-      }
-      setAppliedDateFrom("");
-      setAppliedDateTo("");
-      setAppliedServerSearch("");
-      setListPage(1);
-      toast.success("Orders updated");
-      return;
-    }
     await loadOrders(q);
     setAppliedDateFrom(dateFrom);
     setAppliedDateTo(dateTo);
     setAppliedServerSearch(serverSearch.trim());
+    setListPage(1);
     toast.success("Orders updated");
   }, [
     dateFrom,
@@ -615,19 +594,7 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
     setAppliedDateTo("");
     setAppliedServerSearch("");
     setListPage(1);
-    const tableOn = !!(
-      productFilter ||
-      staffFilter ||
-      statusFilter ||
-      typeFilter ||
-      deliveryFilter ||
-      platformFilter
-    );
-    if (tableOn) {
-      await loadOrders({ onlineOrderMode: mode });
-    } else {
-      await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE, onlineOrderMode: mode });
-    }
+    await loadOrders({});
     toast.success("Showing all orders");
   }, [
     loadOrders,
@@ -943,16 +910,15 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
         />
         <Table
           columns={columns}
-          data={filteredOrders}
+          data={paginatedOrders}
           keyExtractor={(o) => o.id}
           emptyMessage="No orders."
-
         />
 
         <AdminOrderPagination
-          visible={showApiPagination}
-          listTotal={listTotal}
-          listPage={listPage}
+          visible={totalFilteredCount > ADMIN_ORDERS_PAGE_SIZE}
+          listTotal={totalFilteredCount}
+          listPage={safePage}
           totalPages={totalPages}
           loading={filtersLoading}
           onGoToPage={goToOrdersPage}
