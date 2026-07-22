@@ -194,13 +194,23 @@ export function formatOrderStatusLabel(status: OrderStatus | "mixed"): string {
 }
 
 /**
- * Returns true if an order was placed via the website / online store (WebApp).
+ * Returns true if an order was placed via the website / online storefront (includes both online payment & COD website orders).
  */
-export function isWebsiteOrder(order: Pick<Order, "platform" | "paymentMethod">): boolean {
+export function isWebsiteOrder(
+  order: Pick<Order, "platform" | "paymentMethod" | "staffId">,
+): boolean {
   const p = order.platform?.toLowerCase().trim();
-  if (p === "webapp" || p === "website") return true;
+  if (p === "webapp" || p === "website" || p === "online" || p === "web") {
+    return true;
+  }
   const pm = order.paymentMethod?.toLowerCase().trim();
   if (pm === "razorpay") return true;
+
+  // An order created on the website has no staffId assigned (placed by customer online)
+  if (!order.staffId || order.staffId.trim() === "") {
+    return true;
+  }
+
   return false;
 }
 
