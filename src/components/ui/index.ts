@@ -17,3 +17,5 @@ export {
     MANAGEMENT_NATIVE_CONTROL_CLASS,
 } from "./ManagementFilterPanel";
 export { ResponsiveManagementFilters } from "./ResponsiveManagementFilters";
+export { RichTextEditor, type RichTextEditorProps } from "./RichTextEditor";
+

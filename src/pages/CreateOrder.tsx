@@ -428,7 +428,7 @@ function parsePastedCustomerDetails(text: string): Partial<typeof INITIAL> {
     const k = key as keyof typeof INITIAL;
     const val = out[k];
     if (typeof val === "string") {
-      out[k] = cleanParsedValue(val);
+      (out as Record<string, any>)[k] = cleanParsedValue(val);
     }
   }
 

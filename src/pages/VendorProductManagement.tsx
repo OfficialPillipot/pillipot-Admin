@@ -13,6 +13,7 @@ import {
   ManagementFilterPanel,
   ManagementFilterField,
   ResponsiveManagementFilters,
+  RichTextEditor,
 } from "../components/ui";
 import type { SelectOption } from "../components/ui/Select";
 import { toast } from "../lib/toast";
@@ -317,14 +318,13 @@ function VendorProductManagement() {
           <Select label="Category *" options={categoryOptions} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} />
           {categoryId && <Select label="Subcategory *" options={subcategoryOptions} value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)} />}
           
-          <div className="space-y-2">
+          <div className="space-y-1">
             <label className="text-sm font-medium text-text">Description</label>
-            <textarea
-              className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              rows={3}
+            <RichTextEditor
+              key={editingId || "new-vendor-product"}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Product details..."
+              onChange={setDescription}
+              placeholder="Product details, bullet points, bold text..."
             />
           </div>
 

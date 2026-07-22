@@ -19,6 +19,7 @@ import {
   ManagementFilterPanel,
   ManagementFilterField,
   ResponsiveManagementFilters,
+  RichTextEditor,
 } from "../components/ui";
 import type { SelectOption } from "../components/ui/Select";
 import { toast } from "../lib/toast";
@@ -610,18 +611,17 @@ function ProductManagementPage() {
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Organic Honey 500g"
           />
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-text">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-text">
               Description
-            </span>
-            <textarea
+            </label>
+            <RichTextEditor
+              key={editingId || "new-product"}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              placeholder="Optional details for catalog or staff"
+              onChange={setDescription}
+              placeholder="Product description, features, bullet points, bold text..."
             />
-          </label>
+          </div>
           <div className="space-y-3 rounded-[var(--radius-md)] border border-border bg-surface-muted/40 p-3">
             <p className="text-sm font-medium text-text">Upload new media (optional)</p>
               <div>
@@ -965,8 +965,11 @@ function ProductManagementPage() {
 
             {viewingProduct.description && (
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Description</p>
-                <p className="mt-1 text-sm text-text-muted leading-relaxed whitespace-pre-wrap">{viewingProduct.description}</p>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-text-muted">Description</p>
+                <div
+                  className="rich-text-content rounded-lg border border-border bg-surface-muted/30 p-3"
+                  dangerouslySetInnerHTML={{ __html: viewingProduct.description }}
+                />
               </div>
             )}
 
