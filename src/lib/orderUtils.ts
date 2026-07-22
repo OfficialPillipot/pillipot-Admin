@@ -194,6 +194,17 @@ export function formatOrderStatusLabel(status: OrderStatus | "mixed"): string {
 }
 
 /**
+ * Returns true if an order was placed via the website / online store (WebApp).
+ */
+export function isWebsiteOrder(order: Pick<Order, "platform" | "paymentMethod">): boolean {
+  const p = order.platform?.toLowerCase().trim();
+  if (p === "webapp" || p === "website") return true;
+  const pm = order.paymentMethod?.toLowerCase().trim();
+  if (pm === "razorpay") return true;
+  return false;
+}
+
+/**
  * Returns true if an order line uses an online payment method (e.g. Razorpay, prepaid, non-COD).
  */
 export function isOnlinePaymentOrder(order: Pick<Order, "paymentMethod" | "orderType">): boolean {
@@ -218,4 +229,5 @@ export function isCompletedOrCodOrder(
   }
   return true;
 }
+
 
