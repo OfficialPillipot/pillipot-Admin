@@ -53,7 +53,6 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
   const lastQueryRef = useRef<AdminOrdersQuery>({
     page: 1,
     limit: ADMIN_ORDERS_PAGE_SIZE,
-    onlineOrderMode: mode,
   });
   const loadSeqRef = useRef(0);
   const staff = useAppSelector(selectStaff);
@@ -120,9 +119,8 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
       ...(appliedServerSearch.trim()
         ? { search: appliedServerSearch.trim() }
         : {}),
-      onlineOrderMode: mode,
     };
-  }, [appliedDateFrom, appliedDateTo, appliedServerSearch, mode]);
+  }, [appliedDateFrom, appliedDateTo, appliedServerSearch]);
 
   const loadOrders = useCallback(async (q: AdminOrdersQuery) => {
     const seq = ++loadSeqRef.current;
@@ -147,8 +145,8 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
   }, []);
 
   useEffect(() => {
-    void loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE, onlineOrderMode: mode });
-  }, [loadOrders, mode]);
+    void loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE });
+  }, [loadOrders]);
 
   const hadTableFiltersRef = useRef(false);
   useEffect(() => {
@@ -163,7 +161,6 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
         void loadOrders({
           page: 1,
           limit: ADMIN_ORDERS_PAGE_SIZE,
-          onlineOrderMode: mode,
         });
       }
     }
@@ -244,9 +241,9 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
   const goToOrdersPage = useCallback(
     (page: number) => {
       const p = Math.min(Math.max(1, page), totalPages);
-      void loadOrders({ page: p, limit: ADMIN_ORDERS_PAGE_SIZE, onlineOrderMode: mode });
+      void loadOrders({ page: p, limit: ADMIN_ORDERS_PAGE_SIZE });
     },
-    [loadOrders, totalPages, mode],
+    [loadOrders, totalPages],
   );
 
   const allVisibleSelected =
@@ -567,9 +564,8 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
       ...(dateFrom ? { dateFrom } : {}),
       ...(dateTo ? { dateTo } : {}),
       ...(serverSearch.trim() ? { search: serverSearch.trim() } : {}),
-      onlineOrderMode: mode,
     };
-    if (Object.keys(q).length === 1) { // only onlineOrderMode
+    if (Object.keys(q).length === 0) {
       const tableOn = !!(
         productFilter ||
         staffFilter ||
@@ -578,9 +574,9 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
         deliveryFilter
       );
       if (tableOn) {
-        await loadOrders({ onlineOrderMode: mode });
+        await loadOrders({});
       } else {
-        await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE, onlineOrderMode: mode });
+        await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE });
       }
       setAppliedDateFrom("");
       setAppliedDateTo("");
@@ -624,9 +620,9 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
       platformFilter
     );
     if (tableOn) {
-      await loadOrders({ onlineOrderMode: mode });
+      await loadOrders({});
     } else {
-      await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE, onlineOrderMode: mode });
+      await loadOrders({ page: 1, limit: ADMIN_ORDERS_PAGE_SIZE });
     }
     toast.success("Showing all orders");
   }, [
