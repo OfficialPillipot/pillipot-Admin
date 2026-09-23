@@ -6,6 +6,7 @@ export type PdfSize = "thermal" | "a4";
 export type OrderStatus =
   | "scheduled"
   | "pending"
+  | "accepted"
   | "packed"
   | "dispatch"
   | "delivered"

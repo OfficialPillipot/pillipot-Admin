@@ -28,8 +28,22 @@ import {
   SparklesIcon, 
   PhotoIcon, 
   DocumentTextIcon, 
-  ArrowTopRightOnSquareIcon 
+  ArrowTopRightOnSquareIcon,
+  CheckCircleIcon,
+  ClockIcon
 } from "@heroicons/react/24/outline";
+
+function getPendingTimeRemaining(createdAt: string): { hours: number; mins: number; isExpired: boolean; text: string } {
+  const created = new Date(createdAt).getTime();
+  const expiresAt = created + 24 * 60 * 60 * 1000;
+  const diff = expiresAt - Date.now();
+  if (diff <= 0) {
+    return { hours: 0, mins: 0, isExpired: true, text: "24h window passed (Auto-cancelling)" };
+  }
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  return { hours, mins, isExpired: false, text: `${hours}h ${mins}m remaining` };
+}
 
 function VendorOrderManagement() {
   // ── Server-level filter state ──
@@ -155,6 +169,7 @@ function VendorOrderManagement() {
   const statusOptions = [
     { value: "", label: "All statuses" },
     { value: "pending", label: "Pending" },
+    { value: "accepted", label: "Accepted" },
     { value: "packed", label: "Packed" },
     { value: "dispatch", label: "Dispatch" },
     { value: "delivered", label: "Delivered" },
@@ -186,6 +201,21 @@ function VendorOrderManagement() {
       setPdfLoadingId(null);
     }
   }, []);
+
+  const handleAcceptOrder = useCallback(async (id: string, orderDisplayId?: string) => {
+    setUpdatingStatus(id);
+    try {
+      await updateStatus({ id, status: "accepted" }).unwrap();
+      toast.success(`Order ${orderDisplayId ? `#${orderDisplayId} ` : ""}accepted successfully!`);
+      if (selectedOrder?.id === id) {
+        setSelectedOrder(prev => prev ? { ...prev, status: "accepted" } : null);
+      }
+    } catch (err) {
+      toast.fromError(err, "Failed to accept order");
+    } finally {
+      setUpdatingStatus(null);
+    }
+  }, [updateStatus, selectedOrder]);
 
   const handleStatusChange = useCallback(async (id: string, newStatus: OrderStatus) => {
     setUpdatingStatus(id);
@@ -379,7 +409,40 @@ function VendorOrderManagement() {
     { 
       key: "status", 
       header: "Status", 
-      render: (row: Order) => <OrderStatusBadge uniform={row.status} /> 
+      render: (row: Order) => {
+        const isPending = row.status === "pending";
+        const timer = isPending ? getPendingTimeRemaining(row.createdAt) : null;
+        return (
+          <div className="space-y-1.5 py-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <OrderStatusBadge uniform={row.status} />
+              {isPending && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void handleAcceptOrder(row.id, row.orderId);
+                  }}
+                  disabled={updatingStatus === row.id}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                  title="Click to accept this order"
+                >
+                  <CheckCircleIcon className="h-3.5 w-3.5" />
+                  Accept
+                </button>
+              )}
+            </div>
+            {isPending && timer && (
+              <div className={`text-[10px] font-semibold flex items-center gap-1 ${
+                timer.isExpired ? "text-red-600 font-bold" : "text-amber-700"
+              }`}>
+                <ClockIcon className="h-3 w-3 shrink-0" />
+                <span>{timer.text}</span>
+              </div>
+            )}
+          </div>
+        );
+      }
     },
     { 
       key: "actions", 
@@ -395,7 +458,7 @@ function VendorOrderManagement() {
         </button>
       )
     }
-  ], [handleDownloadPdf, pdfLoadingId, selectedIds, allVisibleSelected, toggleRowSelected, toggleAllVisibleSelected]);
+  ], [handleDownloadPdf, handleAcceptOrder, updatingStatus, pdfLoadingId, selectedIds, allVisibleSelected, toggleRowSelected, toggleAllVisibleSelected]);
 
   return (
     <div className="space-y-4">
@@ -587,6 +650,40 @@ function VendorOrderManagement() {
       >
         {selectedOrder && (
           <div className="space-y-6">
+            {/* 24-Hour Acceptance Alert for Pending Orders */}
+            {selectedOrder.status === "pending" && (
+              <div className="rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 via-orange-50/50 to-amber-50 p-4 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white text-xs font-black shadow-xs">
+                        !
+                      </span>
+                      <h4 className="text-sm font-black text-amber-950">Action Required: Accept Order</h4>
+                    </div>
+                    <p className="text-xs text-amber-800">
+                      Orders must be accepted within 24 hours of placement, or they will be automatically cancelled.
+                    </p>
+                    <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-900 bg-amber-100/80 px-2.5 py-0.5 rounded-full border border-amber-300/60">
+                      <ClockIcon className="h-3.5 w-3.5 text-amber-700" />
+                      <span>{getPendingTimeRemaining(selectedOrder.createdAt).text}</span>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    className="!bg-emerald-600 hover:!bg-emerald-700 !text-white font-black px-4 py-2 shrink-0 shadow-xs flex items-center gap-1.5"
+                    loading={updatingStatus === selectedOrder.id}
+                    onClick={() => void handleAcceptOrder(selectedOrder.id, selectedOrder.orderId)}
+                  >
+                    <CheckCircleIcon className="h-4 w-4" />
+                    Accept Order
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <dl className="grid gap-4 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Customer Name</dt>
@@ -813,6 +910,18 @@ function VendorOrderManagement() {
               </Button>
               <div className="flex gap-2">
                 <Button variant="secondary" onClick={() => setSelectedOrder(null)}>Close</Button>
+                {selectedOrder.status === "pending" && (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    className="!bg-emerald-600 hover:!bg-emerald-700 !text-white font-black flex items-center gap-1.5"
+                    onClick={() => void handleAcceptOrder(selectedOrder.id, selectedOrder.orderId)}
+                    loading={updatingStatus === selectedOrder.id}
+                  >
+                    <CheckCircleIcon className="h-4 w-4" />
+                    Accept Order
+                  </Button>
+                )}
                 <Button 
                   variant="primary" 
                   icon={<ArrowDownTrayIcon className="h-4 w-4" />}

@@ -182,6 +182,8 @@ export function orderStatusToBadgeVariant(
       return "packed";
     case "scheduled":
       return "info";
+    case "accepted":
+      return "info";
     default:
       return "warning";
   }
@@ -190,6 +192,7 @@ export function orderStatusToBadgeVariant(
 export function formatOrderStatusLabel(status: OrderStatus | "mixed"): string {
   if (status === "mixed") return "Mixed";
   if (status === "scheduled") return "Scheduled";
+  if (status === "accepted") return "Accepted";
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
