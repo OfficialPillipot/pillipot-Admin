@@ -315,6 +315,14 @@ export interface Customer {
 
 export type VendorStatus = "PENDING" | "APPROVED" | "REJECTED" | "DISABLED";
 
+export interface VendorDocument {
+  id: string;
+  documentType: "GST" | "PAN" | "BANK_PROOF";
+  fileUrl: string;
+  fileName: string;
+  uploadedAt: string;
+}
+
 export interface Vendor {
   id: string;
   businessName: string;
@@ -324,21 +332,43 @@ export interface Vendor {
   gstNumber: string;
   panNumber: string;
   address: string;
+  pickupAddress?: string | null;
+  pickupPincode?: string | null;
   bankAccountNumber: string;
   ifscCode: string;
+  bankName?: string | null;
+  bankAccountHolderName?: string | null;
+  bankBranch?: string | null;
   status: VendorStatus;
+  isActive?: boolean;
   userId: string | null;
   user?: {
     isActive: boolean;
     mustChangePassword: boolean;
     initialTempPassword: string | null;
   } | null;
+  documents?: VendorDocument[];
   pendingPasswordResetRequest?: {
     id: string;
     createdAt: string;
   } | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UpdateVendorProfilePayload {
+  businessName?: string;
+  ownerName?: string;
+  phoneNumber?: string;
+  address?: string;
+  pickupAddress?: string;
+  pickupPincode?: string;
+  bankAccountNumber?: string;
+  ifscCode?: string;
+  bankName?: string;
+  bankAccountHolderName?: string;
+  bankBranch?: string;
+  isActive?: boolean;
 }
 
 export interface Order {

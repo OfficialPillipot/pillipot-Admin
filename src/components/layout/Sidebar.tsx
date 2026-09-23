@@ -114,6 +114,7 @@ const VENDOR_NAV_SECTIONS: NavSection<StaffNavItem>[] = [
   {
     title: "Account",
     items: [
+      { to: "/vendor/profile", label: "My Profile", end: true, icon: UserCircleIcon },
       { to: "/account/password", label: "Change password", end: true, icon: KeyIcon },
     ],
   },

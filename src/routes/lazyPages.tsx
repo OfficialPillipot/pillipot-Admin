@@ -120,5 +120,6 @@ export const VendorSubcategoryManagement = lazyRoute(() => import("../pages/Vend
 export const VendorOfferManagement = lazyRoute(() => import("../pages/VendorOfferManagement"));
 export const AdminVendorProductManagement = lazyRoute(() => import("../pages/AdminVendorProductManagement"));
 export const AdminVendorOrderManagement = lazyRoute(() => import("../pages/AdminVendorOrderManagement"));
+export const VendorProfile = lazyRoute(() => import("../pages/VendorProfile"));
 
 

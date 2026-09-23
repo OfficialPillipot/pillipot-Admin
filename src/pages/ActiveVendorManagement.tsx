@@ -210,9 +210,15 @@ function ActiveVendorManagementPage() {
               </div>
             </div>
 
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Address</p>
-              <p className="text-sm font-medium">{selectedVendor.address}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Registered Address</p>
+                <p className="text-sm font-medium">{selectedVendor.address}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pickup / Dispatch Address</p>
+                <p className="text-sm font-medium">{selectedVendor.pickupAddress || selectedVendor.address}</p>
+              </div>
             </div>
 
             <div className="border-t pt-4">
@@ -226,6 +232,24 @@ function ActiveVendorManagementPage() {
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">IFSC Code</p>
                   <p className="text-sm font-medium">{selectedVendor.ifscCode}</p>
                 </div>
+                {selectedVendor.bankName && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Bank Name</p>
+                    <p className="text-sm font-medium">{selectedVendor.bankName}</p>
+                  </div>
+                )}
+                {selectedVendor.bankAccountHolderName && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Account Holder Name</p>
+                    <p className="text-sm font-medium">{selectedVendor.bankAccountHolderName}</p>
+                  </div>
+                )}
+                {selectedVendor.bankBranch && (
+                  <div className="col-span-2">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Branch</p>
+                    <p className="text-sm font-medium">{selectedVendor.bankBranch}</p>
+                  </div>
+                )}
               </div>
             </div>
 

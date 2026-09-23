@@ -1,4 +1,5 @@
 import { memo, useMemo, useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useSearchParams } from "react-router";
 import { 
   Card, 
   CardHeader, 
@@ -54,11 +55,24 @@ function VendorOrderManagement() {
   const [appliedDateFrom, setAppliedDateFrom] = useState("");
   const [appliedDateTo, setAppliedDateTo] = useState("");
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
   // ── Table-level filter state ──
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") || "");
   const [typeFilter, setTypeFilter] = useState("");
-  const [productFilter, setProductFilter] = useState("");
+  const [productFilter, setProductFilter] = useState(() => searchParams.get("productId") || "");
   const [platformFilter, setPlatformFilter] = useState("");
+
+  useEffect(() => {
+    const s = searchParams.get("status");
+    if (s !== null) {
+      setStatusFilter(s);
+    }
+    const pid = searchParams.get("productId");
+    if (pid !== null) {
+      setProductFilter(pid);
+    }
+  }, [searchParams]);
 
   const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
@@ -151,14 +165,16 @@ function VendorOrderManagement() {
     setTypeFilter("");
     setProductFilter("");
     setPlatformFilter("");
-  }, []);
+    setSearchParams({}, { replace: true });
+  }, [setSearchParams]);
 
   const resetTableFilters = useCallback(() => {
     setStatusFilter("");
     setTypeFilter("");
     setProductFilter("");
     setPlatformFilter("");
-  }, []);
+    setSearchParams({}, { replace: true });
+  }, [setSearchParams]);
 
   // ── Options ──
   const productOptions = useMemo(() => [

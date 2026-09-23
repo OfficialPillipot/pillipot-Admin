@@ -1,5 +1,5 @@
 import { memo, useState, useCallback, useMemo, useEffect } from "react";
-import { PencilIcon, TrashIcon, XMarkIcon, TagIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, XMarkIcon, TagIcon } from "@heroicons/react/24/outline";
 import {
   Card,
   CardHeader,
@@ -18,10 +18,10 @@ import {
 import type { SelectOption } from "../components/ui/Select";
 import { toast } from "../lib/toast";
 import type { Product } from "../types";
-import { 
-  useGetVendorPortalProductsQuery, 
-  useCreateVendorPortalProductMutation, 
-  useUpdateVendorPortalProductMutation, 
+import {
+  useGetVendorPortalProductsQuery,
+  useCreateVendorPortalProductMutation,
+  useUpdateVendorPortalProductMutation,
   useDeleteVendorPortalProductMutation,
   useGetVendorPortalCategoriesQuery,
   useGetVendorPortalOffersQuery
@@ -58,7 +58,7 @@ function VendorProductManagement() {
   });
   const { data: categories = [] } = useGetVendorPortalCategoriesQuery();
   const { data: allOffers = [] } = useGetVendorPortalOffersQuery();
-  
+
   const [createProduct] = useCreateVendorPortalProductMutation();
   const [updateProduct] = useUpdateVendorPortalProductMutation();
   const [deleteProduct] = useDeleteVendorPortalProductMutation();
@@ -294,29 +294,31 @@ function VendorProductManagement() {
       },
     },
     { key: "image", header: "Image", render: (row: Product) => row.imageUrl ? <img src={row.imageUrl} className="h-10 w-10 rounded object-cover" /> : "—" },
-    { key: "status", header: "Status", render: (row: Product) => (
-      <div className="flex items-center gap-2">
-        <Badge variant={row.isActive ? "success" : "muted"}>
-          {row.isActive ? "Active" : "Inactive"}
-        </Badge>
-        <div 
-          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${row.isActive ? 'bg-primary' : 'bg-slate-200'}`}
-          onClick={async (e) => {
-            e.stopPropagation();
-            try {
-              const fd = new FormData();
-              fd.append('isActive', (!row.isActive).toString());
-              await updateProduct({ id: row.id, patch: { isActive: !row.isActive } }).unwrap();
-              toast.success(`Product ${!row.isActive ? 'activated' : 'deactivated'}`);
-            } catch (err) {
-              toast.fromError(err, "Failed to update status");
-            }
-          }}
-        >
-          <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${row.isActive ? 'translate-x-5' : 'translate-x-1'}`} />
+    {
+      key: "status", header: "Status", render: (row: Product) => (
+        <div className="flex items-center gap-2">
+          <Badge variant={row.isActive ? "success" : "muted"}>
+            {row.isActive ? "Active" : "Inactive"}
+          </Badge>
+          <div
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${row.isActive ? 'bg-primary' : 'bg-slate-200'}`}
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                const fd = new FormData();
+                fd.append('isActive', (!row.isActive).toString());
+                await updateProduct({ id: row.id, patch: { isActive: !row.isActive } }).unwrap();
+                toast.success(`Product ${!row.isActive ? 'activated' : 'deactivated'}`);
+              } catch (err) {
+                toast.fromError(err, "Failed to update status");
+              }
+            }}
+          >
+            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${row.isActive ? 'translate-x-5' : 'translate-x-1'}`} />
+          </div>
         </div>
-      </div>
-    )},
+      )
+    },
     {
       key: "actions",
       header: "",
@@ -328,9 +330,9 @@ function VendorProductManagement() {
           <Tooltip content="Edit">
             <button onClick={() => openEdit(row)} className="p-2 text-text-muted hover:text-primary"><PencilIcon className="h-4 w-4" /></button>
           </Tooltip>
-          <Tooltip content="Delete">
+          {/* <Tooltip content="Delete">
             <button onClick={() => handleDelete(row.id)} className="p-2 text-text-muted hover:text-error"><TrashIcon className="h-4 w-4" /></button>
-          </Tooltip>
+          </Tooltip> */}
         </div>
       )
     }
@@ -340,23 +342,23 @@ function VendorProductManagement() {
     <div className="space-y-4">
       <Card>
         <CardHeader title="My Products" action={<Button onClick={openAdd}>Add Product</Button>} />
-        
+
         <div className="px-6 pb-4">
           <ResponsiveManagementFilters modalTitle="Product Filters">
             <ManagementFilterPanel>
               <ManagementFilterField label="Search" className="lg:col-span-2">
-                <Input 
-                  placeholder="Product name, code..." 
-                  value={search} 
+                <Input
+                  placeholder="Product name, code..."
+                  value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleApplyFilters()}
                 />
               </ManagementFilterField>
               <ManagementFilterField label="Category">
-                <Select 
-                  options={[{ value: "", label: "All Categories" }, ...categoryOptions.filter(o => o.value !== "")]} 
-                  value={categoryFilter} 
-                  onChange={(e) => setCategoryFilter(e.target.value)} 
+                <Select
+                  options={[{ value: "", label: "All Categories" }, ...categoryOptions.filter(o => o.value !== "")]}
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
                 />
               </ManagementFilterField>
               <ManagementFilterField label="Actions">
@@ -387,7 +389,7 @@ function VendorProductManagement() {
           <Input label="Product name *" value={name} onChange={(e) => setName(e.target.value)} />
           <Select label="Category *" options={categoryOptions} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} />
           {categoryId && <Select label="Subcategory *" options={subcategoryOptions} value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)} />}
-          
+
           <div className="space-y-1">
             <label className="text-sm font-medium text-text">Description</label>
             <RichTextEditor
@@ -404,15 +406,15 @@ function VendorProductManagement() {
           <Input label="Stock quantity" type="number" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} placeholder="Available stock" />
           <Input label="Size" value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. Medium, 1kg" />
           <Input label="Color" value={color} onChange={(e) => setColor(e.target.value)} placeholder="e.g. Red, Blue" />
-          
+
           <div className="space-y-1">
-            <Input 
-              label="Preparation Days (Days to prepare/pack) *" 
-              type="number" 
+            <Input
+              label="Preparation Days (Days to prepare/pack) *"
+              type="number"
               min="0"
-              value={preparationDays} 
-              onChange={(e) => setPreparationDays(e.target.value)} 
-              placeholder="e.g. 2" 
+              value={preparationDays}
+              onChange={(e) => setPreparationDays(e.target.value)}
+              placeholder="e.g. 2"
             />
             <p className="text-[11px] text-text-muted">
               Number of days required to prepare this item. Customer delivery date picker will disable dates before this period.
@@ -457,11 +459,10 @@ function VendorProductManagement() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <label
-                    className={`flex items-start gap-2.5 p-2.5 rounded border cursor-pointer transition-colors ${
-                      allowPhotoUpload
+                    className={`flex items-start gap-2.5 p-2.5 rounded border cursor-pointer transition-colors ${allowPhotoUpload
                         ? "border-primary bg-primary/10"
                         : "border-border bg-surface"
-                    }`}
+                      }`}
                   >
                     <input
                       type="checkbox"
@@ -478,11 +479,10 @@ function VendorProductManagement() {
                   </label>
 
                   <label
-                    className={`flex items-start gap-2.5 p-2.5 rounded border cursor-pointer transition-colors ${
-                      allowTextInput
+                    className={`flex items-start gap-2.5 p-2.5 rounded border cursor-pointer transition-colors ${allowTextInput
                         ? "border-primary bg-primary/10"
                         : "border-border bg-surface"
-                    }`}
+                      }`}
                   >
                     <input
                       type="checkbox"
@@ -528,7 +528,7 @@ function VendorProductManagement() {
               </div>
             )}
           </div>
-          
+
           <div className="space-y-3 rounded border p-3 bg-surface-muted/30">
             <p className="text-sm font-medium">Media Upload</p>
             <div>
@@ -631,10 +631,10 @@ function VendorProductManagement() {
 
 
       {offerEditingProductId && (
-        <OfferEditModal 
-          productId={offerEditingProductId} 
+        <OfferEditModal
+          productId={offerEditingProductId}
           productName={products.find(p => p.id === offerEditingProductId)?.name || "Product"}
-          onClose={() => setOfferEditingProductId(null)} 
+          onClose={() => setOfferEditingProductId(null)}
           allOffers={allOffers}
         />
       )}

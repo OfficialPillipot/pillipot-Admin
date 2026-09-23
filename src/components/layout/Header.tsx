@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useState } from "react";
-import { useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 import { Bars3Icon, MagnifyingGlassIcon, MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import type { User } from "../../types";
 import { CommandPalette } from "./CommandPalette";
@@ -107,16 +107,38 @@ function HeaderComponent({
                 <MoonIcon className="h-4 w-4 sm:h-5 sm:w-5" />
               )}
             </button>
-            <div className="hidden min-w-0 text-right sm:block">
-              <p className="truncate text-sm font-medium text-text-heading">{userDisplayName}</p>
-              <p className="text-xs text-text-muted">{userRole}</p>
-            </div>
-            <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-gradient-to-br from-primary/15 to-primary/5 text-xs font-semibold text-primary shadow-[var(--shadow-card)] sm:h-10 sm:w-10 sm:text-sm"
-              aria-hidden
+            <Link
+              to={
+                user.role === "vendor"
+                  ? "/vendor/profile"
+                  : user.role === "staff"
+                    ? "/profile"
+                    : "/account/password"
+              }
+              className="group flex items-center gap-2 rounded-xl p-1 transition-all hover:bg-surface-soft sm:gap-3 focus:outline-none"
+              title="View Profile"
             >
-              {userDisplayName.charAt(0).toUpperCase()}
-            </div>
+              <div className="hidden min-w-0 text-right sm:block">
+                <p className="truncate text-sm font-medium text-text-heading transition-colors group-hover:text-primary">
+                  {userDisplayName}
+                </p>
+                <p className="text-xs text-text-muted">{userRole}</p>
+              </div>
+              {user.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt={userDisplayName}
+                  className="h-9 w-9 shrink-0 rounded-full object-cover border border-primary/30 shadow-[var(--shadow-card)] sm:h-10 sm:w-10 group-hover:ring-2 group-hover:ring-primary/40 transition-all"
+                />
+              ) : (
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-gradient-to-br from-primary/15 to-primary/5 text-xs font-semibold text-primary shadow-[var(--shadow-card)] sm:h-10 sm:w-10 sm:text-sm group-hover:ring-2 group-hover:ring-primary/40 transition-all"
+                  aria-hidden
+                >
+                  {userDisplayName.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </Link>
           </div>
         </div>
       </header>

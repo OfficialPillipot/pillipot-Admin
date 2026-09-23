@@ -102,6 +102,7 @@ export const endpoints = {
   adminVendorResetPassword: (id: string) => `${V1}/admin/vendors/${id}/reset-password`,
   adminVendorProducts: `${V1}/admin/vendors/products`,
   adminVendorOrders: `${V1}/admin/vendors/orders`,
+  vendorPortalProfile: `${V1}/vendor-portal/profile`,
   vendorPortalProducts: `${V1}/vendor-portal/products`,
   vendorPortalProductById: (id: string) => `${V1}/vendor-portal/products/${id}`,
   vendorPortalOrders: `${V1}/vendor-portal/orders`,

@@ -27,6 +27,7 @@ import type {
   StaffSalaryPaymentRow,
   StaffPosition,
   Subcategory,
+  UpdateVendorProfilePayload,
   Vendor,
 } from "../../types";
 import { baseQueryWithAuth } from "./baseQueryWithAuth";
@@ -1589,6 +1590,21 @@ export const edenApi = createApi({
             ]
           : [{ type: "Order", id: "VENDOR_LIST" }],
     }),
+    getVendorPortalProfile: builder.query<Vendor, void>({
+      query: () => endpoints.vendorPortalProfile,
+      providesTags: [{ type: "Vendor", id: "ME" }],
+    }),
+    updateVendorPortalProfile: builder.mutation<Vendor, UpdateVendorProfilePayload>({
+      query: (body) => ({
+        url: endpoints.vendorPortalProfile,
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: [
+        { type: "Vendor", id: "ME" },
+        { type: "Vendor", id: "LIST" },
+      ],
+    }),
   }),
 });
 
@@ -1660,4 +1676,6 @@ export const {
   useDeleteVendorPortalOfferMutation,
   useGetAdminVendorProductsQuery,
   useGetAdminVendorOrdersQuery,
+  useGetVendorPortalProfileQuery,
+  useUpdateVendorPortalProfileMutation,
 } = edenApi;

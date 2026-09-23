@@ -20,6 +20,7 @@ const DEFAULT_TITLES: Record<string, string> = {
   "/orders/create": "Create Order",
   "/orders/:id": "Order Detail",
   "/profile": "Profile",
+  "/vendor/profile": "Vendor Profile",
   "/admin": "Admin Dashboard",
   "/admin/staff": "Staff Management",
   "/admin/staff/:id": "Staff Profile",
@@ -58,7 +59,9 @@ function AppLayoutComponent({
       ? "Super Admin"
       : user.role === "guest"
         ? "Guest"
-        : "Staff";
+        : user.role === "vendor"
+          ? "Vendor"
+          : "Staff";
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {

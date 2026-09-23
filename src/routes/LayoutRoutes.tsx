@@ -85,8 +85,8 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         <Route
           path="/profile"
           element={
-            <ProtectedRoute allowedRoles={["staff"]}>
-              <Pages.StaffMyProfile />
+            <ProtectedRoute allowedRoles={["staff", "vendor"]}>
+              {user.role === "vendor" ? <Pages.VendorProfile /> : <Pages.StaffMyProfile />}
             </ProtectedRoute>
           }
         />
@@ -160,6 +160,14 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
           element={
             <ProtectedRoute allowedRoles={["vendor"]}>
               <Pages.VendorOfferManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vendor/profile"
+          element={
+            <ProtectedRoute allowedRoles={["vendor"]}>
+              <Pages.VendorProfile />
             </ProtectedRoute>
           }
         />
