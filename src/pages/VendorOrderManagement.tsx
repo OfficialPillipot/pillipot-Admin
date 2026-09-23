@@ -23,7 +23,13 @@ import {
 } from "../store/api/edenApi";
 import { toast } from "../lib/toast";
 import type { Order, OrderStatus } from "../types";
-import { ArrowDownTrayIcon } from "@heroicons/react/24/outline";
+import { 
+  ArrowDownTrayIcon, 
+  SparklesIcon, 
+  PhotoIcon, 
+  DocumentTextIcon, 
+  ArrowTopRightOnSquareIcon 
+} from "@heroicons/react/24/outline";
 
 function VendorOrderManagement() {
   // ── Server-level filter state ──
@@ -216,6 +222,25 @@ function VendorOrderManagement() {
     }
   }, [updateStatus]);
 
+  const handleDownloadCustomerImage = useCallback(async (imageUrl: string, orderId: string) => {
+    try {
+      toast.info("Downloading customer photo...");
+      const res = await fetch(imageUrl);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `customer_photo_${orderId}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast.success("Photo downloaded successfully");
+    } catch {
+      window.open(imageUrl, "_blank");
+    }
+  }, []);
+
   // ── Table columns (same spec as admin) ──
   const columns = useMemo(() => [
     {
@@ -267,8 +292,30 @@ function VendorOrderManagement() {
       </div>
     )},
     { key: "product", header: "Product", render: (row: any) => (
-      <div className="max-w-[150px] truncate" title={row.product?.name || row.productName || row.productId}>
-        {row.product?.name || row.productName || row.productId}
+      <div className="space-y-1">
+        <div className="max-w-[150px] truncate font-medium" title={row.product?.name || row.productName || row.productId}>
+          {row.product?.name || row.productName || row.productId}
+        </div>
+        {(row.customText || row.customPhotoUrl || row.notes) && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200">
+              ✨ Personalized
+            </span>
+            {row.customPhotoUrl && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownloadCustomerImage(row.customPhotoUrl, row.orderId);
+                }}
+                className="text-purple-700 hover:text-purple-900 text-[10px] font-bold underline inline-flex items-center gap-0.5"
+                title="Download Customer Photo"
+              >
+                <ArrowDownTrayIcon className="h-3 w-3" /> Photo
+              </button>
+            )}
+          </div>
+        )}
       </div>
     )},
     { key: "quantity", header: "Qty", render: (row: Order) => row.quantity },
@@ -576,6 +623,106 @@ function VendorOrderManagement() {
                 </dd>
               </div>
               
+              {/* Customer Personalization Details Section */}
+              {(selectedOrder.customPhotoUrl || selectedOrder.customText || selectedOrder.notes) && (
+                <div className="sm:col-span-2 rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50/50 via-white to-indigo-50/30 p-4 sm:p-5 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-purple-100 pb-3 flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-600 text-white shadow-xs">
+                        <SparklesIcon className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <h4 className="text-sm font-black text-purple-950">Customer Personalization Details</h4>
+                        <p className="text-[11px] text-purple-700 font-medium">Customer-submitted customization for this order line</p>
+                      </div>
+                    </div>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-purple-300 bg-purple-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-purple-800">
+                      Personalized Order
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Custom Text / Inscription */}
+                    {selectedOrder.customText && (
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-purple-900 block flex items-center gap-1.5">
+                          <DocumentTextIcon className="h-4 w-4 text-purple-600" />
+                          Custom Inscription / Text
+                        </span>
+                        <div className="p-3 bg-white rounded-xl border border-purple-200 shadow-2xs font-serif text-sm font-bold text-purple-950 italic break-words">
+                          &ldquo;{selectedOrder.customText}&rdquo;
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Customer Notes / Special Instructions */}
+                    {selectedOrder.notes && (
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-purple-900 block flex items-center gap-1.5">
+                          <DocumentTextIcon className="h-4 w-4 text-purple-600" />
+                          Customer Note / Special Instructions
+                        </span>
+                        <div className="p-3 bg-white rounded-xl border border-purple-200 shadow-2xs text-xs text-slate-800 font-medium whitespace-pre-wrap break-words">
+                          {selectedOrder.notes}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Customer Uploaded Image */}
+                  {selectedOrder.customPhotoUrl && (
+                    <div className="space-y-2 pt-2 border-t border-purple-100">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-purple-900 block flex items-center gap-1.5">
+                        <PhotoIcon className="h-4 w-4 text-purple-600" />
+                        Uploaded Customer Image
+                      </span>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white p-3.5 rounded-xl border border-purple-200 shadow-2xs">
+                        <div className="relative h-28 w-28 shrink-0 rounded-lg overflow-hidden border-2 border-purple-300 bg-slate-100">
+                          <img
+                            src={selectedOrder.customPhotoUrl}
+                            alt="Customer Personalization"
+                            className="h-full w-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                            onClick={() => window.open(selectedOrder.customPhotoUrl!, "_blank")}
+                            title="Click to view full image"
+                          />
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                              ✓ High-Resolution Upload Ready
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            Download the original customer photo file to use for printing, engraving, or product crafting.
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="primary"
+                              icon={<ArrowDownTrayIcon className="h-4 w-4" />}
+                              onClick={() => handleDownloadCustomerImage(selectedOrder.customPhotoUrl!, selectedOrder.orderId)}
+                            >
+                              Download Image
+                            </Button>
+                            <a
+                              href={selectedOrder.customPhotoUrl}
+                              download={`customer_photo_${selectedOrder.orderId}.jpg`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors"
+                            >
+                              <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+                              Direct Link / View Full
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="sm:col-span-2 border-t pt-4 mt-2">
                 <dt className="text-text-muted mb-2 text-xs uppercase tracking-wider font-bold">Order Item</dt>
                 <dd className="overflow-hidden rounded-lg border border-gray-100 shadow-sm">

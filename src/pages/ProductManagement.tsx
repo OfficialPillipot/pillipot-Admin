@@ -7,6 +7,7 @@ import { selectProducts, createProduct, updateProduct, deleteProduct } from "../
 import { selectCategories, fetchCategories } from "../store/categoriesSlice";
 import { selectSubcategories, fetchSubcategories } from "../store/subcategoriesSlice";
 import {
+  Badge,
   Card,
   CardHeader,
   Button,
@@ -71,6 +72,11 @@ function ProductManagementPage() {
   const [size, setSize] = useState("");
   const [color, setColor] = useState("");
   const [preparationDays, setPreparationDays] = useState("2");
+  const [isCustomizable, setIsCustomizable] = useState(false);
+  const [allowPhotoUpload, setAllowPhotoUpload] = useState(false);
+  const [allowTextInput, setAllowTextInput] = useState(false);
+  const [customTextPrompt, setCustomTextPrompt] = useState("");
+  const [customTextLimit, setCustomTextLimit] = useState("50");
   const [description, setDescription] = useState("");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -137,6 +143,11 @@ function ProductManagementPage() {
     setSize("");
     setColor("");
     setPreparationDays("2");
+    setIsCustomizable(false);
+    setAllowPhotoUpload(false);
+    setAllowTextInput(false);
+    setCustomTextPrompt("");
+    setCustomTextLimit("50");
     setDescription("");
     setImageFiles([]);
     setVideoFile(null);
@@ -169,6 +180,12 @@ function ProductManagementPage() {
     setSize(p.size ?? "");
     setColor(p.color ?? "");
     setPreparationDays(String(p.preparationDays ?? 2));
+    const customizable = !!(p.allowPhotoUpload || p.allowTextInput);
+    setIsCustomizable(customizable);
+    setAllowPhotoUpload(!!p.allowPhotoUpload);
+    setAllowTextInput(!!p.allowTextInput);
+    setCustomTextPrompt(p.customTextPrompt || "");
+    setCustomTextLimit(p.customTextLimit ? String(p.customTextLimit) : "50");
     setDescription(p.description ?? "");
     setImageFiles([]);
     setVideoFile(null);
@@ -233,6 +250,11 @@ function ProductManagementPage() {
       }
     }
 
+    if (isCustomizable && !allowPhotoUpload && !allowTextInput) {
+      toast.error("Please select at least one customization option (Image or Text) when customization is enabled.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       if (editingId) {
@@ -249,6 +271,10 @@ function ProductManagementPage() {
               size: size.trim() || undefined,
               color: color.trim() || undefined,
               preparationDays: preparationDays ? parseInt(preparationDays, 10) : 2,
+              allowPhotoUpload: isCustomizable ? allowPhotoUpload : false,
+              allowTextInput: isCustomizable ? allowTextInput : false,
+              customTextPrompt: (isCustomizable && allowTextInput && customTextPrompt.trim()) ? customTextPrompt.trim() : undefined,
+              customTextLimit: (isCustomizable && allowTextInput && customTextLimit) ? parseInt(customTextLimit, 10) : undefined,
               description: description.trim() || undefined,
               originalPrice: originalPriceNum,
               image: imageFiles.length > 0 ? imageFiles : undefined,
@@ -270,6 +296,10 @@ function ProductManagementPage() {
             size: size.trim() || undefined,
             color: color.trim() || undefined,
             preparationDays: preparationDays ? parseInt(preparationDays, 10) : 2,
+            allowPhotoUpload: isCustomizable ? allowPhotoUpload : false,
+            allowTextInput: isCustomizable ? allowTextInput : false,
+            customTextPrompt: (isCustomizable && allowTextInput && customTextPrompt.trim()) ? customTextPrompt.trim() : undefined,
+            customTextLimit: (isCustomizable && allowTextInput && customTextLimit) ? parseInt(customTextLimit, 10) : undefined,
             description: description.trim() || undefined,
             originalPrice: originalPriceNum,
             image: imageFiles.length > 0 ? imageFiles : undefined,
@@ -296,6 +326,11 @@ function ProductManagementPage() {
     size,
     color,
     preparationDays,
+    isCustomizable,
+    allowPhotoUpload,
+    allowTextInput,
+    customTextPrompt,
+    customTextLimit,
     description,
     imageFiles,
     videoFile,
@@ -472,6 +507,24 @@ function ProductManagementPage() {
         key: "preparationDays",
         header: "Prep",
         render: (row: Product) => `${row.preparationDays ?? 2}d`,
+      },
+      {
+        key: "customization",
+        header: "Personalized",
+        render: (row: Product) => {
+          const hasPhoto = !!row.allowPhotoUpload;
+          const hasText = !!row.allowTextInput;
+          if (hasPhoto && hasText) {
+            return <Badge variant="primary">Image + Text</Badge>;
+          }
+          if (hasPhoto) {
+            return <Badge variant="primary">Image</Badge>;
+          }
+          if (hasText) {
+            return <Badge variant="primary">Text</Badge>;
+          }
+          return <span className="text-xs text-text-muted">—</span>;
+        },
       },
       {
         key: "size",
@@ -877,6 +930,117 @@ function ProductManagementPage() {
               Number of days required to prepare this item. Customer delivery date picker will disable dates before this period.
             </p>
           </div>
+
+          <div className="space-y-3 rounded border border-primary/30 bg-primary/5 p-3.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-text">Product Customization</p>
+                <p className="text-xs text-text-muted">
+                  Allow customers to personalize this product before buying (e.g. photo print, engraved name).
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                  checked={isCustomizable}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setIsCustomizable(checked);
+                    if (checked && !allowPhotoUpload && !allowTextInput) {
+                      setAllowPhotoUpload(true);
+                    }
+                  }}
+                />
+                <span className="text-sm font-medium text-text">Enable Customization</span>
+              </label>
+            </div>
+
+            {isCustomizable && (
+              <div className="space-y-3 pt-2 border-t border-primary/20">
+                <div>
+                  <p className="text-xs font-semibold text-text mb-1">
+                    Allowed Customization Options *
+                  </p>
+                  <p className="text-[11px] text-text-muted mb-2">
+                    Select at least one customization option for customers.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <label
+                    className={`flex items-start gap-2.5 p-2.5 rounded border cursor-pointer transition-colors ${
+                      allowPhotoUpload
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-surface"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                      checked={allowPhotoUpload}
+                      onChange={(e) => setAllowPhotoUpload(e.target.checked)}
+                    />
+                    <div>
+                      <span className="block text-sm font-medium text-text">Image</span>
+                      <span className="block text-[11px] text-text-muted">
+                        Allow customer to upload photos / images
+                      </span>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`flex items-start gap-2.5 p-2.5 rounded border cursor-pointer transition-colors ${
+                      allowTextInput
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-surface"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                      checked={allowTextInput}
+                      onChange={(e) => setAllowTextInput(e.target.checked)}
+                    />
+                    <div>
+                      <span className="block text-sm font-medium text-text">Text</span>
+                      <span className="block text-[11px] text-text-muted">
+                        Allow customer to enter custom text / names
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
+                {!allowPhotoUpload && !allowTextInput && (
+                  <div className="rounded bg-error/10 border border-error/30 p-2 text-xs font-medium text-error flex items-center gap-1.5">
+                    <span>⚠️</span>
+                    <span>Validation error: At least one option (Image or Text) must be selected before saving.</span>
+                  </div>
+                )}
+
+                {allowTextInput && (
+                  <div className="space-y-2 pt-2 border-t border-dashed border-border/80">
+                    <Input
+                      label="Custom Text Prompt / Instruction"
+                      value={customTextPrompt}
+                      onChange={(e) => setCustomTextPrompt(e.target.value)}
+                      placeholder="e.g. Enter name or message to personalize"
+                    />
+                    <Input
+                      label="Maximum Character Limit"
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={customTextLimit}
+                      onChange={(e) => setCustomTextLimit(e.target.value)}
+                      placeholder="e.g. 50"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="mb-0.5 block text-xs font-medium text-text-heading md:mb-1 md:text-sm">Tags</label>
             <div className="mb-2 flex flex-wrap gap-2">

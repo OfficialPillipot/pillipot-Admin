@@ -60,6 +60,11 @@ export type NewProductPayload = Pick<Product, "name" | "price"> & {
   stockQuantity?: number;
   size?: string;
   color?: string;
+  preparationDays?: number;
+  allowPhotoUpload?: boolean;
+  allowTextInput?: boolean;
+  customTextPrompt?: string;
+  customTextLimit?: number;
   description?: string;
   image?: File | File[];
   video?: File;
@@ -185,6 +190,21 @@ export const edenApi = createApi({
         if (body.color) fd.append("color", body.color);
         if (body.originalPrice != null && body.originalPrice !== undefined) {
           fd.append("originalPrice", String(body.originalPrice));
+        }
+        if (body.preparationDays != null) {
+          fd.append("preparationDays", String(body.preparationDays));
+        }
+        if (body.allowPhotoUpload != null) {
+          fd.append("allowPhotoUpload", String(body.allowPhotoUpload));
+        }
+        if (body.allowTextInput != null) {
+          fd.append("allowTextInput", String(body.allowTextInput));
+        }
+        if (body.customTextPrompt != null && body.customTextPrompt !== "") {
+          fd.append("customTextPrompt", body.customTextPrompt);
+        }
+        if (body.customTextLimit != null) {
+          fd.append("customTextLimit", String(body.customTextLimit));
         }
         if (body.image) {
           if (Array.isArray(body.image)) {

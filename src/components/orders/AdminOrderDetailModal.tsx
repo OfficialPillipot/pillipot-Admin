@@ -1,9 +1,17 @@
-import { memo } from "react";
+import { memo, useCallback } from "react";
 import { Badge, Button, Modal } from "../ui";
 import type { Order, Product, Staff } from "../../types";
 import { orderLineProductLabel } from "../../lib/orderUtils";
 import type { GroupedAdminOrder } from "./adminOrderManagementUtils";
 import { discountDisplay, safeMoney } from "./adminOrderManagementUtils";
+import { 
+  SparklesIcon, 
+  PhotoIcon, 
+  DocumentTextIcon, 
+  ArrowDownTrayIcon, 
+  ArrowTopRightOnSquareIcon 
+} from "@heroicons/react/24/outline";
+import { toast } from "../../lib/toast";
 
 export type AdminOrderDetailModalProps = {
   orderDetail: GroupedAdminOrder | null;
@@ -53,6 +61,29 @@ function AdminOrderDetailModalComponent({
   returning,
 }: AdminOrderDetailModalProps) {
   const isOpen = !!orderDetail;
+
+  const handleDownloadCustomerImage = useCallback(async (imageUrl: string, orderId: string) => {
+    try {
+      toast.info("Downloading customer photo...");
+      const res = await fetch(imageUrl);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `customer_photo_${orderId}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast.success("Photo downloaded successfully");
+    } catch {
+      window.open(imageUrl, "_blank");
+    }
+  }, []);
+
+  const personalizedLines = sortedOrderLines.filter(
+    (l) => l.customPhotoUrl || l.customText || l.notes
+  );
 
   return (
     <Modal
@@ -114,6 +145,110 @@ function AdminOrderDetailModalComponent({
               </dt>
               <dd>{orderDetail.pincode}</dd>
             </div>
+            {/* Customer Personalization Details Section */}
+            {personalizedLines.length > 0 && (
+              <div className="sm:col-span-2 rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50/50 via-white to-indigo-50/30 p-4 sm:p-5 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between border-b border-purple-100 pb-3 flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-600 text-white shadow-xs">
+                      <SparklesIcon className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-black text-purple-950">Customer Personalization Details</h4>
+                      <p className="text-[11px] text-purple-700 font-medium">Customer-submitted customization for this order</p>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-purple-300 bg-purple-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-purple-800">
+                    Personalized Order
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {personalizedLines.map((line, idx) => (
+                    <div key={line.id || idx} className="space-y-3 p-3 bg-white/80 rounded-xl border border-purple-100">
+                      {personalizedLines.length > 1 && (
+                        <div className="text-xs font-bold text-purple-900 border-b border-purple-50 pb-1">
+                          Line #{idx + 1}: {orderLineProductLabel(line, products)}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {line.customText && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-900 flex items-center gap-1">
+                              <DocumentTextIcon className="h-3.5 w-3.5 text-purple-600" />
+                              Custom Inscription / Text
+                            </span>
+                            <div className="p-2.5 bg-purple-50/50 rounded-lg border border-purple-200 font-serif text-sm font-bold text-purple-950 italic break-words">
+                              &ldquo;{line.customText}&rdquo;
+                            </div>
+                          </div>
+                        )}
+
+                        {line.notes && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-900 flex items-center gap-1">
+                              <DocumentTextIcon className="h-3.5 w-3.5 text-purple-600" />
+                              Customer Note / Special Instructions
+                            </span>
+                            <div className="p-2.5 bg-amber-50/50 rounded-lg border border-amber-200 text-xs text-slate-800 font-medium whitespace-pre-wrap break-words">
+                              {line.notes}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {line.customPhotoUrl && (
+                        <div className="space-y-2 pt-2 border-t border-purple-50">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-900 flex items-center gap-1">
+                            <PhotoIcon className="h-3.5 w-3.5 text-purple-600" />
+                            Uploaded Customer Image
+                          </span>
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-slate-50 p-3 rounded-xl border border-purple-200">
+                            <div className="relative h-24 w-24 shrink-0 rounded-lg overflow-hidden border-2 border-purple-300 bg-white">
+                              <img
+                                src={line.customPhotoUrl}
+                                alt="Customer Personalization"
+                                className="h-full w-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                                onClick={() => window.open(line.customPhotoUrl!, "_blank")}
+                                title="Click to view full image"
+                              />
+                            </div>
+                            <div className="flex-1 space-y-2">
+                              <p className="text-xs text-slate-500">
+                                Download the customer photo for printing, engraving, or crafting.
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="primary"
+                                  icon={<ArrowDownTrayIcon className="h-3.5 w-3.5" />}
+                                  onClick={() => handleDownloadCustomerImage(line.customPhotoUrl!, orderDetail?.orderId || "order")}
+                                >
+                                  Download Image
+                                </Button>
+                                <a
+                                  href={line.customPhotoUrl}
+                                  download={`customer_photo_${orderDetail?.orderId || "order"}.jpg`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors"
+                                >
+                                  <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
+                                  Direct Link / View Full
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="sm:col-span-2 border-t pt-4 mt-2">
               <dt className="text-text-muted mb-2 text-xs uppercase tracking-wider font-bold">
                 Order Items

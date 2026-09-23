@@ -97,6 +97,10 @@ export interface Product {
   isActive?: boolean;
   originalPrice?: number;
   preparationDays?: number;
+  allowPhotoUpload?: boolean;
+  allowTextInput?: boolean;
+  customTextPrompt?: string;
+  customTextLimit?: number;
   categoryEntity?: Category | null;
   subcategoryEntity?: Subcategory | null;
 }
@@ -362,6 +366,8 @@ export interface Order {
   /** Line discount in ₹; omitted or null when none */
   discountAmount?: number | null;
   notes?: string;
+  customText?: string | null;
+  customPhotoUrl?: string | null;
   addOnAmount?: number | null;
   addOnNote?: string | null;
   deliveryMethodId?: string | null;
