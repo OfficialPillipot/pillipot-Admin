@@ -75,6 +75,7 @@ function VendorProductManagement() {
   const [subcategoryId, setSubcategoryId] = useState("");
   const [size, setSize] = useState("");
   const [color, setColor] = useState("");
+  const [preparationDays, setPreparationDays] = useState("2");
   const [description, setDescription] = useState("");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -139,6 +140,7 @@ function VendorProductManagement() {
     setStockQuantity("");
     setSize("");
     setColor("");
+    setPreparationDays("2");
     setDescription("");
     setImageFiles([]);
     setVideoFile(null);
@@ -156,6 +158,7 @@ function VendorProductManagement() {
     setStockQuantity(String(p.stockQuantity ?? 0));
     setSize(p.size ?? "");
     setColor(p.color ?? "");
+    setPreparationDays(String(p.preparationDays ?? 2));
     setDescription(p.description ?? "");
     setImageFiles([]);
     setVideoFile(null);
@@ -186,6 +189,7 @@ function VendorProductManagement() {
         stockQuantity: stockQuantity ? parseInt(stockQuantity, 10) : 0,
         size: size.trim() || undefined,
         color: color.trim() || undefined,
+        preparationDays: preparationDays ? parseInt(preparationDays, 10) : 2,
         description: description.trim() || undefined,
         image: imageFiles.length > 0 ? imageFiles : undefined,
         video: videoFile ?? undefined,
@@ -204,7 +208,7 @@ function VendorProductManagement() {
     } finally {
       setSubmitting(false);
     }
-  }, [editingId, name, categoryId, subcategoryId, price, buyingPrice, originalPrice, stockQuantity, size, color, description, imageFiles, videoFile, createProduct, updateProduct]);
+  }, [editingId, name, categoryId, subcategoryId, price, buyingPrice, originalPrice, stockQuantity, size, color, preparationDays, description, imageFiles, videoFile, createProduct, updateProduct]);
 
   const handleDelete = useCallback(async (id: string) => {
     if (!window.confirm("Delete this product permanently?")) return;
@@ -223,6 +227,7 @@ function VendorProductManagement() {
     { key: "price", header: "Selling", render: (row: Product) => `₹${Number(row.price).toFixed(2)}` },
     { key: "originalPrice", header: "Actual", render: (row: Product) => row.originalPrice != null ? `₹${Number(row.originalPrice).toFixed(2)}` : "—" },
     { key: "stock", header: "Stock", render: (row: Product) => row.stockQuantity ?? 0 },
+    { key: "preparationDays", header: "Prep Days", render: (row: Product) => `${row.preparationDays ?? 2}d` },
     { key: "image", header: "Image", render: (row: Product) => row.imageUrl ? <img src={row.imageUrl} className="h-10 w-10 rounded object-cover" /> : "—" },
     { key: "status", header: "Status", render: (row: Product) => (
       <div className="flex items-center gap-2">
@@ -334,6 +339,20 @@ function VendorProductManagement() {
           <Input label="Stock quantity" type="number" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} placeholder="Available stock" />
           <Input label="Size" value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. Medium, 1kg" />
           <Input label="Color" value={color} onChange={(e) => setColor(e.target.value)} placeholder="e.g. Red, Blue" />
+          
+          <div className="space-y-1">
+            <Input 
+              label="Preparation Days (Days to prepare/pack) *" 
+              type="number" 
+              min="0"
+              value={preparationDays} 
+              onChange={(e) => setPreparationDays(e.target.value)} 
+              placeholder="e.g. 2" 
+            />
+            <p className="text-[11px] text-text-muted">
+              Number of days required to prepare this item. Customer delivery date picker will disable dates before this period.
+            </p>
+          </div>
           
           <div className="space-y-3 rounded border p-3 bg-surface-muted/30">
             <p className="text-sm font-medium">Media Upload</p>

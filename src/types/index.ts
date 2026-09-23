@@ -96,6 +96,7 @@ export interface Product {
   /** false = hidden from staff catalog; admin still sees all. */
   isActive?: boolean;
   originalPrice?: number;
+  preparationDays?: number;
   categoryEntity?: Category | null;
   subcategoryEntity?: Subcategory | null;
 }

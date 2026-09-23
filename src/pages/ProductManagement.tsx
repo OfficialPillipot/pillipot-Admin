@@ -70,6 +70,7 @@ function ProductManagementPage() {
   const [subcategoryId, setSubcategoryId] = useState("");
   const [size, setSize] = useState("");
   const [color, setColor] = useState("");
+  const [preparationDays, setPreparationDays] = useState("2");
   const [description, setDescription] = useState("");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -135,6 +136,7 @@ function ProductManagementPage() {
     setStockQuantity("");
     setSize("");
     setColor("");
+    setPreparationDays("2");
     setDescription("");
     setImageFiles([]);
     setVideoFile(null);
@@ -166,8 +168,7 @@ function ProductManagementPage() {
     setStockQuantity(p.stockQuantity.toString());
     setSize(p.size ?? "");
     setColor(p.color ?? "");
-    setSize(p.size ?? "");
-    setColor(p.color ?? "");
+    setPreparationDays(String(p.preparationDays ?? 2));
     setDescription(p.description ?? "");
     setImageFiles([]);
     setVideoFile(null);
@@ -247,6 +248,7 @@ function ProductManagementPage() {
               stockQuantity: stockNum,
               size: size.trim() || undefined,
               color: color.trim() || undefined,
+              preparationDays: preparationDays ? parseInt(preparationDays, 10) : 2,
               description: description.trim() || undefined,
               originalPrice: originalPriceNum,
               image: imageFiles.length > 0 ? imageFiles : undefined,
@@ -267,6 +269,7 @@ function ProductManagementPage() {
             stockQuantity: stockNum,
             size: size.trim() || undefined,
             color: color.trim() || undefined,
+            preparationDays: preparationDays ? parseInt(preparationDays, 10) : 2,
             description: description.trim() || undefined,
             originalPrice: originalPriceNum,
             image: imageFiles.length > 0 ? imageFiles : undefined,
@@ -292,6 +295,7 @@ function ProductManagementPage() {
     stockQuantity,
     size,
     color,
+    preparationDays,
     description,
     imageFiles,
     videoFile,
@@ -463,6 +467,11 @@ function ProductManagementPage() {
         key: "stockQuantity",
         header: "Qty",
         render: (row: Product) => row.stockQuantity ?? 0,
+      },
+      {
+        key: "preparationDays",
+        header: "Prep",
+        render: (row: Product) => `${row.preparationDays ?? 2}d`,
       },
       {
         key: "size",
@@ -855,6 +864,19 @@ function ProductManagementPage() {
             onChange={(e) => setColor(e.target.value)}
             placeholder="e.g. Navy"
           />
+          <div className="space-y-1">
+            <Input
+              label="Preparation Days (Days to prepare/pack) *"
+              type="number"
+              min={0}
+              value={preparationDays}
+              onChange={(e) => setPreparationDays(e.target.value)}
+              placeholder="e.g. 2"
+            />
+            <p className="text-[11px] text-text-muted">
+              Number of days required to prepare this item. Customer delivery date picker will disable dates before this period.
+            </p>
+          </div>
           <div>
             <label className="mb-0.5 block text-xs font-medium text-text-heading md:mb-1 md:text-sm">Tags</label>
             <div className="mb-2 flex flex-wrap gap-2">
