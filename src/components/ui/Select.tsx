@@ -17,6 +17,8 @@ interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "onC
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }
 
+import { autoScrollDropdownIntoView } from "../../lib/scrollUtils";
+
 const SelectComponent = forwardRef<HTMLSelectElement, SelectProps>(
   (
     { label, options, error, placeholder, fullWidth, className = "", id, value, onChange, ...rest },
@@ -27,6 +29,7 @@ const SelectComponent = forwardRef<HTMLSelectElement, SelectProps>(
     
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Close on click outside
     useEffect(() => {
@@ -41,6 +44,18 @@ const SelectComponent = forwardRef<HTMLSelectElement, SelectProps>(
       return () => {
         document.removeEventListener("mousedown", handleClickOutside);
       };
+    }, [isOpen]);
+
+    // Auto scroll if dropdown is under the bottom of the screen
+    useEffect(() => {
+      if (isOpen) {
+        const scrollTimer = setTimeout(() => {
+          if (dropdownRef.current) {
+            autoScrollDropdownIntoView(dropdownRef.current, { padding: 24 });
+          }
+        }, 60);
+        return () => clearTimeout(scrollTimer);
+      }
     }, [isOpen]);
 
     const selectedOption = options.find((opt) => opt.value === String(value));
@@ -109,7 +124,11 @@ const SelectComponent = forwardRef<HTMLSelectElement, SelectProps>(
           </button>
 
           {isOpen && (
-            <div className="absolute z-[100] mt-1 max-h-60 w-full min-w-[12rem] overflow-auto rounded-[var(--radius-md)] border border-border bg-surface py-1 shadow-[var(--shadow-dropdown)]">
+            <div
+              ref={dropdownRef}
+              style={{ scrollMarginBottom: 24 }}
+              className="absolute z-[100] mt-1 max-h-60 w-full min-w-[12rem] overflow-auto rounded-[var(--radius-md)] border border-border bg-surface py-1 shadow-[var(--shadow-dropdown)]"
+            >
               <ul role="listbox" className="flex flex-col">
                 {placeholder && (
                   <li

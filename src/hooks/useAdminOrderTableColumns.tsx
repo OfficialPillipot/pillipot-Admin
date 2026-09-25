@@ -1,23 +1,41 @@
 import { useMemo, type RefObject } from "react";
-import { Link } from "react-router";
 import {
   ArrowDownTrayIcon,
   ArrowUturnLeftIcon,
-  PencilIcon,
 } from "@heroicons/react/24/outline";
 import type { Column } from "../components/ui/Table";
 import { OrderStatusBadge } from "../components/orders/OrderStatusBadge";
-import type { Order, Product, Staff } from "../types";
+import type { Order, Product, Staff, Vendor } from "../types";
 import { formatDate, orderLineProductLabel, uniformOrderGroupStatus } from "../lib/orderUtils";
 import {
-  discountDisplay,
   safeMoney,
 } from "../components/orders/adminOrderManagementUtils";
+
+function getOrderShopName(order: Order, products: Product[], vendors?: Vendor[]): string {
+  if (order.shopName?.trim()) return order.shopName.trim();
+  const prod = products.find((p) => p.id === order.productId);
+  if (prod?.vendorId && vendors) {
+    const v = vendors.find((vend) => vend.id === prod.vendorId);
+    if (v?.businessName?.trim()) return v.businessName.trim();
+  }
+  return "—";
+}
+
+function getOrderVendorName(order: Order, products: Product[], vendors?: Vendor[]): string {
+  if (order.vendorName?.trim()) return order.vendorName.trim();
+  const prod = products.find((p) => p.id === order.productId);
+  if (prod?.vendorId && vendors) {
+    const v = vendors.find((vend) => vend.id === prod.vendorId);
+    if (v?.ownerName?.trim()) return v.ownerName.trim();
+  }
+  return "—";
+}
 
 export type UseAdminOrderTableColumnsParams = {
   selectAllHeaderRef: RefObject<HTMLInputElement | null>;
   staff: Staff[];
   products: Product[];
+  vendors?: Vendor[];
   pdfLoadingId: string | null;
   selectedIds: Set<string>;
   allVisibleSelected: boolean;
@@ -40,8 +58,9 @@ export type UseAdminOrderTableColumnsParams = {
 
 export function useAdminOrderTableColumns({
   selectAllHeaderRef,
-  staff,
+  staff: _staff,
   products,
+  vendors,
   pdfLoadingId,
   selectedIds,
   allVisibleSelected,
@@ -49,7 +68,7 @@ export function useAdminOrderTableColumns({
   toggleAllVisibleSelected,
   downloadPdf,
   onOpenDetail,
-  getAdminOrderEditHref,
+  getAdminOrderEditHref: _getAdminOrderEditHref,
   onRevokePacked,
   revokePackedLoadingId,
 }: UseAdminOrderTableColumnsParams): Column<Order>[] {
@@ -98,38 +117,6 @@ export function useAdminOrderTableColumns({
         ),
       },
       {
-        key: "adminEdit",
-        header: "Edit",
-        className: "w-[7.5rem] md:whitespace-nowrap",
-        mobileLabel: "Edit",
-        mobileHeaderEnd: true,
-        render: (row: Order & { items?: Order[] }) => {
-          const href = getAdminOrderEditHref ? getAdminOrderEditHref(row) : null;
-          if (!href) {
-            return (
-              <span
-                className="text-text-muted text-xs"
-                title="Requires orders.update. Edits allowed for Pending or Packed (uniform group status)."
-              >
-                —
-              </span>
-            );
-          }
-          return (
-            <Link
-              to={href}
-              className="inline-flex items-center gap-1 rounded-md border border-primary/50 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20"
-              title="Edit order"
-              aria-label={`Edit order ${row.orderId}`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <PencilIcon className="h-4 w-4 shrink-0" aria-hidden />
-              Edit
-            </Link>
-          );
-        },
-      },
-      {
         key: "createdAt",
         header: "Date",
         className: "whitespace-nowrap md:min-w-[8rem]",
@@ -167,19 +154,62 @@ export function useAdminOrderTableColumns({
         },
       },
       {
-        key: "discountAmount",
-        header: "Discount",
-        render: (row: Order) => discountDisplay(row.discountAmount) ?? "—",
+        key: "shopName",
+        header: "Shop Name",
+        className: "md:min-w-[11rem]",
+        render: (row: Order & { items?: Order[] }) => {
+          const lines = row.items && row.items.length > 0 ? row.items : [row];
+          const shops = [
+            ...new Set(
+              lines
+                .map((i) => getOrderShopName(i, products, vendors))
+                .filter((s) => s && s !== "—"),
+            ),
+          ];
+          if (shops.length === 0) return <span className="text-text-muted">—</span>;
+          if (shops.length === 1) {
+            return (
+              <span className="font-semibold text-text-heading">
+                {shops[0]}
+              </span>
+            );
+          }
+          return (
+            <div>
+              <span className="font-semibold text-text-heading">
+                {shops[0]}
+              </span>
+              <span className="ml-1 text-xs text-text-muted">
+                +{shops.length - 1} more
+              </span>
+            </div>
+          );
+        },
       },
       {
-        key: "staffAssignedNumber",
-        header: "Assigned #",
-        render: (row: Order) => {
-          const n = row.staffAssignedNumber?.trim();
-          return n ? (
-            <span className="font-mono text-xs">{n}</span>
-          ) : (
-            "—"
+        key: "vendorName",
+        header: "Vendor Name",
+        className: "md:min-w-[11rem]",
+        render: (row: Order & { items?: Order[] }) => {
+          const lines = row.items && row.items.length > 0 ? row.items : [row];
+          const names = [
+            ...new Set(
+              lines
+                .map((i) => getOrderVendorName(i, products, vendors))
+                .filter((s) => s && s !== "—"),
+            ),
+          ];
+          if (names.length === 0) return <span className="text-text-muted">—</span>;
+          if (names.length === 1) {
+            return <span className="font-medium text-text-heading">{names[0]}</span>;
+          }
+          return (
+            <div>
+              <span className="font-medium text-text-heading">{names[0]}</span>
+              <span className="ml-1 text-xs text-text-muted">
+                +{names.length - 1} more
+              </span>
+            </div>
           );
         },
       },
@@ -191,22 +221,6 @@ export function useAdminOrderTableColumns({
           const n = gt != null ? gt : safeMoney(row.sellingAmount);
           return `₹${n.toFixed(2)}`;
         },
-      },
-      {
-        key: "platform",
-        header: "Platform",
-        render: (row: Order) => {
-          const isWeb = row.platform === "WebApp" || row.platform === "webapp";
-          return (
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-              isWeb 
-                ? "bg-violet-100 text-violet-700 border border-violet-200" 
-                : "bg-blue-100 text-blue-700 border border-blue-200"
-            }`}>
-              {row.platform || "staff"}
-            </span>
-          );
-        }
       },
       {
         key: "paymentMethod",
@@ -243,15 +257,6 @@ export function useAdminOrderTableColumns({
               {isPaid ? "✓ Paid" : isFailed ? "✗ Failed" : "Pending"}
             </span>
           );
-        },
-      },
-      {
-        key: "staffId",
-        header: "Staff",
-        className: "md:min-w-[12rem]",
-        render: (row: Order) => {
-          const staffName = row.staffId ? (staff.find((s) => s.id === row.staffId)?.name ?? row.staffId) : "—";
-          return <span className="font-medium">{staffName}</span>;
         },
       },
       {
@@ -347,8 +352,9 @@ export function useAdminOrderTableColumns({
     ],
     [
       selectAllHeaderRef,
-      staff,
+      _staff,
       products,
+      vendors,
       pdfLoadingId,
       selectedIds,
       allVisibleSelected,
@@ -356,7 +362,7 @@ export function useAdminOrderTableColumns({
       toggleAllVisibleSelected,
       downloadPdf,
       onOpenDetail,
-      getAdminOrderEditHref,
+      _getAdminOrderEditHref,
       onRevokePacked,
       revokePackedLoadingId,
     ],

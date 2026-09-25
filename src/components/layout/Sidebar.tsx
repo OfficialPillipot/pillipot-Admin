@@ -5,7 +5,7 @@ import {
   DocumentPlusIcon,
   ClipboardDocumentListIcon,
   UsersIcon,
-  CubeIcon,
+  // CubeIcon,
   Squares2X2Icon,
   TagIcon,
   ArrowDownTrayIcon,
@@ -17,11 +17,11 @@ import {
   UserGroupIcon,
   HashtagIcon,
   BriefcaseIcon,
-  TruckIcon,
+  // TruckIcon,
   Cog6ToothIcon,
   CurrencyRupeeIcon,
   BanknotesIcon,
-  PaperAirplaneIcon,
+  // PaperAirplaneIcon,
   ArchiveBoxIcon,
   ClockIcon,
   NewspaperIcon,
@@ -125,28 +125,15 @@ const ADMIN_NAV_SECTIONS: NavSection<AdminNavItem>[] = [
     title: "Overview",
     items: [{ to: "/admin", label: "Dashboard", end: true, icon: HomeIcon }],
   },
+
   {
-    title: "Orders & delivery",
+    title: "Vendors",
     items: [
-      { to: "/admin/orders", label: "Orders", end: true, icon: CubeIcon, permission: "orders.view" },
-      { to: "/admin/online-orders", label: "Online Orders", end: true, icon: CubeIcon, permission: "orders.view" },
-      {
-        to: "/admin/tracking-scan",
-        label: "Tracking scan",
-        end: true,
-        icon: QrCodeIcon,
-        permission: "orders.update",
-      },
-      // {
-      //   to: "/admin/post-office",
-      //   label: "India Post",
-      //   end: true,
-      //   icon: BuildingOffice2Icon,
-      //   permission: "orders.view",
-      // },
-      { to: "/admin/senders", label: "Senders", end: true, icon: TruckIcon, permission: "senders.view" },
-      { to: "/admin/delivery", label: "Delivery", end: true, icon: PaperAirplaneIcon, permission: "deliveries.view" },
-      { to: "/admin/cod", label: "COD Management", end: true, icon: CurrencyRupeeIcon, permission: "deliveries.view" },
+      { to: "/admin/vendors/orders", label: " Orders", end: true, icon: ClipboardDocumentListIcon, permission: "vendors.view" },
+
+      { to: "/admin/vendors", label: "Applications", end: true, icon: BriefcaseIcon, permission: "vendors.view" },
+      { to: "/admin/vendors/active", label: "Active Vendors", end: true, icon: UsersIcon, permission: "vendors.view" },
+      { to: "/admin/vendors/products", label: "Vendor Products", end: true, icon: Squares2X2Icon, permission: "vendors.view" },
     ],
   },
   {
@@ -167,20 +154,20 @@ const ADMIN_NAV_SECTIONS: NavSection<AdminNavItem>[] = [
         icon: BanknotesIcon,
         permission: "staff.view",
       },
-      {
-        to: "/admin/bonus-log",
-        label: "Bonus log",
-        end: true,
-        icon: GiftIcon,
-        permission: "staff.view",
-      },
-      {
-        to: "/admin/staff/assigned-numbers",
-        label: "Assigned numbers",
-        end: true,
-        icon: HashtagIcon,
-        permission: "assigned_numbers.view",
-      },
+      // {
+      //   to: "/admin/bonus-log",
+      //   label: "Bonus log",
+      //   end: true,
+      //   icon: GiftIcon,
+      //   permission: "staff.view",
+      // },
+      // {
+      //   to: "/admin/staff/assigned-numbers",
+      //   label: "Assigned numbers",
+      //   end: true,
+      //   icon: HashtagIcon,
+      //   permission: "assigned_numbers.view",
+      // },
       {
         to: "/admin/staff/roles",
         label: "Staff roles",
@@ -194,7 +181,7 @@ const ADMIN_NAV_SECTIONS: NavSection<AdminNavItem>[] = [
     title: "Catalog & customers",
     items: [
       { to: "/admin/products", label: "Products", end: true, icon: Squares2X2Icon, permission: "products.view" },
-          { to: "/admin/tags", label: "Tags", end: true, icon: HashtagIcon, permission: "products.view" },
+      { to: "/admin/tags", label: "Tags", end: true, icon: HashtagIcon, permission: "products.view" },
       { to: "/admin/categories", label: "Categories", end: true, icon: TagIcon, permission: "categories.view" },
       { to: "/admin/subcategories", label: "Subcategories", end: true, icon: ListBulletIcon, permission: "categories.view" },
       { to: "/admin/offers", label: "Product Offers", end: true, icon: TagIcon, permission: "products.view" },
@@ -205,14 +192,29 @@ const ADMIN_NAV_SECTIONS: NavSection<AdminNavItem>[] = [
     ],
   },
   {
-    title: "Vendors",
+    title: "Orders & delivery",
     items: [
-      { to: "/admin/vendors", label: "Applications", end: true, icon: BriefcaseIcon, permission: "vendors.view" },
-      { to: "/admin/vendors/active", label: "Active Vendors", end: true, icon: UsersIcon, permission: "vendors.view" },
-      { to: "/admin/vendors/products", label: "Vendor Products", end: true, icon: Squares2X2Icon, permission: "vendors.view" },
-      { to: "/admin/vendors/orders", label: "Vendor Orders", end: true, icon: ClipboardDocumentListIcon, permission: "vendors.view" },
+      // { to: "/admin/orders", label: "Orders", end: true, icon: CubeIcon, permission: "orders.view" },
+      // {
+      //   to: "/admin/tracking-scan",
+      //   label: "Tracking scan",
+      //   end: true,
+      //   icon: QrCodeIcon,
+      //   permission: "orders.update",
+      // },
+      // {
+      //   to: "/admin/post-office",
+      //   label: "India Post",
+      //   end: true,
+      //   icon: BuildingOffice2Icon,
+      //   permission: "orders.view",
+      // },
+      //{ to: "/admin/senders", label: "Senders", end: true, icon: TruckIcon, permission: "senders.view" },
+      //  { to: "/admin/delivery", label: "Delivery", end: true, icon: PaperAirplaneIcon, permission: "deliveries.view" },
+      { to: "/admin/cod", label: "COD Management", end: true, icon: CurrencyRupeeIcon, permission: "deliveries.view" },
     ],
   },
+
   {
     title: "Insights",
     items: [
@@ -341,7 +343,7 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-gradient-to-br from-sidebar-accent to-sidebar-accent/70 text-sm font-bold text-sidebar-bg shadow-sm"
             aria-hidden
           >
-            EC
+            P
           </div>
           <div className="min-w-0">
             <span className="truncate text-base font-semibold tracking-tight text-sidebar-text-active">

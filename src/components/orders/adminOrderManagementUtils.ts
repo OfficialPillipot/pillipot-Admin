@@ -89,14 +89,19 @@ export type GroupedAdminOrder = Order & {
 export function groupOrdersForAdminList(
   listLines: Order[],
   filters: {
-    productId: string;
-    staffId: string;
-    status: string;
-    orderType: string;
-    deliveryMethodId: string;
-    platform: string;
+    productId?: string | string[];
+    productIds?: string[];
+    staffId?: string;
+    vendorId?: string | string[];
+    vendorIds?: string[];
+    status?: string | string[];
+    statuses?: string[];
+    orderType?: string;
+    deliveryMethodId?: string;
+    platform?: string;
     paymentStatus?: string;
     mode?: "main" | "pending_failed";
+    products?: import("../../types").Product[];
   },
 ): GroupedAdminOrder[] {
   let list = [...listLines].sort(
@@ -106,11 +111,11 @@ export function groupOrdersForAdminList(
 
   // Mode separation:
   // - "pending_failed" (Online Orders page): ONLY show website orders (and exclude unpaid online checkout attempts).
-  // - "main" (Orders page): ONLY show staff / manual orders (exclude website orders).
+  // - "main" (Orders page): show complete orders including vendor / website orders (exclude unpaid online checkout attempts).
   if (filters.mode === "pending_failed") {
     list = list.filter((o) => isWebsiteOrder(o) && isCompletedOrCodOrder(o));
   } else if (filters.mode === "main") {
-    list = list.filter((o) => !isWebsiteOrder(o));
+    list = list.filter(isCompletedOrCodOrder);
   } else if (filters.orderType === "prepaid") {
     list = list.filter(isCompletedOrCodOrder);
   }
@@ -119,14 +124,71 @@ export function groupOrdersForAdminList(
     list = list.filter((o) => (o.paymentStatus ?? "pending") === filters.paymentStatus);
   }
 
-  if (filters.productId) {
-    list = list.filter((o) => o.productId === filters.productId);
+  const selectedProductIds = (
+    filters.productIds?.length
+      ? filters.productIds
+      : Array.isArray(filters.productId)
+        ? filters.productId
+        : filters.productId
+          ? [filters.productId]
+          : []
+  ).filter(Boolean);
+
+  if (selectedProductIds.length > 0) {
+    const idSet = new Set(selectedProductIds);
+    list = list.filter((o) => {
+      if (idSet.has(o.productId)) return true;
+      if ((o as { items?: Order[] }).items?.some((i) => idSet.has(i.productId))) return true;
+      return false;
+    });
   }
+
+  const selectedVendorIds = (
+    filters.vendorIds?.length
+      ? filters.vendorIds
+      : Array.isArray(filters.vendorId)
+        ? filters.vendorId
+        : filters.vendorId
+          ? [filters.vendorId]
+          : []
+  ).filter(Boolean);
+
+  if (selectedVendorIds.length > 0) {
+    const vSet = new Set(selectedVendorIds);
+    list = list.filter((o) => {
+      const matchVendor = (item: Order) => {
+        if (item.vendorId && vSet.has(item.vendorId)) return true;
+        if (filters.products && item.productId) {
+          const prod = filters.products.find((p) => p.id === item.productId);
+          if (prod && ((prod.vendorId && vSet.has(prod.vendorId)) || (prod.vendor_id && vSet.has(prod.vendor_id)))) {
+            return true;
+          }
+        }
+        return false;
+      };
+      if (matchVendor(o)) return true;
+      if ((o as { items?: Order[] }).items?.some(matchVendor)) return true;
+      return false;
+    });
+  }
+
   if (filters.staffId) {
     list = list.filter((o) => o.staffId === filters.staffId);
   }
-  if (filters.status) {
-    list = list.filter((o) => o.status === filters.status);
+
+  const selectedStatuses = (
+    filters.statuses?.length
+      ? filters.statuses
+      : Array.isArray(filters.status)
+        ? filters.status
+        : filters.status
+          ? [filters.status]
+          : []
+  ).filter(Boolean);
+
+  if (selectedStatuses.length > 0) {
+    const statusSet = new Set(selectedStatuses);
+    list = list.filter((o) => statusSet.has(o.status));
   }
   if (filters.orderType) {
     list = list.filter((o) => o.orderType === filters.orderType);

@@ -7,6 +7,10 @@ import { selectStaff } from "../store/staffSlice";
 import { selectProducts } from "../store/productsSlice";
 import { selectSettings } from "../store/settingsSlice";
 import {
+  useGetAdminVendorOrdersQuery,
+  useGetVendorsQuery,
+} from "../store/api/edenApi";
+import {
   Card,
   CardHeader,
   Button,
@@ -127,6 +131,24 @@ function AdminDashboardPage() {
   const products = useAppSelector(selectProducts);
   const settings = useAppSelector(selectSettings);
 
+  const { data: vendorOrdersData } = useGetAdminVendorOrdersQuery();
+  const vendorOrders = useMemo(
+    () => (vendorOrdersData?.items ?? []) as Order[],
+    [vendorOrdersData],
+  );
+
+  const { data: vendors = [] } = useGetVendorsQuery();
+  const activeVendorsCount = useMemo(
+    () =>
+      vendors.filter(
+        (v) =>
+          (v.status === "APPROVED" || (v as any).status === "approved") &&
+          v.user?.isActive !== false &&
+          v.isActive !== false,
+      ).length,
+    [vendors],
+  );
+
   const lowStockThreshold = settings?.lowStockThreshold ?? 0;
 
   const lowOrOutProducts = useMemo(() => {
@@ -184,18 +206,18 @@ function AdminDashboardPage() {
     return { start, end };
   }, [dateFilter, customStart, customEnd]);
 
-  const filteredOrders = useMemo(() => {
-    return orders.filter((o) => {
+  const filteredVendorOrders = useMemo(() => {
+    return vendorOrders.filter((o) => {
       const d = new Date(o.createdAt);
       return d >= activeStart && d <= activeEnd;
     });
-  }, [orders, activeStart, activeEnd]);
+  }, [vendorOrders, activeStart, activeEnd]);
 
   const totalOrders = useMemo(() => {
-    const validOrders = filteredOrders.filter((o) => o.status !== "cancelled");
+    const validOrders = filteredVendorOrders.filter((o) => o.status !== "cancelled");
     const uniqueIds = new Set(validOrders.map((o) => o.orderId));
     return uniqueIds.size;
-  }, [filteredOrders]);
+  }, [filteredVendorOrders]);
 
   const periodRange = useMemo(
     () => ({ start: activeStart, end: activeEnd }),
@@ -302,7 +324,7 @@ function AdminDashboardPage() {
               <div className="mt-5 flex flex-wrap gap-2">
 
                 <Badge variant="default">
-                  Active staff {staff.filter((s) => s.isActive).length}
+                  Active vendors {activeVendorsCount}
                 </Badge>
                 <Badge variant="default">
                   Recent groups {recentOrders.length}
@@ -326,38 +348,6 @@ function AdminDashboardPage() {
 
 
       </div>
-      <Card className="dashboard-metric-card w-full" padding="md">
-        <CardHeader
-          title="Watchlist"
-          subtitle="Critical items that need attention first."
-        />
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-[var(--radius-lg)] border border-border bg-surface-soft p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
-              Pending orders
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-warning">
-              {filteredOrders.filter((o) => o.status === "pending").length}
-            </p>
-          </div>
-          <div className="rounded-[var(--radius-lg)] border border-border bg-surface-soft p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
-              Low stock items
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-error">
-              {lowOrOutProducts.length}
-            </p>
-          </div>
-          <div className="rounded-[var(--radius-lg)] border border-border bg-surface-soft p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
-              Salary exposure
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-earnings">
-              {formatCurrency(totalSalaryPayable)}
-            </p>
-          </div>
-        </div>
-      </Card>
       {!isMdUp && (
         <Card padding="md">
           <AdminDashboardPeriodControls
@@ -372,24 +362,26 @@ function AdminDashboardPage() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="dashboard-metric-card" padding="md">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
-            Total orders
-          </p>
-          <p className="mt-2 text-3xl font-semibold text-text-heading">
-            {totalOrders}
-          </p>
-
-        </Card>
-        <Card className="dashboard-metric-card" padding="md">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
-            Staff active
-          </p>
-          <p className="mt-2 text-3xl font-semibold text-text-heading">
-            {staff.filter((s) => s.isActive).length}
-          </p>
-
-        </Card>
+        <Link to="/admin/vendors/orders" className="block group">
+          <Card className="dashboard-metric-card h-full transition-colors hover:border-primary/50" padding="md">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted group-hover:text-primary transition-colors">
+              Total orders
+            </p>
+            <p className="mt-2 text-3xl font-semibold text-text-heading">
+              {totalOrders}
+            </p>
+          </Card>
+        </Link>
+        <Link to="/admin/vendors/active" className="block group">
+          <Card className="dashboard-metric-card h-full transition-colors hover:border-primary/50" padding="md">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted group-hover:text-primary transition-colors">
+              Active vendors
+            </p>
+            <p className="mt-2 text-3xl font-semibold text-text-heading">
+              {activeVendorsCount}
+            </p>
+          </Card>
+        </Link>
         <Card className="dashboard-metric-card" padding="md">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
             Salary payable

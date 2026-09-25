@@ -104,6 +104,16 @@ export interface Product {
   customTextLimit?: number;
   categoryEntity?: Category | null;
   subcategoryEntity?: Subcategory | null;
+  vendorId?: string | null;
+  vendor_id?: string | null;
+  vendor?: {
+    id?: string;
+    businessName?: string;
+    ownerName?: string;
+    email?: string;
+    phone?: string;
+    shopName?: string;
+  } | null;
 }
 
 export interface ProductOffer {
@@ -422,6 +432,9 @@ export interface Order {
   paymentStatus?: string;
   /** Razorpay payment id for online payments */
   razorpayPaymentId?: string | null;
+  vendorId?: string | null;
+  vendorName?: string | null;
+  shopName?: string | null;
 }
 
 /** Payload for POST /orders; total is computed from product price on the server. */

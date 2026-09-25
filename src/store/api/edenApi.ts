@@ -1618,6 +1618,7 @@ export const {
   useUpdateTagMutation,
   useDeleteTagMutation,
   useGetCategoriesQuery,
+  useGetSubcategoriesQuery,
   useGetOrdersQuery,
   useGetStaffQuery,
   useGetStaffMeQuery,

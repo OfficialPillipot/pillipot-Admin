@@ -13,7 +13,6 @@ import { selectStaff } from "../store/staffSlice";
 import { selectProducts, fetchProducts } from "../store/productsSlice";
 import {
   fetchDeliveryMethods,
-  selectDeliveryMethods,
 } from "../store/deliveriesSlice";
 import { fetchSettings, selectSettings } from "../store/settingsSlice";
 import { Card, CardHeader, Table } from "../components/ui";
@@ -25,7 +24,6 @@ import { AdminOrderDetailModal } from "../components/orders/AdminOrderDetailModa
 import { AdminOrderFilters } from "../components/orders/AdminOrderFilters";
 import { AdminOrderMobileSelectAll } from "../components/orders/AdminOrderMobileSelectAll";
 import {
-  ADMIN_DELIVERY_FILTER_NONE,
   groupOrdersForAdminList,
   orderLineIds,
   rowUniformStatus,
@@ -36,7 +34,18 @@ import {
 import { useAdminOrderTableColumns } from "../hooks/useAdminOrderTableColumns";
 import { useAuth } from "../context/AuthContext";
 import { hasPermission } from "../lib/permissions";
-import { useGetAdminVendorOrdersQuery } from "../store/api/edenApi";
+import { useGetAdminVendorOrdersQuery, useGetVendorsQuery, useGetAdminVendorProductsQuery } from "../store/api/edenApi";
+
+function getInitialMonthRange(): { from: string; to: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return {
+    from: `${y}-${m}-01`,
+    to: `${y}-${m}-${d}`,
+  };
+}
 
 function getAdminOrderEditHref(row: Order & { items?: Order[] }): string | null {
   return `/admin/orders/${row.id}`;
@@ -48,19 +57,35 @@ function AdminVendorOrderManagementPage() {
 
   // ── Use the dedicated vendor orders API ──
   const { data, isLoading, refetch } = useGetAdminVendorOrdersQuery();
+  const { data: vendors = [] } = useGetVendorsQuery();
+  const { data: vendorProducts = [] } = useGetAdminVendorProductsQuery();
   const listLines = useMemo(() => (data?.items ?? []) as Order[], [data]);
 
   const staff = useAppSelector(selectStaff);
   const products = useAppSelector(selectProducts);
-  const deliveryMethods = useAppSelector(selectDeliveryMethods);
   const settings = useAppSelector(selectSettings);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [productFilter, setProductFilter] = useState("");
-  const [staffFilter, setStaffFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [deliveryFilter, setDeliveryFilter] = useState("");
-  const [platformFilter, setPlatformFilter] = useState("");
+
+  const initialRange = useMemo(() => getInitialMonthRange(), []);
+
+  // Draft filter states (updated by user controls; applied only on clicking Apply)
+  const [searchDraft, setSearchDraft] = useState("");
+  const [dateFromDraft, setDateFromDraft] = useState(initialRange.from);
+  const [dateToDraft, setDateToDraft] = useState(initialRange.to);
+  const [vendorDraft, setVendorDraft] = useState<string[]>([]);
+  const [statusDraft, setStatusDraft] = useState<string[]>([]);
+  const [productDraft, setProductDraft] = useState<string[]>([]);
+  const [typeDraft, setTypeDraft] = useState("");
+
+  // Applied filter states
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [appliedDateFrom, setAppliedDateFrom] = useState(initialRange.from);
+  const [appliedDateTo, setAppliedDateTo] = useState(initialRange.to);
+  const [appliedVendor, setAppliedVendor] = useState<string[]>([]);
+  const [appliedStatus, setAppliedStatus] = useState<string[]>([]);
+  const [appliedProduct, setAppliedProduct] = useState<string[]>([]);
+  const [appliedType, setAppliedType] = useState("");
+
   const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
   const [bulkPdfLoading, setBulkPdfLoading] = useState(false);
   const [bulkStatusLoading, setBulkStatusLoading] = useState(false);
@@ -78,24 +103,43 @@ function AdminVendorOrderManagementPage() {
   const listLinesRef = useRef(listLines);
   listLinesRef.current = listLines;
 
+  const filteredListLines = useMemo(() => {
+    let lines = listLines;
+    if (appliedSearch.trim()) {
+      const s = appliedSearch.trim().toLowerCase();
+      lines = lines.filter((o) =>
+        o.orderId.toLowerCase().includes(s) ||
+        o.customerName?.toLowerCase().includes(s) ||
+        o.phone?.toLowerCase().includes(s),
+      );
+    }
+    if (appliedDateFrom) {
+      const from = new Date(`${appliedDateFrom}T00:00:00.000Z`);
+      lines = lines.filter((o) => new Date(o.createdAt) >= from);
+    }
+    if (appliedDateTo) {
+      const to = new Date(`${appliedDateTo}T23:59:59.999Z`);
+      lines = lines.filter((o) => new Date(o.createdAt) <= to);
+    }
+    return lines;
+  }, [listLines, appliedSearch, appliedDateFrom, appliedDateTo]);
+
   const groupedOrders = useMemo(
     () =>
-      groupOrdersForAdminList(listLines, {
-        productId: productFilter,
-        staffId: staffFilter,
-        status: statusFilter,
-        orderType: typeFilter,
-        deliveryMethodId: deliveryFilter,
-        platform: platformFilter,
+      groupOrdersForAdminList(filteredListLines, {
+        productIds: appliedProduct,
+        vendorIds: appliedVendor,
+        statuses: appliedStatus,
+        orderType: appliedType,
+        products,
       }),
     [
-      listLines,
-      productFilter,
-      staffFilter,
-      statusFilter,
-      typeFilter,
-      deliveryFilter,
-      platformFilter,
+      filteredListLines,
+      appliedProduct,
+      appliedVendor,
+      appliedStatus,
+      appliedType,
+      products,
     ],
   );
 
@@ -458,15 +502,6 @@ function AdminVendorOrderManagementPage() {
     [settings?.defaultPdfSize, settings?.defaultSenderId],
   );
 
-  const clearTableFilters = useCallback(() => {
-    setStaffFilter("");
-    setStatusFilter("");
-    setProductFilter("");
-    setTypeFilter("");
-    setDeliveryFilter("");
-    setPlatformFilter("");
-  }, []);
-
   const downloadSelectedPdf = useCallback(async () => {
     const ids = filteredOrders
       .filter((o) => selectedIds.has(o.id))
@@ -568,22 +603,43 @@ function AdminVendorOrderManagementPage() {
     [selectedIds, filteredOrders, dispatch, clearRowSelection, refetch],
   );
 
-  const productOptions = useMemo(
-    () => [
-      { value: "", label: "Select all products" },
-      ...products.map((p) => ({ value: p.id, label: p.name })),
-    ],
-    [products],
-  );
+  const productOptions = useMemo(() => {
+    const map = new Map<string, { value: string; label: string; subLabel?: string }>();
+    for (const vp of vendorProducts) {
+      if (vp.id) {
+        const vName = vp.vendor?.businessName?.trim() || vp.vendor?.ownerName?.trim();
+        map.set(vp.id, {
+          value: vp.id,
+          label: vp.name,
+          subLabel: vName ? `By ${vName}` : undefined,
+        });
+      }
+    }
+    for (const p of products) {
+      if (p.id && !map.has(p.id)) {
+        map.set(p.id, {
+          value: p.id,
+          label: p.name,
+        });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [vendorProducts, products]);
 
-  const staffOptions = useMemo(
-    () => [
-      { value: "", label: "Select all staff" },
-      ...[...staff]
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((s) => ({ value: s.id, label: s.name })),
-    ],
-    [staff],
+  const vendorOptions = useMemo(
+    () =>
+      [...vendors]
+        .sort((a, b) =>
+          (a.businessName || a.ownerName || "").localeCompare(
+            b.businessName || b.ownerName || "",
+          ),
+        )
+        .map((v) => ({
+          value: v.id,
+          label: (v.businessName?.trim() || v.ownerName?.trim()) || "Vendor",
+          subLabel: v.phoneNumber ? `Phone: ${v.phoneNumber}` : undefined,
+        })),
+    [vendors],
   );
 
   const typeOptions = useMemo(
@@ -595,29 +651,62 @@ function AdminVendorOrderManagementPage() {
     [],
   );
 
-  const deliveryOptions = useMemo(
-    () => [
-      { value: "", label: "All delivery types" },
-      {
-        value: ADMIN_DELIVERY_FILTER_NONE,
-        label: "No delivery method",
-      },
-      ...[...deliveryMethods]
-        .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
-        .map((m) => ({ value: m.id, label: m.name })),
-    ],
-    [deliveryMethods],
-  );
+  const handleApplyFilters = useCallback(() => {
+    setAppliedSearch(searchDraft.trim());
+    setAppliedDateFrom(dateFromDraft);
+    setAppliedDateTo(dateToDraft);
+    setAppliedVendor(vendorDraft);
+    setAppliedStatus(statusDraft);
+    setAppliedProduct(productDraft);
+    setAppliedType(typeDraft);
+    toast.success("Filters applied");
+  }, [
+    searchDraft,
+    dateFromDraft,
+    dateToDraft,
+    vendorDraft,
+    statusDraft,
+    productDraft,
+    typeDraft,
+  ]);
 
-  const platformOptions = useMemo(
-    () => [
-      { value: "", label: "Select all platforms" },
-      { value: "staff", label: "Staff" },
-      { value: "webapp", label: "Webapp" },
-    ],
-    [],
-  );
+  const handleClearFilters = useCallback(() => {
+    setSearchDraft("");
+    setDateFromDraft("");
+    setDateToDraft("");
+    setVendorDraft([]);
+    setStatusDraft([]);
+    setProductDraft([]);
+    setTypeDraft("");
 
+    setAppliedSearch("");
+    setAppliedDateFrom("");
+    setAppliedDateTo("");
+    setAppliedVendor([]);
+    setAppliedStatus([]);
+    setAppliedProduct([]);
+    setAppliedType("");
+    toast.success("Filters cleared");
+  }, []);
+
+  const handleResetFilters = useCallback(() => {
+    setSearchDraft("");
+    setDateFromDraft(initialRange.from);
+    setDateToDraft(initialRange.to);
+    setVendorDraft([]);
+    setStatusDraft([]);
+    setProductDraft([]);
+    setTypeDraft("");
+
+    setAppliedSearch("");
+    setAppliedDateFrom(initialRange.from);
+    setAppliedDateTo(initialRange.to);
+    setAppliedVendor([]);
+    setAppliedStatus([]);
+    setAppliedProduct([]);
+    setAppliedType("");
+    toast.success("Filters reset to default");
+  }, [initialRange]);
 
   const handleRevokePacked = useCallback(
     async (row: Order & { items?: Order[] }) => {
@@ -650,6 +739,7 @@ function AdminVendorOrderManagementPage() {
     selectAllHeaderRef,
     staff,
     products,
+    vendors,
     pdfLoadingId,
     selectedIds,
     allVisibleSelected,
@@ -669,36 +759,34 @@ function AdminVendorOrderManagementPage() {
       <Card>
         <CardHeader title="Vendor Order Management" />
         <AdminOrderFilters
-          serverSearch=""
-          onServerSearchChange={() => {}}
-          dateFrom=""
-          onDateFromChange={() => {}}
-          dateTo=""
-          onDateToChange={() => {}}
-          filtersLoading={isLoading}
-          onApplyServerFilters={() => {}}
-          onClearServerFilters={() => {}}
-          staffFilter={staffFilter}
-          onStaffFilterChange={setStaffFilter}
-          staffOptions={staffOptions}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          productFilter={productFilter}
-          onProductFilterChange={setProductFilter}
+          search={searchDraft}
+          onSearchChange={setSearchDraft}
+          dateFrom={dateFromDraft}
+          onDateFromChange={setDateFromDraft}
+          dateTo={dateToDraft}
+          onDateToChange={setDateToDraft}
+          vendorFilter={vendorDraft}
+          onVendorFilterChange={setVendorDraft}
+          vendorOptions={vendorOptions}
+          statusFilter={statusDraft}
+          onStatusFilterChange={setStatusDraft}
+          productFilter={productDraft}
+          onProductFilterChange={setProductDraft}
           productOptions={productOptions}
-          typeFilter={typeFilter}
-          onTypeFilterChange={setTypeFilter}
+          typeFilter={typeDraft}
+          onTypeFilterChange={setTypeDraft}
           typeOptions={typeOptions}
-          deliveryFilter={deliveryFilter}
-          onDeliveryFilterChange={setDeliveryFilter}
-          deliveryOptions={deliveryOptions}
-          platformFilter={platformFilter}
-          onPlatformFilterChange={setPlatformFilter}
-          platformOptions={platformOptions}
-          onResetTableFilters={clearTableFilters}
-          appliedDateFrom=""
-          appliedDateTo=""
-          appliedServerSearch=""
+          filtersLoading={false}
+          onApply={handleApplyFilters}
+          onReset={handleResetFilters}
+          onClearAll={handleClearFilters}
+          appliedSearch={appliedSearch}
+          appliedDateFrom={appliedDateFrom}
+          appliedDateTo={appliedDateTo}
+          appliedVendor={appliedVendor}
+          appliedStatus={appliedStatus}
+          appliedProduct={appliedProduct}
+          appliedType={appliedType}
         />
         <AdminOrderBulkBar
           selectedCount={selectedVisibleCount}
