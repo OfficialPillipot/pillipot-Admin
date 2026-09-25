@@ -213,7 +213,7 @@ function VendorProductManagement() {
         preparationDays: preparationDays ? parseInt(preparationDays, 10) : 2,
         allowPhotoUpload: isCustomizable ? allowPhotoUpload : false,
         allowTextInput: isCustomizable ? allowTextInput : false,
-        customTextPrompt: (isCustomizable && allowTextInput && customTextPrompt.trim()) ? customTextPrompt.trim() : undefined,
+        customTextPrompt: (isCustomizable && allowTextInput && customTextPrompt.trim()) ? customTextPrompt.trim() : "",
         customTextLimit: (isCustomizable && allowTextInput && customTextLimit) ? parseInt(customTextLimit, 10) : undefined,
         description: description.trim() || undefined,
         image: imageFiles.length > 0 ? imageFiles : undefined,
@@ -439,6 +439,9 @@ function VendorProductManagement() {
                     setIsCustomizable(checked);
                     if (checked && !allowPhotoUpload && !allowTextInput) {
                       setAllowPhotoUpload(true);
+                    } else if (!checked) {
+                      setAllowPhotoUpload(false);
+                      setAllowTextInput(false);
                     }
                   }}
                 />

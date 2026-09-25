@@ -1,13 +1,16 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router";
-import { 
-  Card, 
+import {
+  Button,
+  Card,
   CardHeader,
-  ToggleSwitch
+  Modal,
+  ToggleSwitch,
+  Tooltip,
 } from "../components/ui";
-import { 
-  Squares2X2Icon, 
-  ClipboardDocumentListIcon, 
+import {
+  Squares2X2Icon,
+  ClipboardDocumentListIcon,
   UserCircleIcon,
   TagIcon,
   ClockIcon,
@@ -16,8 +19,8 @@ import {
   ExclamationTriangleIcon
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../context/AuthContext";
-import { 
-  useGetVendorPortalOrdersQuery, 
+import {
+  useGetVendorPortalOrdersQuery,
   useGetVendorPortalProductsQuery,
   useGetVendorPortalProfileQuery,
   useUpdateVendorPortalProfileMutation
@@ -27,6 +30,7 @@ import { toast } from "../lib/toast";
 
 function VendorDashboardPage() {
   const { user } = useAuth();
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
 
   // Queries
   const { data: allOrders = [], isLoading: isLoadingOrders } = useGetVendorPortalOrdersQuery();
@@ -50,6 +54,25 @@ function VendorDashboardPage() {
     }
   };
 
+  const handleToggleClick = (newVal: boolean) => {
+    if (!newVal) {
+      // Switching from Active to Inactive -> prompt warning modal
+      setShowDeactivateModal(true);
+    } else {
+      // Switching from Inactive to Active -> activate immediately without modal
+      handleToggleStoreActive(true);
+    }
+  };
+
+  const handleConfirmDeactivate = async () => {
+    setShowDeactivateModal(false);
+    await handleToggleStoreActive(false);
+  };
+
+  const handleCancelDeactivate = () => {
+    setShowDeactivateModal(false);
+  };
+
   // Valid orders (completed online payment or COD)
   const validOrders = useMemo(() => {
     return allOrders.filter(isCompletedOrCodOrder);
@@ -70,42 +93,45 @@ function VendorDashboardPage() {
       {/* Top Welcome Banner with Active/Inactive Store Toggle */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="md:col-span-3">
-          <div className="p-6 flex flex-col justify-between h-full sm:flex-row sm:items-center gap-4">
+          <div className="flex flex-col justify-between h-full sm:flex-row sm:items-center gap-4">
             <div>
               <p className="text-sm font-medium text-text-muted">Welcome Back,</p>
-              <h2 className="text-2xl font-bold mt-1 text-text-heading">{user?.name}</h2>
+              <div className="flex items-center gap-2.5 mt-1">
+                <h2 className="text-2xl font-bold text-text-heading capitalize">{user?.name}</h2>
+                <span
+                  className={`inline-block h-3 w-3 rounded-full shrink-0 ${isStoreActive
+                    ? "bg-emerald-500 animate-pulse ring-2 ring-emerald-500/20"
+                    : "bg-rose-500 ring-2 ring-rose-500/20"
+                    }`}
+                  title={isStoreActive ? "Store is Active" : "Store is Inactive"}
+                />
+              </div>
             </div>
 
             {/* Store Active / Inactive Toggle Switch */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-3.5 bg-surface border border-border px-4 py-2.5 rounded-2xl shadow-xs">
-                <div className="text-right">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <span
-                      className={`h-2.5 w-2.5 rounded-full ${
-                        isStoreActive ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
-                      }`}
-                    />
-                    <span className="text-xs font-bold text-text-heading">
-                      {isStoreActive ? "Store Active" : "Store Inactive"}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-text-muted mt-0.5">
-                    {isStoreActive ? "In Stock & available to buy" : "Marked Out of Stock on web app"}
-                  </p>
+              <Tooltip
+                content={
+                  isStoreActive
+                    ? "Store is Active (Online) — Click to deactivate store"
+                    : "Store is Inactive (Paused) — Click to activate store"
+                }
+                side="bottom"
+              >
+                <div className="flex items-center bg-surface border border-border p-1.5 rounded-2xl shadow-xs">
+                  <ToggleSwitch
+                    checked={isStoreActive}
+                    onChange={handleToggleClick}
+                    disabled={isUpdatingProfile || isLoadingProfile}
+                    aria-label="Toggle store active status"
+                  />
                 </div>
-                <ToggleSwitch
-                  checked={isStoreActive}
-                  onChange={handleToggleStoreActive}
-                  disabled={isUpdatingProfile || isLoadingProfile}
-                  aria-label="Toggle store active status"
-                />
-              </div>
+              </Tooltip>
             </div>
           </div>
 
           {/* Inactive store warning alert banner */}
-          {!isStoreActive && (
+          {/* {!isStoreActive && (
             <div className="mx-6 mb-5 p-3.5 rounded-xl border border-amber-300 bg-amber-50 flex items-center justify-between text-xs text-amber-900">
               <div className="flex items-center gap-2 font-medium">
                 <ExclamationTriangleIcon className="h-4 w-4 text-amber-600 shrink-0" />
@@ -114,7 +140,7 @@ function VendorDashboardPage() {
                 </span>
               </div>
             </div>
-          )}
+          )} */}
         </Card>
       </div>
 
@@ -142,8 +168,8 @@ function VendorDashboardPage() {
             </span>
           </div>
           <p className="mt-2 text-xs text-text-muted">
-            {pendingAcceptOrders.length > 0 
-              ? "Action required within 24h window" 
+            {pendingAcceptOrders.length > 0
+              ? "Action required within 24h window"
               : "All received orders accepted"}
           </p>
           <div className="mt-4 pt-3 border-t border-amber-100 flex items-center justify-between text-xs font-bold text-amber-700 group-hover:text-amber-900">
@@ -305,6 +331,50 @@ function VendorDashboardPage() {
           </Link>
         </div>
       </Card>
+
+      {/* Warning Confirmation Modal for Store Deactivation */}
+      <Modal
+        isOpen={showDeactivateModal}
+        onClose={handleCancelDeactivate}
+        title="Warning: Deactivate Store"
+        size="md"
+        footer={
+          <div className="flex items-center justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={handleCancelDeactivate}
+              disabled={isUpdatingProfile}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleConfirmDeactivate}
+              loading={isUpdatingProfile}
+            >
+              OK
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex items-start gap-3.5">
+          <div className="p-2.5 bg-amber-100 rounded-full text-amber-600 shrink-0">
+            <ExclamationTriangleIcon className="h-6 w-6" />
+          </div>
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-text-heading">
+              Are you sure you want to deactivate your store?
+            </h4>
+            <p className="text-xs text-text-muted leading-relaxed">
+              When your store is inactive, all of your products will be displayed as{" "}
+              <strong className="text-rose-600 font-semibold">Out of Stock</strong> on the store with ordering disabled. Customers will not be able to purchase your items until you switch the store back to active.
+            </p>
+            <p className="text-xs text-text-muted">
+              Click <strong>OK</strong> to confirm deactivating, or <strong>Cancel</strong> to remain active.
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
