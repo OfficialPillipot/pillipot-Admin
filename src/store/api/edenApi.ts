@@ -1349,6 +1349,16 @@ export const edenApi = createApi({
         { type: "Vendor", id: "LIST" },
       ],
     }),
+    toggleVendorStore: builder.mutation<Vendor, string>({
+      query: (id) => ({
+        url: endpoints.adminVendorToggleStore(id),
+        method: "PUT",
+      }),
+      invalidatesTags: (_r, _e, id) => [
+        { type: "Vendor", id },
+        { type: "Vendor", id: "LIST" },
+      ],
+    }),
     resetVendorPassword: builder.mutation<Vendor, { id: string; password?: string }>({
       query: ({ id, password }) => ({
         url: endpoints.adminVendorResetPassword(id),
@@ -1468,7 +1478,7 @@ export const edenApi = createApi({
     }),
     updateVendorPortalOrderStatus: builder.mutation<
       Order,
-      { id: string; status?: Order["status"]; trackingId?: string }
+      { id: string; status?: Order["status"]; trackingId?: string; remark?: string }
     >({
       query: ({ id, ...body }) => ({
         url: endpoints.vendorPortalOrderUpdateStatus(id),
@@ -1605,6 +1615,16 @@ export const edenApi = createApi({
         { type: "Vendor", id: "LIST" },
       ],
     }),
+    getVendorPortalReviews: builder.query<AdminReviewRow[], void>({
+      query: () => endpoints.vendorPortalReviews,
+      providesTags: (r) =>
+        r
+          ? [
+              { type: "Review" as const, id: "VENDOR_LIST" },
+              ...r.map((rw) => ({ type: "Review" as const, id: rw.id })),
+            ]
+          : [{ type: "Review", id: "VENDOR_LIST" }],
+    }),
   }),
 });
 
@@ -1659,6 +1679,7 @@ export const {
   useApproveVendorMutation,
   useRejectVendorMutation,
   useToggleVendorStatusMutation,
+  useToggleVendorStoreMutation,
   useResetVendorPasswordMutation,
   useGetVendorPortalProductsQuery,
   useCreateVendorPortalProductMutation,
@@ -1679,4 +1700,5 @@ export const {
   useGetAdminVendorOrdersQuery,
   useGetVendorPortalProfileQuery,
   useUpdateVendorPortalProfileMutation,
+  useGetVendorPortalReviewsQuery,
 } = edenApi;

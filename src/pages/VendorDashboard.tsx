@@ -16,7 +16,8 @@ import {
   ClockIcon,
   TruckIcon,
   ArrowRightIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  StarIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -39,11 +40,15 @@ function VendorDashboardPage() {
   const [updateProfile, { isLoading: isUpdatingProfile }] = useUpdateVendorPortalProfileMutation();
 
   // Store active status (defaults to true if undefined)
-  const isStoreActive = vendorProfile?.isActive !== false;
+  const isStoreActive = vendorProfile?.isStoreActive !== undefined
+    ? vendorProfile.isStoreActive
+    : (vendorProfile?.isActive !== false);
+
+  const isStoreDisabledByAdmin = Boolean(vendorProfile?.storeDisabledByAdmin);
 
   const handleToggleStoreActive = async (newVal: boolean) => {
     try {
-      await updateProfile({ isActive: newVal }).unwrap();
+      await updateProfile({ isStoreActive: newVal }).unwrap();
       if (newVal) {
         toast.success("Store is now Active! Your products are in stock and available for purchase.");
       } else {
@@ -55,6 +60,14 @@ function VendorDashboardPage() {
   };
 
   const handleToggleClick = (newVal: boolean) => {
+    if (isStoreDisabledByAdmin) {
+      toast.error(
+        vendorProfile?.storeDisabledReason
+          ? `The store has been disabled: ${vendorProfile.storeDisabledReason} Please contact admin.`
+          : "The store has been disabled by admin. Please contact admin."
+      );
+      return;
+    }
     if (!newVal) {
       // Switching from Active to Inactive -> prompt warning modal
       setShowDeactivateModal(true);
@@ -95,15 +108,23 @@ function VendorDashboardPage() {
         <Card className="md:col-span-3">
           <div className="flex flex-col justify-between h-full sm:flex-row sm:items-center gap-4">
             <div>
-              <p className="text-sm font-medium text-text-muted">Welcome Back,</p>
+              <p className="text-sm font-medium text-text-muted">Welcome Back to your store,</p>
               <div className="flex items-center gap-2.5 mt-1">
                 <h2 className="text-2xl font-bold text-text-heading capitalize">{user?.name}</h2>
                 <span
-                  className={`inline-block h-3 w-3 rounded-full shrink-0 ${isStoreActive
-                    ? "bg-emerald-500 animate-pulse ring-2 ring-emerald-500/20"
-                    : "bg-rose-500 ring-2 ring-rose-500/20"
+                  className={`inline-block h-3 w-3 rounded-full shrink-0 ${isStoreDisabledByAdmin
+                      ? "bg-rose-600 ring-2 ring-rose-600/30"
+                      : isStoreActive
+                        ? "bg-emerald-500 animate-pulse ring-2 ring-emerald-500/20"
+                        : "bg-rose-500 ring-2 ring-rose-500/20"
                     }`}
-                  title={isStoreActive ? "Store is Active" : "Store is Inactive"}
+                  title={
+                    isStoreDisabledByAdmin
+                      ? `The store has been disabled${vendorProfile?.storeDisabledReason ? `: ${vendorProfile.storeDisabledReason}` : " by admin"}`
+                      : isStoreActive
+                        ? "Store is Active"
+                        : "Store is Inactive"
+                  }
                 />
               </div>
             </div>
@@ -112,17 +133,25 @@ function VendorDashboardPage() {
             <div className="flex items-center gap-3">
               <Tooltip
                 content={
-                  isStoreActive
-                    ? "Store is Active (Online) — Click to deactivate store"
-                    : "Store is Inactive (Paused) — Click to activate store"
+                  isStoreDisabledByAdmin
+                    ? `The store has been disabled${vendorProfile?.storeDisabledReason
+                      ? ` (${vendorProfile.storeDisabledReason})`
+                      : " by admin"
+                    }. Please contact admin.`
+                    : isStoreActive
+                      ? "Store is Active (Online) — Click to deactivate store"
+                      : "Store is Inactive (Paused) — Click to activate store"
                 }
                 side="bottom"
               >
-                <div className="flex items-center bg-surface border border-border p-1.5 rounded-2xl shadow-xs">
+                <div
+                  className={`flex items-center bg-surface border border-border p-1.5 rounded-2xl shadow-xs ${isStoreDisabledByAdmin ? "opacity-60 cursor-not-allowed" : ""
+                    }`}
+                >
                   <ToggleSwitch
                     checked={isStoreActive}
                     onChange={handleToggleClick}
-                    disabled={isUpdatingProfile || isLoadingProfile}
+                    disabled={isStoreDisabledByAdmin || isUpdatingProfile || isLoadingProfile}
                     aria-label="Toggle store active status"
                   />
                 </div>
@@ -131,16 +160,28 @@ function VendorDashboardPage() {
           </div>
 
           {/* Inactive store warning alert banner */}
-          {/* {!isStoreActive && (
+          {isStoreDisabledByAdmin ? (
+            <div className="mx-6 mb-5 p-3.5 rounded-xl border border-rose-300 bg-rose-50 flex items-center justify-between text-xs text-rose-900">
+              <div className="flex items-center gap-2 font-medium">
+                <ExclamationTriangleIcon className="h-4 w-4 text-rose-600 shrink-0" />
+                <span>
+                  <strong>Store Disabled:</strong>{" "}
+                  {vendorProfile?.storeDisabledReason || "The store has been disabled by admin."}{" "}
+                  Please contact admin to re-enable your store. Your products are currently displayed as{" "}
+                  <strong>Out of Stock</strong> on the web app.
+                </span>
+              </div>
+            </div>
+          ) : !isStoreActive ? (
             <div className="mx-6 mb-5 p-3.5 rounded-xl border border-amber-300 bg-amber-50 flex items-center justify-between text-xs text-amber-900">
               <div className="flex items-center gap-2 font-medium">
                 <ExclamationTriangleIcon className="h-4 w-4 text-amber-600 shrink-0" />
                 <span>
-                  <strong>Store is currently Inactive:</strong> Your products are currently displayed as <strong>Out of Stock</strong> on the web app with the Buy button disabled. Turn the switch above back to <strong>Store Active</strong> whenever you are ready to resume sales.
+                  <strong>Store is currently Paused:</strong> Your products are currently displayed as <strong>Out of Stock</strong> on the web app. Turn the switch above back on whenever you are ready to resume sales.
                 </span>
               </div>
             </div>
-          )} */}
+          ) : null}
         </Card>
       </div>
 
@@ -277,7 +318,7 @@ function VendorDashboardPage() {
           title="Marketplace Overview"
           subtitle="Quick access to vendor tools and catalog management"
         />
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           <Link
             to="/vendor/products"
             className="p-4 rounded-xl border border-border bg-surface hover:border-primary transition-colors group block"
@@ -301,6 +342,19 @@ function VendorDashboardPage() {
             </div>
             <p className="text-lg font-bold mt-2 text-text-heading group-hover:text-primary">
               View Product Orders
+            </p>
+          </Link>
+
+          <Link
+            to="/vendor/reviews"
+            className="p-4 rounded-xl border border-border bg-surface hover:border-primary transition-colors group block"
+          >
+            <div className="flex items-center justify-between text-text-muted group-hover:text-primary">
+              <p className="text-xs font-semibold uppercase">Customer Feedback</p>
+              <StarIcon className="h-5 w-5" />
+            </div>
+            <p className="text-lg font-bold mt-2 text-text-heading group-hover:text-primary">
+              Product Reviews
             </p>
           </Link>
 

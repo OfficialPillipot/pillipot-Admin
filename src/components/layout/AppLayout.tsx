@@ -21,6 +21,7 @@ const DEFAULT_TITLES: Record<string, string> = {
   "/orders/:id": "Order Detail",
   "/profile": "Profile",
   "/vendor/profile": "Vendor Profile",
+  "/vendor/reviews": "Product Reviews",
   "/admin": "Admin Dashboard",
   "/admin/staff": "Staff Management",
   "/admin/staff/:id": "Staff Profile",

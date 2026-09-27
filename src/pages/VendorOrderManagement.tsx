@@ -31,6 +31,7 @@ import {
   DocumentTextIcon, 
   ArrowTopRightOnSquareIcon,
   CheckCircleIcon,
+  XCircleIcon,
   ClockIcon
 } from "@heroicons/react/24/outline";
 
@@ -93,6 +94,9 @@ function VendorOrderManagement() {
   
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null);
+  const [cancelRemark, setCancelRemark] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // ── Filtered orders (table-level) ──
   const orders = useMemo(() => {
@@ -257,16 +261,43 @@ function VendorOrderManagement() {
     }
   }, [updateStatus]);
 
-  const handleCancelOrder = useCallback(async (id: string) => {
-    if (!window.confirm("Are you sure you want to cancel this order?")) return;
+  const openCancelModal = useCallback((order: Order) => {
+    setCancelRemark("");
+    setCancelModalOrder(order);
+  }, []);
+
+  const closeCancelModal = useCallback(() => {
+    if (isCancelling) return;
+    setCancelModalOrder(null);
+    setCancelRemark("");
+  }, [isCancelling]);
+
+  const handleConfirmCancel = useCallback(async () => {
+    if (!cancelModalOrder) return;
+    if (!cancelRemark.trim()) {
+      toast.error("Please enter a remark to cancel this order.");
+      return;
+    }
+
+    setIsCancelling(true);
     try {
-      await updateStatus({ id, status: "cancelled" }).unwrap();
-      toast.success("Order cancelled");
-      setSelectedOrder(null);
+      await updateStatus({
+        id: cancelModalOrder.id,
+        status: "cancelled",
+        remark: cancelRemark.trim(),
+      }).unwrap();
+      toast.success(`Order #${cancelModalOrder.orderId} cancelled with remark.`);
+      if (selectedOrder?.id === cancelModalOrder.id) {
+        setSelectedOrder(prev => prev ? { ...prev, status: "cancelled" } : null);
+      }
+      setCancelModalOrder(null);
+      setCancelRemark("");
     } catch (err) {
       toast.fromError(err, "Failed to cancel order");
+    } finally {
+      setIsCancelling(false);
     }
-  }, [updateStatus]);
+  }, [cancelModalOrder, cancelRemark, updateStatus, selectedOrder]);
 
   const handleDownloadCustomerImage = useCallback(async (imageUrl: string, orderId: string) => {
     try {
@@ -426,26 +457,41 @@ function VendorOrderManagement() {
       key: "status", 
       header: "Status", 
       render: (row: Order) => {
-        const isPending = row.status === "pending";
+        const isPending = row.status === "pending" || row.status === "scheduled";
         const timer = isPending ? getPendingTimeRemaining(row.createdAt) : null;
         return (
           <div className="space-y-1.5 py-1">
             <div className="flex items-center gap-1.5 flex-wrap">
               <OrderStatusBadge uniform={row.status} />
               {isPending && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void handleAcceptOrder(row.id, row.orderId);
-                  }}
-                  disabled={updatingStatus === row.id}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
-                  title="Click to accept this order"
-                >
-                  <CheckCircleIcon className="h-3.5 w-3.5" />
-                  Accept
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleAcceptOrder(row.id, row.orderId);
+                    }}
+                    disabled={updatingStatus === row.id}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                    title="Click to accept this order"
+                  >
+                    <CheckCircleIcon className="h-3.5 w-3.5" />
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openCancelModal(row);
+                    }}
+                    disabled={updatingStatus === row.id}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 hover:border-rose-300 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                    title="Click to cancel this order with remark"
+                  >
+                    <XCircleIcon className="h-3.5 w-3.5" />
+                    Cancel
+                  </button>
+                </div>
               )}
             </div>
             {isPending && timer && (
@@ -667,7 +713,7 @@ function VendorOrderManagement() {
         {selectedOrder && (
           <div className="space-y-6">
             {/* 24-Hour Acceptance Alert for Pending Orders */}
-            {selectedOrder.status === "pending" && (
+            {(selectedOrder.status === "pending" || selectedOrder.status === "scheduled") && (
               <div className="rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 via-orange-50/50 to-amber-50 p-4 shadow-xs">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="space-y-1">
@@ -675,7 +721,7 @@ function VendorOrderManagement() {
                       <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white text-xs font-black shadow-xs">
                         !
                       </span>
-                      <h4 className="text-sm font-black text-amber-950">Action Required: Accept Order</h4>
+                      <h4 className="text-sm font-black text-amber-950">Action Required: Accept or Cancel Order</h4>
                     </div>
                     <p className="text-xs text-amber-800">
                       Orders must be accepted within 24 hours of placement, or they will be automatically cancelled.
@@ -685,17 +731,29 @@ function VendorOrderManagement() {
                       <span>{getPendingTimeRemaining(selectedOrder.createdAt).text}</span>
                     </div>
                   </div>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="sm"
-                    className="!bg-emerald-600 hover:!bg-emerald-700 !text-white font-black px-4 py-2 shrink-0 shadow-xs flex items-center gap-1.5"
-                    loading={updatingStatus === selectedOrder.id}
-                    onClick={() => void handleAcceptOrder(selectedOrder.id, selectedOrder.orderId)}
-                  >
-                    <CheckCircleIcon className="h-4 w-4" />
-                    Accept Order
-                  </Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      className="!bg-emerald-600 hover:!bg-emerald-700 !text-white font-black px-4 py-2 shadow-xs flex items-center gap-1.5"
+                      loading={updatingStatus === selectedOrder.id}
+                      onClick={() => void handleAcceptOrder(selectedOrder.id, selectedOrder.orderId)}
+                    >
+                      <CheckCircleIcon className="h-4 w-4" />
+                      Accept Order
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      className="font-black px-3.5 py-2 shadow-xs flex items-center gap-1.5"
+                      onClick={() => openCancelModal(selectedOrder)}
+                    >
+                      <XCircleIcon className="h-4 w-4" />
+                      Cancel Order
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -919,14 +977,14 @@ function VendorOrderManagement() {
               <Button 
                 variant="danger" 
                 size="sm"
-                onClick={() => handleCancelOrder(selectedOrder.id)}
+                onClick={() => openCancelModal(selectedOrder)}
                 disabled={selectedOrder.status === "cancelled" || selectedOrder.status === "delivered"}
               >
                 Cancel Order
               </Button>
               <div className="flex gap-2">
                 <Button variant="secondary" onClick={() => setSelectedOrder(null)}>Close</Button>
-                {selectedOrder.status === "pending" && (
+                {(selectedOrder.status === "pending" || selectedOrder.status === "scheduled") && (
                   <Button
                     type="button"
                     variant="primary"
@@ -947,6 +1005,63 @@ function VendorOrderManagement() {
                   Download PDF
                 </Button>
               </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Vendor Order Cancellation with Remark Modal */}
+      <Modal
+        isOpen={!!cancelModalOrder}
+        onClose={closeCancelModal}
+        title={`Cancel Order #${cancelModalOrder?.orderId}`}
+        size="md"
+      >
+        {cancelModalOrder && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-red-200 bg-red-50/70 p-3.5 text-xs text-red-900 space-y-1">
+              <p className="font-bold">Are you sure you want to cancel this order?</p>
+              <p className="text-red-700">
+                A remark/reason is required. Product stock will be automatically restored.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Cancellation Remark / Reason <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={cancelRemark}
+                onChange={(e) => setCancelRemark(e.target.value)}
+                placeholder="Enter cancellation reason (e.g. Out of stock / Unable to fulfill / Customization not possible)..."
+                rows={3}
+                className="w-full rounded-xl border border-slate-300 p-3 text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none resize-none transition-colors"
+                autoFocus
+              />
+              <p className="text-[11px] text-text-muted">
+                This remark will be permanently recorded with the cancelled order.
+              </p>
+            </div>
+
+            <div className="flex justify-end items-center gap-2 pt-3 border-t">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={closeCancelModal}
+                disabled={isCancelling}
+              >
+                Go Back
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                onClick={handleConfirmCancel}
+                disabled={!cancelRemark.trim() || isCancelling}
+                loading={isCancelling}
+                className="font-bold"
+              >
+                Cancel Order
+              </Button>
             </div>
           </div>
         )}

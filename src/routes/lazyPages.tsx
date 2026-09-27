@@ -30,6 +30,7 @@ export const CreateOrder = lazyRoute(() => import("../pages/CreateOrder"));
 export const OrdersList = lazyRoute(() => import("../pages/OrdersList"));
 export const OrderDetail = lazyRoute(() => import("../pages/OrderDetail"));
 export const AdminDashboard = lazyRoute(() => import("../pages/AdminDashboard"));
+export const AdminStatistics = lazyRoute(() => import("../pages/AdminStatistics"));
 export const StaffManagement = lazyRoute(() => import("../pages/StaffManagement"));
 export const StaffRoleManagement = lazyRoute(
   () => import("../pages/StaffRoleManagement"),
@@ -121,5 +122,6 @@ export const VendorOfferManagement = lazyRoute(() => import("../pages/VendorOffe
 export const AdminVendorProductManagement = lazyRoute(() => import("../pages/AdminVendorProductManagement"));
 export const AdminVendorOrderManagement = lazyRoute(() => import("../pages/AdminVendorOrderManagement"));
 export const VendorProfile = lazyRoute(() => import("../pages/VendorProfile"));
+export const VendorReviewManagement = lazyRoute(() => import("../pages/VendorReviewManagement"));
 
 

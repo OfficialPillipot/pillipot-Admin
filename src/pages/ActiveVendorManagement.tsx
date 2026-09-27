@@ -19,6 +19,7 @@ import {
 import { 
   useGetVendorsQuery, 
   useToggleVendorStatusMutation,
+  useToggleVendorStoreMutation,
   useResetVendorPasswordMutation
 } from "../store/api/edenApi";
 import type { Vendor } from "../types";
@@ -27,6 +28,7 @@ import { toast } from "../lib/toast";
 function ActiveVendorManagementPage() {
   const { data: vendors, isLoading } = useGetVendorsQuery();
   const [toggleVendorStatus] = useToggleVendorStatusMutation();
+  const [toggleVendorStore] = useToggleVendorStoreMutation();
   const [resetPassword] = useResetVendorPasswordMutation();
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -37,6 +39,18 @@ function ActiveVendorManagementPage() {
       toast.success(`Vendor ${vendor.user?.isActive ? "disabled" : "enabled"} successfully`);
     } catch (err) {
       toast.fromError(err, "Failed to update vendor status");
+    }
+  };
+
+  const handleToggleStore = async (vendor: Vendor) => {
+    try {
+      await toggleVendorStore(vendor.id).unwrap();
+      const currentStoreActive = vendor.isStoreActive ?? (vendor.isActive !== false);
+      toast.success(
+        `Store for ${vendor.businessName} ${currentStoreActive ? "disabled" : "enabled"} successfully`
+      );
+    } catch (err) {
+      toast.fromError(err, "Failed to update store status");
     }
   };
 
@@ -134,6 +148,32 @@ function ActiveVendorManagementPage() {
                   aria-label="Toggle vendor status"
                 />
               )
+            },
+            { 
+              key: "isStoreActive", 
+              header: "Store", 
+              render: (v: Vendor) => {
+                const storeActive = v.isStoreActive ?? (v.isActive !== false);
+                return (
+                  <Tooltip
+                    content={
+                      v.storeDisabledByAdmin
+                        ? `Store disabled by admin${v.storeDisabledReason ? ` (${v.storeDisabledReason})` : ""}. Click to re-enable.`
+                        : storeActive
+                        ? "Store is Active (Click to disable)"
+                        : "Store is Paused by vendor (Click to enable)"
+                    }
+                  >
+                    <div>
+                      <ToggleSwitch
+                        checked={storeActive}
+                        onChange={() => handleToggleStore(v)}
+                        aria-label="Toggle vendor store status"
+                      />
+                    </div>
+                  </Tooltip>
+                );
+              }
             },
             { 
               key: "status", 

@@ -164,6 +164,14 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
           }
         />
         <Route
+          path="/vendor/reviews"
+          element={
+            <ProtectedRoute allowedRoles={["vendor"]}>
+              <Pages.VendorReviewManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/vendor/profile"
           element={
             <ProtectedRoute allowedRoles={["vendor"]}>
@@ -177,6 +185,14 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
           element={
             <ProtectedRoute allowedRoles={["super_admin", "guest"]}>
               <Pages.AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/statistics"
+          element={
+            <ProtectedRoute allowedRoles={["super_admin", "guest"]}>
+              <Pages.AdminStatistics />
             </ProtectedRoute>
           }
         />

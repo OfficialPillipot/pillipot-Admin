@@ -10,14 +10,22 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
+  ArrowPathIcon,
 } from "@heroicons/react/24/outline";
+import { cn } from "../../lib/utils";
 
 export interface SingleCalendarDateRangePickerProps {
   dateFrom: string; // YYYY-MM-DD
   dateTo: string; // YYYY-MM-DD
   onChange: (from: string, to: string) => void;
+  onReset?: () => void;
+  granularity?: "day" | "month" | "year";
+  onGranularityChange?: (g: "day" | "month" | "year") => void;
   className?: string;
   placeholder?: string;
+  iconOnly?: boolean;
+  align?: "left" | "right";
+  isActive?: boolean;
 }
 
 const MONTH_NAMES = [
@@ -59,12 +67,29 @@ export function SingleCalendarDateRangePicker({
   dateFrom,
   dateTo,
   onChange,
+  onReset,
+  granularity = "day",
+  onGranularityChange,
   className = "",
   placeholder = "Select date range",
+  iconOnly = false,
+  align = "left",
+  isActive = false,
 }: SingleCalendarDateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Internal selection state to allow seamless multi-step picking across months
+  const [internalFrom, setInternalFrom] = useState<string>(dateFrom);
+  const [internalTo, setInternalTo] = useState<string>(dateTo);
+  const [hoverIso, setHoverIso] = useState<string | null>(null);
+
+  // Sync internal state with props whenever props change
+  useEffect(() => {
+    setInternalFrom(dateFrom);
+    setInternalTo(dateTo);
+  }, [dateFrom, dateTo]);
 
   // Parse initial view month/year
   const initialDate = useMemo(() => {
@@ -77,7 +102,6 @@ export function SingleCalendarDateRangePicker({
 
   const [viewYear, setViewYear] = useState(initialDate.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialDate.getMonth());
-  const [hoverIso, setHoverIso] = useState<string | null>(null);
 
   // Sync view when dateFrom changes externally
   useEffect(() => {
@@ -100,6 +124,8 @@ export function SingleCalendarDateRangePicker({
       ) {
         setIsOpen(false);
         setHoverIso(null);
+        setInternalFrom(dateFrom);
+        setInternalTo(dateTo);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -108,7 +134,7 @@ export function SingleCalendarDateRangePicker({
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("touchstart", handleClickOutside);
     };
-  }, [isOpen]);
+  }, [isOpen, dateFrom, dateTo]);
 
   // Auto scroll if calendar popover is under the bottom of the screen
   useEffect(() => {
@@ -145,53 +171,75 @@ export function SingleCalendarDateRangePicker({
   // Quick preset shortcuts
   const applyPreset = useCallback(
     (preset: "today" | "yesterday" | "7days" | "month") => {
+      if (onGranularityChange) {
+        onGranularityChange("day");
+      }
       const now = new Date();
+      let f = "";
+      let t = "";
       if (preset === "today") {
-        const t = formatIso(now);
-        onChange(t, t);
-        setViewYear(now.getFullYear());
-        setViewMonth(now.getMonth());
+        t = formatIso(now);
+        f = t;
       } else if (preset === "yesterday") {
         const yest = new Date(now);
         yest.setDate(yest.getDate() - 1);
-        const y = formatIso(yest);
-        onChange(y, y);
-        setViewYear(yest.getFullYear());
-        setViewMonth(yest.getMonth());
+        f = formatIso(yest);
+        t = f;
       } else if (preset === "7days") {
         const past = new Date(now);
         past.setDate(past.getDate() - 6);
-        onChange(formatIso(past), formatIso(now));
-        setViewYear(now.getFullYear());
-        setViewMonth(now.getMonth());
+        f = formatIso(past);
+        t = formatIso(now);
       } else if (preset === "month") {
         const first = new Date(now.getFullYear(), now.getMonth(), 1);
-        onChange(formatIso(first), formatIso(now));
-        setViewYear(now.getFullYear());
-        setViewMonth(now.getMonth());
+        f = formatIso(first);
+        t = formatIso(now);
       }
+      setInternalFrom(f);
+      setInternalTo(t);
+      setViewYear(now.getFullYear());
+      setViewMonth(now.getMonth());
       setHoverIso(null);
+      onChange(f, t);
     },
-    [onChange],
+    [onChange, onGranularityChange],
   );
 
   const handleDayClick = useCallback(
     (iso: string) => {
-      if (!dateFrom || (dateFrom && dateTo)) {
-        // Start new range
-        onChange(iso, "");
-      } else if (dateFrom && !dateTo) {
-        // Finish range
-        if (iso < dateFrom) {
-          onChange(iso, dateFrom);
-        } else {
-          onChange(dateFrom, iso);
-        }
+      if (onGranularityChange && granularity !== "day") {
+        onGranularityChange("day");
+      }
+      if (!internalFrom || (internalFrom && internalTo) || granularity !== "day") {
+        // First click: Start new range selection
+        setInternalFrom(iso);
+        setInternalTo("");
         setHoverIso(null);
+      } else {
+        // Second click: Complete range selection
+        let newFrom = internalFrom;
+        let newTo = iso;
+        if (iso < internalFrom) {
+          newFrom = iso;
+          newTo = internalFrom;
+        }
+        setInternalFrom(newFrom);
+        setInternalTo(newTo);
+        setHoverIso(null);
+        onChange(newFrom, newTo);
       }
     },
-    [dateFrom, dateTo, onChange],
+    [internalFrom, internalTo, onChange, onGranularityChange, granularity],
   );
+
+  const handleDone = useCallback(() => {
+    if (internalFrom && !internalTo) {
+      setInternalTo(internalFrom);
+      onChange(internalFrom, internalFrom);
+    }
+    setIsOpen(false);
+    setHoverIso(null);
+  }, [internalFrom, internalTo, onChange]);
 
   // Generate calendar grid days for viewMonth and viewYear
   const calendarDays = useMemo(() => {
@@ -226,6 +274,15 @@ export function SingleCalendarDateRangePicker({
 
   // Formatted display text
   const displayText = useMemo(() => {
+    if (granularity === "month") {
+      const year = dateFrom ? dateFrom.split("-")[0] : viewYear;
+      return `${year} (Month-wise)`;
+    }
+    if (granularity === "year") {
+      const yFrom = dateFrom ? dateFrom.split("-")[0] : viewYear - 4;
+      const yTo = dateTo ? dateTo.split("-")[0] : viewYear;
+      return `${yFrom} to ${yTo} (Year-wise)`;
+    }
     if (dateFrom && dateTo) {
       return `${toDisplayDate(dateFrom)} to ${toDisplayDate(dateTo)}`;
     }
@@ -233,87 +290,196 @@ export function SingleCalendarDateRangePicker({
       return `${toDisplayDate(dateFrom)} to ...`;
     }
     return "";
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, granularity, viewYear]);
 
   return (
-    <div ref={containerRef} className={`relative w-full ${className}`}>
-      {/* Trigger input field */}
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => setIsOpen((prev) => !prev)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setIsOpen((prev) => !prev);
-          }
-        }}
-        className="w-full min-h-11 rounded-[var(--radius-md)] border border-border bg-surface-elevated/85 px-3 py-2 text-sm text-text-heading shadow-sm outline-none transition-all flex items-center justify-between cursor-pointer hover:border-primary focus:border-primary focus:shadow-[var(--shadow-focus)]"
-      >
-        <div className="flex items-center gap-2 truncate">
-          <CalendarDaysIcon className="h-4 w-4 shrink-0 text-text-muted" />
-          <span className={displayText ? "font-medium text-text-heading" : "text-text-muted"}>
-            {displayText || placeholder}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1">
-          {(dateFrom || dateTo) && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onChange("", "");
-                setHoverIso(null);
-              }}
-              className="rounded p-1 text-text-muted hover:text-text hover:bg-surface transition-colors"
-              title="Clear date range"
-              aria-label="Clear date range"
-            >
-              <XMarkIcon className="h-4 w-4" />
-            </button>
+    <div ref={containerRef} className={`relative ${iconOnly ? "inline-flex" : "w-full"} ${className}`}>
+      {/* Trigger: icon-only button or full input field */}
+      {iconOnly ? (
+        <button
+          type="button"
+          onClick={() => setIsOpen((prev) => !prev)}
+          className={cn(
+            "rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all flex items-center justify-center cursor-pointer",
+            isActive || isOpen
+              ? "bg-primary text-white shadow-xs"
+              : "text-text-muted hover:text-text-heading hover:bg-surface"
           )}
+          title={displayText ? `Date Range: ${displayText}` : "Select custom date range"}
+          aria-label="Select custom date range"
+        >
+          <CalendarDaysIcon className="h-4 w-4" />
+        </button>
+      ) : (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setIsOpen((prev) => !prev)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setIsOpen((prev) => !prev);
+            }
+          }}
+          className="w-full min-h-11 rounded-[var(--radius-md)] border border-border bg-surface-elevated/85 px-3 py-2 text-sm text-text-heading shadow-sm outline-none transition-all flex items-center justify-between cursor-pointer hover:border-primary focus:border-primary focus:shadow-[var(--shadow-focus)]"
+        >
+          <div className="flex items-center gap-2 truncate">
+            <CalendarDaysIcon className="h-4 w-4 shrink-0 text-text-muted" />
+            <span className={displayText ? "font-medium text-text-heading" : "text-text-muted"}>
+              {displayText || placeholder}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {onReset ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReset();
+                  setHoverIso(null);
+                }}
+                className="rounded p-1 text-text-muted hover:text-primary hover:bg-surface transition-colors"
+                title="Reset date range"
+                aria-label="Reset date range"
+              >
+                <ArrowPathIcon className="h-4 w-4" />
+              </button>
+            ) : (
+              (dateFrom || dateTo) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange("", "");
+                    setHoverIso(null);
+                  }}
+                  className="rounded p-1 text-text-muted hover:text-text hover:bg-surface transition-colors"
+                  title="Clear date range"
+                  aria-label="Clear date range"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
+              )
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Calendar Popover */}
       {isOpen && (
         <div
           ref={popoverRef}
           style={{ scrollMarginBottom: 24 }}
-          className="absolute left-0 top-full z-50 mt-1.5 w-[320px] sm:w-[340px] rounded-[var(--radius-lg)] border border-border bg-surface p-3.5 shadow-xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+          className={cn(
+            "absolute top-full z-50 mt-1.5 w-[320px] sm:w-[340px] rounded-[var(--radius-lg)] border border-border bg-surface p-3.5 shadow-xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100",
+            align === "right" ? "right-0 left-auto" : "left-0"
+          )}
         >
           {/* Quick presets (Shown only when opened) */}
-          <div className="mb-3 flex flex-wrap items-center gap-1.5 border-b border-border/60 pb-2.5">
+          <div className="mb-2.5 flex flex-wrap items-center gap-1.5 border-b border-border/60 pb-2">
             <button
               type="button"
               onClick={() => applyPreset("today")}
-              className="rounded-[var(--radius-xs)] border border-border/80 bg-surface-elevated/70 px-2 py-1 text-xs font-medium text-text-muted hover:border-primary hover:text-primary transition-colors"
+              className="rounded-[var(--radius-xs)] border border-border/80 bg-surface-elevated/70 px-2 py-1 text-xs font-medium text-text-muted hover:border-primary hover:text-primary transition-colors cursor-pointer"
             >
               Today
             </button>
             <button
               type="button"
               onClick={() => applyPreset("yesterday")}
-              className="rounded-[var(--radius-xs)] border border-border/80 bg-surface-elevated/70 px-2 py-1 text-xs font-medium text-text-muted hover:border-primary hover:text-primary transition-colors"
+              className="rounded-[var(--radius-xs)] border border-border/80 bg-surface-elevated/70 px-2 py-1 text-xs font-medium text-text-muted hover:border-primary hover:text-primary transition-colors cursor-pointer"
             >
               Yesterday
             </button>
             <button
               type="button"
               onClick={() => applyPreset("7days")}
-              className="rounded-[var(--radius-xs)] border border-border/80 bg-surface-elevated/70 px-2 py-1 text-xs font-medium text-text-muted hover:border-primary hover:text-primary transition-colors"
+              className="rounded-[var(--radius-xs)] border border-border/80 bg-surface-elevated/70 px-2 py-1 text-xs font-medium text-text-muted hover:border-primary hover:text-primary transition-colors cursor-pointer"
             >
               Last 7d
             </button>
             <button
               type="button"
               onClick={() => applyPreset("month")}
-              className="rounded-[var(--radius-xs)] border border-border/80 bg-surface-elevated/70 px-2 py-1 text-xs font-medium text-text-muted hover:border-primary hover:text-primary transition-colors"
+              className="rounded-[var(--radius-xs)] border border-border/80 bg-surface-elevated/70 px-2 py-1 text-xs font-medium text-text-muted hover:border-primary hover:text-primary transition-colors cursor-pointer"
             >
               This Month
             </button>
+            {onReset && (
+              <button
+                type="button"
+                onClick={() => {
+                  onReset();
+                  setHoverIso(null);
+                  if (onGranularityChange) onGranularityChange("day");
+                }}
+                className="rounded-[var(--radius-xs)] border border-border/80 bg-surface-elevated/70 px-2 py-1 text-xs font-medium text-text-muted hover:border-primary hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
+                title="Reset to initial date range"
+              >
+                <ArrowPathIcon className="h-3 w-3" />
+                Reset
+              </button>
+            )}
           </div>
+
+          {/* Graph View (Day-wise / Month-wise / Year-wise) */}
+          {onGranularityChange && (
+            <div className="mb-2.5 flex items-center justify-between gap-1 rounded-lg bg-surface-elevated/80 p-1 border border-border/60">
+              <span className="px-1.5 text-[11px] font-semibold text-text-muted uppercase tracking-wider">
+                Graph:
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => onGranularityChange("day")}
+                  className={cn(
+                    "rounded-[var(--radius-xs)] px-2 py-0.5 text-xs font-medium transition-all cursor-pointer",
+                    granularity === "day"
+                      ? "bg-primary text-white shadow-xs font-semibold"
+                      : "text-text-muted hover:text-text hover:bg-surface"
+                  )}
+                  title="View day-wise sales graph"
+                >
+                  Day-wise
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const y = viewYear || new Date().getFullYear();
+                    onChange(`${y}-01-01`, `${y}-12-31`);
+                    onGranularityChange("month");
+                  }}
+                  className={cn(
+                    "rounded-[var(--radius-xs)] px-2 py-0.5 text-xs font-medium transition-all cursor-pointer",
+                    granularity === "month"
+                      ? "bg-primary text-white shadow-xs font-semibold"
+                      : "text-text-muted hover:text-text hover:bg-surface"
+                  )}
+                  title="View month-wise sales graph (12 months)"
+                >
+                  Month-wise
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const y = viewYear || new Date().getFullYear();
+                    onChange(`${y - 4}-01-01`, `${y}-12-31`);
+                    onGranularityChange("year");
+                  }}
+                  className={cn(
+                    "rounded-[var(--radius-xs)] px-2 py-0.5 text-xs font-medium transition-all cursor-pointer",
+                    granularity === "year"
+                      ? "bg-primary text-white shadow-xs font-semibold"
+                      : "text-text-muted hover:text-text hover:bg-surface"
+                  )}
+                  title="View year-wise sales graph"
+                >
+                  Year-wise
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Month & Year Navigation Header */}
           <div className="mb-2 flex items-center justify-between">
@@ -341,7 +507,15 @@ export function SingleCalendarDateRangePicker({
 
               <select
                 value={viewYear}
-                onChange={(e) => setViewYear(Number(e.target.value))}
+                onChange={(e) => {
+                  const y = Number(e.target.value);
+                  setViewYear(y);
+                  if (granularity === "month") {
+                    onChange(`${y}-01-01`, `${y}-12-31`);
+                  } else if (granularity === "year") {
+                    onChange(`${y - 4}-01-01`, `${y}-12-31`);
+                  }
+                }}
                 className="rounded border border-border/60 bg-transparent px-1.5 py-0.5 text-xs font-semibold text-text-heading outline-none cursor-pointer"
               >
                 {yearOptions.map((y) => (
@@ -381,16 +555,26 @@ export function SingleCalendarDateRangePicker({
               const dayNum = Number(iso.split("-")[2]);
 
               // Range checks
-              const effectiveStart = dateFrom;
+              const effectiveStart = internalFrom;
               const effectiveEnd =
-                dateTo || (dateFrom && hoverIso ? (hoverIso >= dateFrom ? hoverIso : dateFrom) : "");
-              const isStart = iso === dateFrom;
-              const isEnd = iso === (dateTo || (!dateTo && hoverIso && hoverIso >= dateFrom ? hoverIso : ""));
-              const isInRange =
-                effectiveStart &&
-                effectiveEnd &&
-                iso >= effectiveStart &&
-                iso <= effectiveEnd;
+                internalTo || (internalFrom && hoverIso ? (hoverIso >= internalFrom ? hoverIso : internalFrom) : "");
+
+              let minDate = effectiveStart;
+              let maxDate = effectiveEnd;
+              if (minDate && maxDate && minDate > maxDate) {
+                const tmp = minDate;
+                minDate = maxDate;
+                maxDate = tmp;
+              }
+
+              const isStart = iso === (internalFrom && (!internalTo && hoverIso && hoverIso < internalFrom ? hoverIso : internalFrom));
+              const isEnd = iso === (internalTo ? internalTo : (!internalTo && hoverIso ? (hoverIso >= internalFrom ? hoverIso : internalFrom) : ""));
+              const isInRange = Boolean(
+                minDate &&
+                maxDate &&
+                iso >= minDate &&
+                iso <= maxDate
+              );
 
               let btnClass = "text-text hover:bg-surface-elevated";
               let wrapperClass = "";
@@ -414,7 +598,7 @@ export function SingleCalendarDateRangePicker({
                     type="button"
                     onClick={() => handleDayClick(iso)}
                     onMouseEnter={() => {
-                      if (dateFrom && !dateTo) {
+                      if (internalFrom && !internalTo) {
                         setHoverIso(iso);
                       }
                     }}
@@ -430,18 +614,19 @@ export function SingleCalendarDateRangePicker({
           {/* Footer with date status & Done button */}
           <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2.5">
             <span className="text-[11px] text-text-muted truncate">
-              {dateFrom && dateTo
-                ? `${toDisplayDate(dateFrom)} – ${toDisplayDate(dateTo)}`
-                : dateFrom
-                  ? "Click end date"
+              {granularity === "month"
+                ? `12 Months of ${dateFrom ? dateFrom.split("-")[0] : viewYear}`
+                : granularity === "year"
+                ? `Past 5 Years up to ${dateTo ? dateTo.split("-")[0] : viewYear}`
+                : internalFrom && internalTo
+                ? `${toDisplayDate(internalFrom)} – ${toDisplayDate(internalTo)}`
+                : internalFrom
+                  ? `From ${toDisplayDate(internalFrom)} (click end date)`
                   : "Click start date"}
             </span>
             <button
               type="button"
-              onClick={() => {
-                setIsOpen(false);
-                setHoverIso(null);
-              }}
+              onClick={handleDone}
               className="rounded-[var(--radius-xs)] bg-primary px-3 py-1 text-xs font-semibold text-white hover:bg-primary/90 transition-colors"
             >
               Done

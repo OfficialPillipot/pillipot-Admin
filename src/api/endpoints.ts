@@ -29,6 +29,8 @@ export const endpoints = {
     `${V1}/customers/lookup-phone?phone=${encodeURIComponent(phone)}`,
   orders: `${V1}/orders`,
   ordersProfitAnalytics: `${V1}/orders/profit-analytics`,
+  ordersSalesStatistics: (query?: string) =>
+    `${V1}/orders/sales-statistics${query ? `?${query}` : ""}`,
   orderNextDisplayId: `${V1}/orders/next-display-id`,
   orderById: (id: string) => `${V1}/orders/${id}`,
   orderPdf: (id: string) => `${V1}/orders/${id}/pdf`,
@@ -99,6 +101,7 @@ export const endpoints = {
   adminVendorApprove: (id: string) => `${V1}/admin/vendors/${id}/approve`,
   adminVendorReject: (id: string) => `${V1}/admin/vendors/${id}/reject`,
   adminVendorToggleStatus: (id: string) => `${V1}/admin/vendors/${id}/toggle-status`,
+  adminVendorToggleStore: (id: string) => `${V1}/admin/vendors/${id}/toggle-store`,
   adminVendorResetPassword: (id: string) => `${V1}/admin/vendors/${id}/reset-password`,
   adminVendorProducts: `${V1}/admin/vendors/products`,
   adminVendorOrders: `${V1}/admin/vendors/orders`,
@@ -111,6 +114,7 @@ export const endpoints = {
   vendorPortalSubcategories: `${V1}/vendor-portal/subcategories`,
   vendorPortalOffers: `${V1}/vendor-portal/offers`,
   vendorPortalOfferById: (id: string) => `${V1}/vendor-portal/offers/${id}`,
+  vendorPortalReviews: `${V1}/vendor-portal/reviews`,
   tags: `${V1}/tags`,
   tagById: (id: string) => `${V1}/tags/${id}`,
 } as const;

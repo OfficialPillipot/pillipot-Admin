@@ -35,6 +35,7 @@ import {
   MegaphoneIcon,
   ListBulletIcon,
   StarIcon,
+  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 import { Tooltip } from "../ui";
 import type { User } from "../../types";
@@ -100,6 +101,7 @@ const VENDOR_NAV_SECTIONS: NavSection<StaffNavItem>[] = [
       { to: "/", label: "Dashboard", end: true, icon: HomeIcon },
       { to: "/vendor/products", label: "My Products", end: true, icon: Squares2X2Icon },
       { to: "/vendor/orders", label: "Product Orders", end: true, icon: ClipboardDocumentListIcon },
+      { to: "/vendor/reviews", label: "Reviews", end: true, icon: StarIcon },
       { to: "/admin/tracking-scan", label: "Tracking scan", end: true, icon: QrCodeIcon },
       { to: "/vendor/offers", label: "Offers", end: true, icon: TagIcon },
     ],
@@ -123,7 +125,10 @@ const VENDOR_NAV_SECTIONS: NavSection<StaffNavItem>[] = [
 const ADMIN_NAV_SECTIONS: NavSection<AdminNavItem>[] = [
   {
     title: "Overview",
-    items: [{ to: "/admin", label: "Dashboard", end: true, icon: HomeIcon }],
+    items: [
+      { to: "/admin", label: "Dashboard", end: true, icon: HomeIcon },
+      { to: "/admin/statistics", label: "Statistics", end: true, icon: ChartBarIcon },
+    ],
   },
 
   {

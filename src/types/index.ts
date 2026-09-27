@@ -351,6 +351,9 @@ export interface Vendor {
   bankBranch?: string | null;
   status: VendorStatus;
   isActive?: boolean;
+  isStoreActive?: boolean;
+  storeDisabledByAdmin?: boolean;
+  storeDisabledReason?: string | null;
   userId: string | null;
   user?: {
     isActive: boolean;
@@ -379,6 +382,7 @@ export interface UpdateVendorProfilePayload {
   bankAccountHolderName?: string;
   bankBranch?: string;
   isActive?: boolean;
+  isStoreActive?: boolean;
 }
 
 export interface Order {
@@ -578,6 +582,8 @@ export interface AdminReviewRow {
   createdAt: string;
   product?: {
     name: string;
+    imageUrl?: string | null;
+    productCode?: string | null;
   };
   customer?: {
     customerName: string;
@@ -654,3 +660,47 @@ export interface StaffEnquiryDetail {
   initialAuthorName: string;
   replies: StaffEnquiryReply[];
 }
+
+export type SalesGranularity = "day" | "month" | "year";
+
+export interface SalesSeriesPoint {
+  label: string;
+  dateKey: string;
+  sales: number;
+  orders: number;
+  deliveredSales: number;
+  deliveredOrders: number;
+  cancelledOrders: number;
+  quantity: number;
+  newCustomers: number;
+  guestTraffic?: number;
+  loggedInTraffic?: number;
+  totalTraffic?: number;
+}
+
+export interface SalesStatisticsResponse {
+  dateFrom: string;
+  dateTo: string;
+  granularity: SalesGranularity;
+  totalSales: number;
+  totalOrders: number;
+  deliveredSales: number;
+  deliveredOrders: number;
+  cancelledOrders: number;
+  averageOrderValue: number;
+  totalQuantity: number;
+  totalNewCustomers: number;
+  totalTraffic?: number;
+  totalGuestTraffic?: number;
+  totalLoggedInTraffic?: number;
+  series: SalesSeriesPoint[];
+}
+
+export interface SalesStatisticsQuery {
+  granularity?: SalesGranularity;
+  dateFrom?: string;
+  dateTo?: string;
+  month?: number;
+  year?: number;
+}
+
