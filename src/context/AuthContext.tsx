@@ -11,6 +11,8 @@ import { api } from "../api/client";
 import { endpoints } from "../api/endpoints";
 import { getAccessToken, setAccessToken } from "../lib/auth-token";
 import { getApiErrorMessage } from "../lib/api-error";
+import { store } from "../store";
+import { edenApi } from "../store/api/edenApi";
 
 const USER_KEY = "Pillipot_user";
 
@@ -62,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setAccessToken(null);
     localStorage.removeItem(USER_KEY);
+    store.dispatch(edenApi.util.resetApiState());
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -102,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const nu = normalizeUser(data.user);
         setUser(nu);
         localStorage.setItem(USER_KEY, JSON.stringify(nu));
+        store.dispatch(edenApi.util.resetApiState());
         return { ok: true };
       } catch (e) {
         return { ok: false, message: getApiErrorMessage(e, "Sign in failed") };

@@ -173,7 +173,6 @@ function AssignedNumbersManagementPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="Assigned numbers"
           action={
             <Button type="button" onClick={openAdd}>
               Add number

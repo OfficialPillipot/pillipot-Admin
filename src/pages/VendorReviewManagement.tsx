@@ -1,6 +1,10 @@
-import { memo, useState, useMemo, useDeferredValue } from "react";
+import { memo, useState, useMemo, useDeferredValue, useEffect } from "react";
 import { Card, CardHeader, Table, Badge, Button, Input, Modal, Select } from "../components/ui";
 import { useGetVendorPortalReviewsQuery } from "../store/api/edenApi";
+import {
+  markVendorSidebarReviewsSeen,
+  dispatchSidebarVendorReviewsRefresh,
+} from "../lib/header-notifications";
 import {
   ArrowPathIcon,
   MagnifyingGlassIcon,
@@ -26,6 +30,18 @@ function VendorReviewManagement() {
     isFetching,
     refetch,
   } = useGetVendorPortalReviewsQuery();
+
+  useEffect(() => {
+    markVendorSidebarReviewsSeen();
+    dispatchSidebarVendorReviewsRefresh();
+  }, []);
+
+  useEffect(() => {
+    if (rows.length > 0) {
+      markVendorSidebarReviewsSeen();
+      dispatchSidebarVendorReviewsRefresh();
+    }
+  }, [rows.length]);
 
   const deferredQuery = useDeferredValue(searchQuery);
 
@@ -310,8 +326,6 @@ function VendorReviewManagement() {
       {/* Main Reviews Card */}
       <Card>
         <CardHeader
-          title="Product Reviews"
-          subtitle="Real-time ratings and feedback from customers who purchased your products."
           action={
             <Button
               type="button"

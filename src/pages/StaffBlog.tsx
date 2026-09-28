@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { ChatBubbleLeftIcon, HeartIcon } from "@heroicons/react/24/outline";
 import { api } from "../api/client";
 import { endpoints } from "../api/endpoints";
-import { Card, CardHeader, Badge } from "../components/ui";
+import { Card, Badge } from "../components/ui";
 import { toast } from "../lib/toast";
 import {
   LS_STAFF_BLOG_LAST_SEEN,
@@ -43,10 +43,6 @@ function StaffBlogPage() {
 
   return (
     <div className="space-y-4">
-      <CardHeader
-        title="Blog"
-      // subtitle="Updates from your team leads and admin."
-      />
       {loading ? (
         <p className="text-sm text-text-muted">Loading…</p>
       ) : items.length === 0 ? (

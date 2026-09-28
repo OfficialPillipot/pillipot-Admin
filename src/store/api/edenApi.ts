@@ -1347,6 +1347,7 @@ export const edenApi = createApi({
       invalidatesTags: (_r, _e, id) => [
         { type: "Vendor", id },
         { type: "Vendor", id: "LIST" },
+        { type: "Vendor", id: "ME" },
       ],
     }),
     toggleVendorStore: builder.mutation<Vendor, string>({
@@ -1357,6 +1358,9 @@ export const edenApi = createApi({
       invalidatesTags: (_r, _e, id) => [
         { type: "Vendor", id },
         { type: "Vendor", id: "LIST" },
+        { type: "Vendor", id: "ME" },
+        { type: "Product", id: "LIST" },
+        { type: "VendorPortalProduct", id: "LIST" },
       ],
     }),
     resetVendorPassword: builder.mutation<Vendor, { id: string; password?: string }>({
@@ -1490,7 +1494,40 @@ export const edenApi = createApi({
         { type: "VendorPortalOrder", id: "LIST" },
         { type: "Order", id },
         { type: "Order", id: "LIST" },
+        { type: "Vendor", id: "ME" },
+        { type: "Vendor", id: "LIST" },
+        { type: "VendorPortalProduct", id: "LIST" },
+        { type: "Product", id: "LIST" },
       ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data: updatedOrder } = await queryFulfilled;
+          const isStoreDisabled =
+            (updatedOrder as any)?.storeDisabled ||
+            updatedOrder?.notes?.includes("[Store Disabled") ||
+            updatedOrder?.notes?.includes("Store Disabled");
+          if (isStoreDisabled) {
+            dispatch(
+              edenApi.util.updateQueryData("getVendorPortalProfile", undefined, (draft) => {
+                draft.isStoreActive = false;
+                draft.storeDisabledByAdmin = true;
+                draft.storeDisabledReason =
+                  (updatedOrder as any)?.storeDisabledReason ||
+                  "Two consecutive orders were cancelled without accepting an order in between.";
+              })
+            );
+            dispatch(
+              edenApi.util.invalidateTags([
+                { type: "Vendor", id: "ME" },
+                { type: "VendorPortalProduct", id: "LIST" },
+                { type: "Product", id: "LIST" },
+              ])
+            );
+          }
+        } catch {
+          // ignore
+        }
+      },
     }),
 
     getVendorPortalCategories: builder.query<Category[], void>({

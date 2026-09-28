@@ -118,8 +118,6 @@ function StaffRoleManagementPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="Role management"
-          // subtitle="Define roles (e.g. Sales, Packing). Staff accounts must pick one of these when created or edited."
           action={
             <Button type="button" onClick={openAdd}>
               Add role

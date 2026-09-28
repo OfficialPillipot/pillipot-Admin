@@ -35,7 +35,7 @@ function CardComponent({
 export const Card = memo(CardComponent);
 
 interface CardHeaderProps {
-  title: string;
+  title?: string;
   subtitle?: string;
   icon?: React.ReactNode;
   action?: React.ReactNode;
@@ -47,6 +47,15 @@ export const CardHeader = memo(function CardHeaderInner({
   icon,
   action,
 }: CardHeaderProps) {
+  if (!title && !subtitle && !icon) {
+    if (!action) return null;
+    return (
+      <div className="mb-4 flex items-center justify-end">
+        {action}
+      </div>
+    );
+  }
+
   return (
     <div className="mb-5 flex flex-col gap-3 border-b border-border pb-4 sm:mb-6 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
       <div className="flex min-w-0 flex-1 gap-3">
@@ -56,9 +65,11 @@ export const CardHeader = memo(function CardHeaderInner({
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-semibold tracking-tight text-text-heading md:text-xl">
-            {title}
-          </h2>
+          {title && (
+            <h2 className="text-lg font-semibold tracking-tight text-text-heading md:text-xl">
+              {title}
+            </h2>
+          )}
           {subtitle && (
             <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-text-muted md:text-[0.9375rem]">
               {subtitle}

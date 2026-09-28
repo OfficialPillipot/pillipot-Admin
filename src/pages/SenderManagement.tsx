@@ -248,8 +248,6 @@ function SenderManagementPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="Sender Management"
-          // subtitle="Manage sender address details used in delivery label PDFs."
           action={<Button onClick={openCreate}>Add sender</Button>}
         />
         <Table

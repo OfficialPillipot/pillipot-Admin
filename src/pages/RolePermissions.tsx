@@ -311,10 +311,6 @@ function RolePermissionsPage() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader
-          title="Access control"
-          subtitle="Assign view / create / edit / delete rights per area for Guest and Staff roles. Super admin always has full access."
-        />
         {loading ? (
           <p className="text-sm text-text-muted">Loading…</p>
         ) : (

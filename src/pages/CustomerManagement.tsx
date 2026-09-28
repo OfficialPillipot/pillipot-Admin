@@ -193,7 +193,6 @@ function CustomerManagementPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="Customers"
           action={
             <div className="flex items-center gap-2">
               <Button 

@@ -180,7 +180,6 @@ function SubcategoryManagementPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="Subcategory Management"
           action={<Button onClick={openAdd}>Add subcategory</Button>}
         />
         <div className="mb-4">

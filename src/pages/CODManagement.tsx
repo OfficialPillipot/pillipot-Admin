@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardHeader, Button, Table } from "../components/ui";
+import { Card, Button, Table } from "../components/ui";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { selectProducts, updateProduct, fetchProducts } from "../store/productsSlice";
 import { toast } from "../lib/toast";
@@ -123,10 +123,6 @@ function CODManagementPage() {
       `}</style>
 
       <Card>
-        <CardHeader
-          title="Online COD management"
-        />
-
         <Table
           columns={[
             {

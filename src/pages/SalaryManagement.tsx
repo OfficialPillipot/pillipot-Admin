@@ -118,8 +118,6 @@ function SalaryManagementPage() {
 
       <Card>
         <CardHeader
-          title="Staff pay"
-          // subtitle="Set amount per quantity and milestone bonuses for each staff member. To review earnings and record payouts, use Payroll."
           action={
             <Link
               to="/admin/payroll-ledger"

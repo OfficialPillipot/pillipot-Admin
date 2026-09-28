@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import { api } from "../api/client";
 import { endpoints } from "../api/endpoints";
-import { Card, CardHeader, Table } from "../components/ui";
+import { Card, Table } from "../components/ui";
 import { toast } from "../lib/toast";
 import { formatDateTime } from "../lib/orderUtils";
 import {
@@ -50,10 +50,6 @@ function AdminStaffEnquiriesPage() {
 
   return (
     <div className="space-y-4">
-      <CardHeader
-        title="Staff enquiries"
-        subtitle="Messages from staff — open a row to read and reply."
-      />
       {loading ? (
         <p className="text-sm text-text-muted">Loading…</p>
       ) : (

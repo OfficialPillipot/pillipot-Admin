@@ -1,5 +1,5 @@
-import { memo, useState, useCallback, useMemo } from "react";
-import { NavLink } from "react-router";
+import { memo, useState, useCallback, useMemo, useEffect } from "react";
+import { NavLink, useLocation } from "react-router";
 import {
   HomeIcon,
   DocumentPlusIcon,
@@ -40,6 +40,20 @@ import {
 import { Tooltip } from "../ui";
 import type { User } from "../../types";
 import { hasPermission } from "../../lib/permissions";
+import {
+  useGetVendorPortalOrdersQuery,
+  useGetVendorPortalReviewsQuery,
+} from "../../store/api/edenApi";
+import {
+  SIDEBAR_VENDOR_ORDERS_REFRESH,
+  markVendorSidebarOrdersSeen,
+  dispatchSidebarVendorOrdersRefresh,
+  calculateVendorSidebarOrdersCount,
+  SIDEBAR_VENDOR_REVIEWS_REFRESH,
+  markVendorSidebarReviewsSeen,
+  dispatchSidebarVendorReviewsRefresh,
+  calculateVendorSidebarReviewsCount,
+} from "../../lib/header-notifications";
 
 const SIDEBAR_COLLAPSED_KEY = "Pillipot_sidebar_collapsed";
 
@@ -293,6 +307,74 @@ interface SidebarProps {
 
 function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(getStoredCollapsed);
+  const location = useLocation();
+  const isVendor = user.role === "vendor";
+  const isVendorOrdersPage = isVendor && location.pathname === "/vendor/orders";
+  const isVendorReviewsPage = isVendor && location.pathname === "/vendor/reviews";
+
+  const { data: vendorOrders = [] } = useGetVendorPortalOrdersQuery(undefined, {
+    skip: !isVendor,
+    pollingInterval: 20000,
+  });
+
+  const { data: vendorReviews = [] } = useGetVendorPortalReviewsQuery(undefined, {
+    skip: !isVendor,
+    pollingInterval: 20000,
+  });
+
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // When vendor visits /vendor/orders, clear the sidebar orders badge count immediately
+  useEffect(() => {
+    if (isVendor && location.pathname === "/vendor/orders") {
+      markVendorSidebarOrdersSeen();
+      setRefreshTrigger((prev) => prev + 1);
+      dispatchSidebarVendorOrdersRefresh();
+    }
+  }, [isVendor, location.pathname]);
+
+  // When vendor visits /vendor/reviews, clear the sidebar reviews badge count immediately
+  useEffect(() => {
+    if (isVendor && location.pathname === "/vendor/reviews") {
+      markVendorSidebarReviewsSeen();
+      setRefreshTrigger((prev) => prev + 1);
+      dispatchSidebarVendorReviewsRefresh();
+    }
+  }, [isVendor, location.pathname]);
+
+  // Listen for sidebar orders and reviews refresh events
+  useEffect(() => {
+    if (!isVendor) return;
+    const handleRefresh = () => setRefreshTrigger((prev) => prev + 1);
+    window.addEventListener(SIDEBAR_VENDOR_ORDERS_REFRESH, handleRefresh);
+    window.addEventListener(SIDEBAR_VENDOR_REVIEWS_REFRESH, handleRefresh);
+    return () => {
+      window.removeEventListener(SIDEBAR_VENDOR_ORDERS_REFRESH, handleRefresh);
+      window.removeEventListener(SIDEBAR_VENDOR_REVIEWS_REFRESH, handleRefresh);
+    };
+  }, [isVendor]);
+
+  // Compute sidebar order unread badge count
+  const vendorSidebarOrderCount = useMemo(() => {
+    if (!isVendor || isVendorOrdersPage) return 0;
+    void refreshTrigger;
+    return calculateVendorSidebarOrdersCount(vendorOrders);
+  }, [isVendor, isVendorOrdersPage, vendorOrders, refreshTrigger]);
+
+  // Compute sidebar reviews unread badge count
+  const vendorSidebarReviewCount = useMemo(() => {
+    if (!isVendor || isVendorReviewsPage) return 0;
+    void refreshTrigger;
+    return calculateVendorSidebarReviewsCount(vendorReviews);
+  }, [isVendor, isVendorReviewsPage, vendorReviews, refreshTrigger]);
+
+  const getItemBadgeCount = (to: string): number => {
+    if (isVendor) {
+      if (to === "/vendor/orders") return vendorSidebarOrderCount;
+      if (to === "/vendor/reviews") return vendorSidebarReviewCount;
+    }
+    return 0;
+  };
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
@@ -396,11 +478,23 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
             </p>
             <div className="space-y-0.5">
               {section.items.map((item) => {
+                const badgeCount = getItemBadgeCount(item.to);
                 const link = (
                   <NavLink
                     to={item.to}
                     end={item.end}
-                    onClick={handleMobileNavClick}
+                    onClick={() => {
+                      handleMobileNavClick();
+                      if (item.to === "/vendor/orders") {
+                        markVendorSidebarOrdersSeen();
+                        setRefreshTrigger((prev) => prev + 1);
+                        dispatchSidebarVendorOrdersRefresh();
+                      } else if (item.to === "/vendor/reviews") {
+                        markVendorSidebarReviewsSeen();
+                        setRefreshTrigger((prev) => prev + 1);
+                        dispatchSidebarVendorReviewsRefresh();
+                      }
+                    }}
                     className={({ isActive }: { isActive: boolean }) =>
                       linkBase +
                       " w-full " +
@@ -408,16 +502,38 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
                       (collapsed ? " md:justify-center md:px-2.5" : "")
                     }
                   >
-                    <item.icon className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-105 md:h-5 md:w-5" aria-hidden />
-                    <span className={collapsed ? "block md:hidden" : "block"}>
+                    <div className="relative flex shrink-0 items-center justify-center">
+                      <item.icon className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-105 md:h-5 md:w-5" aria-hidden />
+                      {collapsed && badgeCount > 0 && (
+                        <span className="hidden md:flex absolute -top-1.5 -right-2 h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[9px] font-bold leading-none text-white shadow-xs">
+                          {badgeCount > 99 ? "99+" : badgeCount}
+                        </span>
+                      )}
+                    </div>
+                    <span className={collapsed ? "block md:hidden flex-1 truncate" : "block flex-1 truncate"}>
                       {item.label}
                     </span>
+                    {badgeCount > 0 && (
+                      <span
+                        className={
+                          collapsed
+                            ? "flex md:hidden ml-auto h-4 min-w-4 items-center justify-center rounded-full bg-error px-1.5 text-[10px] font-bold leading-none text-white shadow-xs"
+                            : "ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1.5 text-[10px] font-bold leading-none text-white shadow-xs"
+                        }
+                      >
+                        {badgeCount > 99 ? "99+" : badgeCount}
+                      </span>
+                    )}
                   </NavLink>
                 );
                 return (
                   <div key={`${section.title}-${item.to}`} className="w-full">
                     {collapsed ? (
-                      <Tooltip content={item.label} side="right" className="flex w-full">
+                      <Tooltip
+                        content={badgeCount > 0 ? `${item.label} (${badgeCount})` : item.label}
+                        side="right"
+                        className="flex w-full"
+                      >
                         {link}
                       </Tooltip>
                     ) : (

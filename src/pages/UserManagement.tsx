@@ -220,8 +220,6 @@ function UserManagementPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="User management"
-          subtitle="Edit extra permissions per user (merged with their role at login). Super admin accounts always have full access."
           action={
             <Button
               type="button"

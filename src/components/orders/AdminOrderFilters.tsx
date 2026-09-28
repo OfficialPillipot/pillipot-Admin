@@ -29,9 +29,10 @@ export type AdminOrderFiltersProps = {
   dateTo: string;
   onDateToChange: (v: string) => void;
   // Vendor (Searchable Multi-select)
-  vendorFilter: string[];
-  onVendorFilterChange: (v: string[]) => void;
-  vendorOptions: MultiSelectOption[];
+  vendorFilter?: string[];
+  onVendorFilterChange?: (v: string[]) => void;
+  vendorOptions?: MultiSelectOption[];
+  hideVendor?: boolean;
   // Status (Multi-select)
   statusFilter: string[];
   onStatusFilterChange: (v: string[]) => void;
@@ -44,6 +45,10 @@ export type AdminOrderFiltersProps = {
   typeFilter: string;
   onTypeFilterChange: (v: string) => void;
   typeOptions: SelectOption[];
+  // Platform (optional)
+  platformFilter?: string;
+  onPlatformFilterChange?: (v: string) => void;
+  platformOptions?: SelectOption[];
   // Common action buttons
   filtersLoading?: boolean;
   applyLoading?: boolean;
@@ -60,6 +65,7 @@ export type AdminOrderFiltersProps = {
   appliedStatus?: string[];
   appliedProduct?: string[];
   appliedType?: string;
+  appliedPlatform?: string;
 };
 
 function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
@@ -70,9 +76,10 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
     onDateFromChange,
     dateTo,
     onDateToChange,
-    vendorFilter,
+    vendorFilter = [],
     onVendorFilterChange,
-    vendorOptions,
+    vendorOptions = [],
+    hideVendor = false,
     statusFilter,
     onStatusFilterChange,
     statusOptions = ORDER_STATUS_MULTI_OPTIONS,
@@ -82,6 +89,9 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
     typeFilter,
     onTypeFilterChange,
     typeOptions,
+    platformFilter = "",
+    onPlatformFilterChange,
+    platformOptions = [],
     filtersLoading = false,
     applyLoading,
     resetLoading,
@@ -96,16 +106,21 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
     appliedStatus = [],
     appliedProduct = [],
     appliedType = "",
+    appliedPlatform = "",
   } = props;
+
+  const showVendorField = !hideVendor && Boolean(onVendorFilterChange && vendorOptions && vendorOptions.length > 0);
+  const showPlatformField = Boolean(onPlatformFilterChange && platformOptions && platformOptions.length > 0);
 
   const hasAnyApplied = Boolean(
     appliedSearch.trim() ||
       appliedDateFrom ||
       appliedDateTo ||
-      (appliedVendor && appliedVendor.length > 0) ||
+      (showVendorField && appliedVendor && appliedVendor.length > 0) ||
       (appliedStatus && appliedStatus.length > 0) ||
       (appliedProduct && appliedProduct.length > 0) ||
-      appliedType,
+      appliedType ||
+      appliedPlatform,
   );
 
   return (
@@ -150,16 +165,18 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
           </ManagementFilterField>
 
           {/* Vendors (Searchable Multi-select) */}
-          <ManagementFilterField label="Vendor">
-            <SearchableMultiSelect
-              selectedValues={vendorFilter}
-              onChange={onVendorFilterChange}
-              options={vendorOptions}
-              placeholder="Select vendors"
-              searchPlaceholder="Type to search vendors..."
-              itemNoun="vendor"
-            />
-          </ManagementFilterField>
+          {showVendorField && onVendorFilterChange && (
+            <ManagementFilterField label="Vendor">
+              <SearchableMultiSelect
+                selectedValues={vendorFilter}
+                onChange={onVendorFilterChange}
+                options={vendorOptions}
+                placeholder="Select vendors"
+                searchPlaceholder="Type to search vendors..."
+                itemNoun="vendor"
+              />
+            </ManagementFilterField>
+          )}
 
           {/* Status (Searchable Multi-select) */}
           <ManagementFilterField label="Status">
@@ -199,6 +216,24 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
               ))}
             </select>
           </ManagementFilterField>
+
+          {/* Platform */}
+          {showPlatformField && onPlatformFilterChange && (
+            <ManagementFilterField label="Platform">
+              <select
+                value={platformFilter}
+                onChange={(e) => onPlatformFilterChange(e.target.value)}
+                className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                aria-label="Filter by platform"
+              >
+                {platformOptions.map((opt) => (
+                  <option key={opt.value || "all-platforms"} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </ManagementFilterField>
+          )}
 
           {/* Common Apply, Reset & Clear Buttons */}
           <ManagementFilterField label="Filter Actions" className="sm:col-span-2 lg:col-span-1 xl:col-span-2">
@@ -256,7 +291,7 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
               Date: {toDisplayDate(appliedDateFrom) || "Start"} → {toDisplayDate(appliedDateTo) || "Now"}
             </span>
           )}
-          {appliedVendor && appliedVendor.length > 0 && (
+          {showVendorField && appliedVendor && appliedVendor.length > 0 && (
             <span className="rounded-full bg-primary-muted px-2.5 py-0.5 font-medium text-primary">
               Vendors:{" "}
               {appliedVendor.length === 1
@@ -285,6 +320,13 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
               Type:{" "}
               {typeOptions.find((t) => t.value === appliedType)?.label ||
                 appliedType}
+            </span>
+          )}
+          {appliedPlatform && (
+            <span className="rounded-full bg-primary-muted px-2.5 py-0.5 font-medium text-primary">
+              Platform:{" "}
+              {platformOptions.find((p) => p.value === appliedPlatform)?.label ||
+                appliedPlatform}
             </span>
           )}
         </div>

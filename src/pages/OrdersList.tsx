@@ -131,10 +131,11 @@ function OrdersListPage() {
       {
         key: "orderId",
         header: "Order ID",
+        className: "whitespace-nowrap min-w-[7.5rem]",
         render: (row: Order) => (
           <Link
             to={`/orders/${row.id}`}
-            className="font-medium text-primary hover:underline"
+            className="font-medium text-primary hover:underline whitespace-nowrap"
           >
             {row.orderId}
           </Link>
@@ -259,14 +260,12 @@ function OrdersListPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="Orders"
-          // subtitle="Filter by date, status, product, payment type, or search by customer/phone."
           action={
-            user?.role === "staff" && (
+            user?.role === "staff" ? (
               <Link to="/orders/create">
                 <Button>Create Order</Button>
               </Link>
-            )
+            ) : undefined
           }
         />
         <div className="mb-4">

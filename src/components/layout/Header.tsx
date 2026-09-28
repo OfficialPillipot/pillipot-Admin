@@ -4,6 +4,7 @@ import { Bars3Icon, MagnifyingGlassIcon, MoonIcon, SunIcon } from "@heroicons/re
 import type { User } from "../../types";
 import { CommandPalette } from "./CommandPalette";
 import { HeaderNotifications } from "./HeaderNotifications";
+import { HeaderVendorStoreToggle } from "./HeaderVendorStoreToggle";
 
 interface HeaderProps {
   title: string;
@@ -93,6 +94,7 @@ function HeaderComponent({
             </button>
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3 md:pl-2">
+            {user.role === "vendor" && <HeaderVendorStoreToggle />}
             <HeaderNotifications user={user} />
             <button
               type="button"

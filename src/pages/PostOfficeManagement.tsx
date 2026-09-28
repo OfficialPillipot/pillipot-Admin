@@ -127,7 +127,6 @@ function PostOfficeManagementPage() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="India Post" />
         <p className="mb-3 max-w-3xl text-sm text-text-muted">
           {directProxy ? (
             <>

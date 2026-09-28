@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { 
   Card, 
-  CardHeader, 
   Table, 
   Badge, 
   Tooltip,
@@ -49,6 +48,11 @@ function ActiveVendorManagementPage() {
       toast.success(
         `Store for ${vendor.businessName} ${currentStoreActive ? "disabled" : "enabled"} successfully`
       );
+      try {
+        localStorage.setItem("pillipot_vendor_store_updated", String(Date.now()));
+      } catch {
+        // ignore
+      }
     } catch (err) {
       toast.fromError(err, "Failed to update store status");
     }
@@ -93,10 +97,6 @@ function ActiveVendorManagementPage() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader
-          title="Active Vendors"
-          subtitle="View and manage approved vendors and their login status."
-        />
         <Table
           isLoading={isLoading}
           keyExtractor={(v: Vendor) => v.id}

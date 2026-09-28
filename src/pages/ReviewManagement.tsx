@@ -125,8 +125,6 @@ function ReviewManagementPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="Product Reviews"
-          subtitle="Manage customer reviews and ratings from the web application."
           action={
             <Button
               type="button"

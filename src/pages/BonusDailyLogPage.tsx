@@ -164,12 +164,6 @@ function BonusDailyLogPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title={isStaff ? "My bonus log" : "Staff bonus log"}
-          subtitle={
-            isStaff
-              ? "Daily earnings and tier bonuses (UTC calendar days — same as Payroll). Only days with order quantity show here."
-              : "Per-staff, per-day quantity, base pay, and milestone bonuses. Filter by staff and date range."
-          }
           action={
             !isStaff ? (
               <Link

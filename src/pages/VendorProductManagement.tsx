@@ -341,7 +341,7 @@ function VendorProductManagement() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="My Products" action={<Button onClick={openAdd}>Add Product</Button>} />
+        <CardHeader action={<Button onClick={openAdd}>Add Product</Button>} />
 
         <div className="px-6 pb-4">
           <ResponsiveManagementFilters modalTitle="Product Filters">

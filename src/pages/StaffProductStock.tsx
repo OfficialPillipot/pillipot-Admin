@@ -3,7 +3,7 @@ import { useAppSelector } from "../store/hooks";
 import { selectProducts } from "../store/productsSlice";
 import { selectSettings } from "../store/settingsSlice";
 import type { Product } from "../types";
-import { Card, CardHeader, Table, Badge } from "../components/ui";
+import { Card, Table, Badge } from "../components/ui";
 import {
   isAtOrBelowStockThreshold,
   stockStatusLabel,
@@ -33,10 +33,6 @@ function StaffProductStockPage() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader
-          title="Product stock"
-        // subtitle={`Catalog quantities for every product. Rows at or below ${lowStockThreshold} units are highlighted (threshold is set by admin in Settings).`}
-        />
         <Table
           columns={[
             { key: "name", header: "Product" },

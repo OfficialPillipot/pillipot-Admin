@@ -21,7 +21,7 @@ import {
 } from "../store/deliveriesSlice";
 import { fetchSettings, selectSettings } from "../store/settingsSlice";
 import { fetchSenders, selectSenders } from "../store/sendersSlice";
-import { Card, CardHeader, Table } from "../components/ui";
+import { Card, Table } from "../components/ui";
 import { toast } from "../lib/toast";
 import { downloadBulkOrdersPdf, downloadOrderPdf } from "../lib/download-order-pdf";
 import type { Order, OrderStatus } from "../types";
@@ -862,7 +862,6 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title={mode === "pending_failed" ? "Online Orders" : "Order Management"} />
         <AdminOrderFilters
           search={searchDraft}
           onSearchChange={setSearchDraft}

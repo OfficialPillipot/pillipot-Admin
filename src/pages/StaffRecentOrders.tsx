@@ -51,12 +51,13 @@ function StaffRecentOrdersPage() {
         key: "orderId",
         header: "Order ID",
         mobileCardTitle: true,
+        className: "whitespace-nowrap min-w-[7.5rem]",
         render: (row) => {
           const o = row.items[0];
           return (
             <Link
               to={`/orders/${o.id}`}
-              className="font-medium text-primary hover:underline"
+              className="font-medium text-primary hover:underline whitespace-nowrap"
             >
               {o.orderId}
             </Link>
@@ -171,8 +172,6 @@ function StaffRecentOrdersPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader
-          title="Recent orders"
-          // subtitle="Your five most recent order groups (newest first). Filter by line status."
           action={
             <Link to="/orders" className="block w-full sm:w-auto">
               <Button variant="outline" size="sm" className="w-full sm:w-auto">

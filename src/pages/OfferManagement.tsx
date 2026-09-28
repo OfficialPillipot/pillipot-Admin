@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { 
-  TagIcon, 
+  TagIcon,
   PlusIcon, 
   TrashIcon, 
   PencilIcon, 
@@ -8,7 +8,6 @@ import {
 } from "@heroicons/react/24/outline";
 import {
   Card,
-  CardHeader,
   Select,
   Table,
   Button,
@@ -142,13 +141,7 @@ export default function OfferManagementPage() {
     <div className="space-y-6">
       <Card padding="none">
         <div className="p-4 md:p-6 border-b border-border/60">
-          <CardHeader 
-            title="Product Offers Management" 
-            subtitle="Configure discounts, bulk offers, and promo codes for your catalog"
-            icon={<TagIcon className="h-6 w-6 text-primary" />} 
-          />
-          
-          <div className="mt-6 flex flex-col md:flex-row gap-4 items-end">
+          <div className="flex flex-col md:flex-row gap-4 items-end">
             <div className="w-full md:w-72">
               <Select
                 label="Filter by Category"

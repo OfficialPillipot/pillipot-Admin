@@ -290,8 +290,6 @@ function BannerManagementPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="Banner Management"
-          subtitle="Manage homepage slider advertisements and promotional banners."
           action={<Button onClick={openAdd}>Add Banner</Button>}
         />
         <div className="mb-4">

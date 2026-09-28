@@ -129,8 +129,6 @@ function VendorCategoryManagement() {
     <div className="space-y-4">
       <Card>
         <CardHeader 
-          title="Product Categories" 
-          subtitle="View existing categories or suggest a new one"
           action={<Button onClick={openAdd}>Add Category</Button>} 
         />
         <Table

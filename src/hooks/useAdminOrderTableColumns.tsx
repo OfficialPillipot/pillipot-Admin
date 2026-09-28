@@ -105,12 +105,12 @@ export function useAdminOrderTableColumns({
         key: "orderId",
         header: "Order ID",
         mobileCardTitle: true,
-        className: "md:min-w-[9.5rem] md:whitespace-nowrap",
+        className: "whitespace-nowrap min-w-[7.5rem] md:min-w-[9.5rem]",
         render: (row: Order) => (
           <button
             type="button"
             onClick={() => onOpenDetail(row.id)}
-            className="font-medium text-primary hover:underline"
+            className="font-medium text-primary hover:underline whitespace-nowrap"
           >
             {row.orderId}
           </button>

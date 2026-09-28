@@ -303,8 +303,6 @@ function AdminBlogManagementPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="Staff blog"
-          subtitle="Rich-text posts for staff. Target everyone, selected people, or job roles."
           action={
             canCreate ? (
               <Button type="button" onClick={openCreate}>

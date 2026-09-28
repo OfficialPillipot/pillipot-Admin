@@ -1,38 +1,45 @@
 import { memo, useMemo, useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { useSearchParams } from "react-router";
-import { 
-  Card, 
-  CardHeader, 
-  Table, 
-  Badge, 
-  Button, 
-  Modal, 
+import {
+  Card,
+  Table,
+  Badge,
+  Button,
+  Modal,
   Select,
   Input,
-  ManagementFilterPanel,
-  ManagementFilterField,
-  MANAGEMENT_NATIVE_CONTROL_CLASS,
-  ResponsiveManagementFilters
 } from "../components/ui";
+import {
+  AdminOrderFilters,
+  type MultiSelectOption,
+  type SelectOption
+} from "../components/orders/AdminOrderFilters";
 import { OrderStatusBadge } from "../components/orders/OrderStatusBadge";
 import { formatDate, isCompletedOrCodOrder } from "../lib/orderUtils";
 import { downloadOrderPdf } from "../lib/download-order-pdf";
-import { 
-  useGetVendorPortalOrdersQuery, 
+import {
+  useGetVendorPortalOrdersQuery,
   useUpdateVendorPortalOrderStatusMutation,
-  useGetVendorPortalProductsQuery
+  useGetVendorPortalProductsQuery,
+  useGetVendorPortalProfileQuery,
 } from "../store/api/edenApi";
 import { toast } from "../lib/toast";
+import {
+  markVendorSidebarOrdersSeen,
+  dispatchSidebarVendorOrdersRefresh,
+  dispatchNotificationsRefresh,
+} from "../lib/header-notifications";
 import type { Order, OrderStatus } from "../types";
-import { 
-  ArrowDownTrayIcon, 
-  SparklesIcon, 
-  PhotoIcon, 
-  DocumentTextIcon, 
+import {
+  ArrowDownTrayIcon,
+  SparklesIcon,
+  PhotoIcon,
+  DocumentTextIcon,
   ArrowTopRightOnSquareIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ClockIcon
+  ClockIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 
 function getPendingTimeRemaining(createdAt: string): { hours: number; mins: number; isExpired: boolean; text: string } {
@@ -48,30 +55,55 @@ function getPendingTimeRemaining(createdAt: string): { hours: number; mins: numb
 }
 
 function VendorOrderManagement() {
-  // ── Server-level filter state ──
-  const [search, setSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [appliedSearch, setAppliedSearch] = useState("");
-  const [appliedDateFrom, setAppliedDateFrom] = useState("");
-  const [appliedDateTo, setAppliedDateTo] = useState("");
-
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // ── Table-level filter state ──
-  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") || "");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [productFilter, setProductFilter] = useState(() => searchParams.get("productId") || "");
-  const [platformFilter, setPlatformFilter] = useState("");
+  // ── Draft filter states (updated in UI controls, applied on clicking Apply or Enter) ──
+  const [searchDraft, setSearchDraft] = useState(() => searchParams.get("search") || "");
+  const [dateFromDraft, setDateFromDraft] = useState("");
+  const [dateToDraft, setDateToDraft] = useState("");
+  const [statusDraft, setStatusDraft] = useState<string[]>(() => {
+    const s = searchParams.get("status");
+    return s ? [s] : [];
+  });
+  const [productDraft, setProductDraft] = useState<string[]>(() => {
+    const pid = searchParams.get("productId");
+    return pid ? [pid] : [];
+  });
+  const [typeDraft, setTypeDraft] = useState("");
+  const [platformDraft, setPlatformDraft] = useState("");
+
+  // ── Applied filter states (used for querying server and filtering list) ──
+  const [appliedSearch, setAppliedSearch] = useState(() => searchParams.get("search") || "");
+  const [appliedDateFrom, setAppliedDateFrom] = useState("");
+  const [appliedDateTo, setAppliedDateTo] = useState("");
+  const [appliedStatus, setAppliedStatus] = useState<string[]>(() => {
+    const s = searchParams.get("status");
+    return s ? [s] : [];
+  });
+  const [appliedProduct, setAppliedProduct] = useState<string[]>(() => {
+    const pid = searchParams.get("productId");
+    return pid ? [pid] : [];
+  });
+  const [appliedType, setAppliedType] = useState("");
+  const [appliedPlatform, setAppliedPlatform] = useState("");
 
   useEffect(() => {
     const s = searchParams.get("status");
     if (s !== null) {
-      setStatusFilter(s);
+      const arr = s ? [s] : [];
+      setStatusDraft(arr);
+      setAppliedStatus(arr);
     }
     const pid = searchParams.get("productId");
     if (pid !== null) {
-      setProductFilter(pid);
+      const arr = pid ? [pid] : [];
+      setProductDraft(arr);
+      setAppliedProduct(arr);
+    }
+    const q = searchParams.get("search");
+    if (q !== null) {
+      setSearchDraft(q);
+      setAppliedSearch(q);
     }
   }, [searchParams]);
 
@@ -89,24 +121,56 @@ function VendorOrderManagement() {
 
   const { data: allOrders = [], isLoading } = useGetVendorPortalOrdersQuery(queryParams);
 
+  useEffect(() => {
+    markVendorSidebarOrdersSeen();
+    dispatchSidebarVendorOrdersRefresh();
+  }, []);
+
+  useEffect(() => {
+    if (allOrders.length > 0) {
+      markVendorSidebarOrdersSeen();
+      dispatchSidebarVendorOrdersRefresh();
+    }
+  }, [allOrders.length]);
+
   const { data: products = [] } = useGetVendorPortalProductsQuery();
+  const { refetch: refetchProfile } = useGetVendorPortalProfileQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+  });
   const [updateStatus] = useUpdateVendorPortalOrderStatusMutation();
-  
+
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null);
   const [cancelRemark, setCancelRemark] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
 
+  // Store disabled notice modal (after 2 consecutive cancellations)
+  const [storeDisabledModalOpen, setStoreDisabledModalOpen] = useState(false);
+  const [storeDisabledReason, setStoreDisabledReason] = useState("");
+
   // ── Filtered orders (table-level) ──
   const orders = useMemo(() => {
     let result = allOrders.filter(isCompletedOrCodOrder);
-    if (statusFilter) result = result.filter(o => o.status === statusFilter);
-    if (typeFilter) result = result.filter(o => o.orderType === typeFilter);
-    if (productFilter) result = result.filter(o => o.productId === productFilter);
-    if (platformFilter) result = result.filter(o => (o.platform || "staff") === platformFilter);
+    if (appliedStatus.length > 0) {
+      result = result.filter(o => appliedStatus.includes(o.status));
+    }
+    if (appliedProduct.length > 0) {
+      result = result.filter(o => appliedProduct.includes(o.productId));
+    }
+    if (appliedType) {
+      result = result.filter(o => {
+        if (appliedType === "cod") return o.orderType === "cod" || o.paymentMethod === "cod";
+        if (appliedType === "prepaid") return o.orderType === "prepaid" || o.paymentMethod === "razorpay" || o.paymentMethod === "online";
+        return o.orderType === appliedType;
+      });
+    }
+    if (appliedPlatform) {
+      result = result.filter(o => (o.platform || "staff") === appliedPlatform);
+    }
     return result;
-  }, [allOrders, statusFilter, typeFilter, productFilter, platformFilter]);
+  }, [allOrders, appliedStatus, appliedProduct, appliedType, appliedPlatform]);
 
   // ── Checkbox selection logic ──
   const allVisibleSelected = orders.length > 0 && orders.every(o => selectedIds.has(o.id));
@@ -151,43 +215,54 @@ function VendorOrderManagement() {
     });
   }, [orders]);
 
-  // ── Server filter handlers ──
+  // ── Server & table filter handlers ──
   const handleApplyFilters = useCallback(() => {
-    setAppliedSearch(search.trim());
-    setAppliedDateFrom(dateFrom);
-    setAppliedDateTo(dateTo);
-  }, [search, dateFrom, dateTo]);
+    setAppliedSearch(searchDraft.trim());
+    setAppliedDateFrom(dateFromDraft);
+    setAppliedDateTo(dateToDraft);
+    setAppliedStatus(statusDraft);
+    setAppliedProduct(productDraft);
+    setAppliedType(typeDraft);
+    setAppliedPlatform(platformDraft);
+  }, [searchDraft, dateFromDraft, dateToDraft, statusDraft, productDraft, typeDraft, platformDraft]);
+
+  const handleResetFilters = useCallback(() => {
+    setSearchDraft(appliedSearch);
+    setDateFromDraft(appliedDateFrom);
+    setDateToDraft(appliedDateTo);
+    setStatusDraft(appliedStatus);
+    setProductDraft(appliedProduct);
+    setTypeDraft(appliedType);
+    setPlatformDraft(appliedPlatform);
+  }, [appliedSearch, appliedDateFrom, appliedDateTo, appliedStatus, appliedProduct, appliedType, appliedPlatform]);
 
   const handleClearFilters = useCallback(() => {
-    setSearch("");
-    setDateFrom("");
-    setDateTo("");
+    setSearchDraft("");
+    setDateFromDraft("");
+    setDateToDraft("");
+    setStatusDraft([]);
+    setProductDraft([]);
+    setTypeDraft("");
+    setPlatformDraft("");
+
     setAppliedSearch("");
     setAppliedDateFrom("");
     setAppliedDateTo("");
-    setStatusFilter("");
-    setTypeFilter("");
-    setProductFilter("");
-    setPlatformFilter("");
-    setSearchParams({}, { replace: true });
-  }, [setSearchParams]);
+    setAppliedStatus([]);
+    setAppliedProduct([]);
+    setAppliedType("");
+    setAppliedPlatform("");
 
-  const resetTableFilters = useCallback(() => {
-    setStatusFilter("");
-    setTypeFilter("");
-    setProductFilter("");
-    setPlatformFilter("");
     setSearchParams({}, { replace: true });
   }, [setSearchParams]);
 
   // ── Options ──
-  const productOptions = useMemo(() => [
-    { value: "", label: "Select all products" },
-    ...products.map(p => ({ value: p.id, label: p.name }))
-  ], [products]);
+  const productOptions: MultiSelectOption[] = useMemo(() =>
+    products.map(p => ({ value: p.id, label: p.name })),
+    [products]
+  );
 
-  const statusOptions = [
-    { value: "", label: "All statuses" },
+  const statusOptions: MultiSelectOption[] = useMemo(() => [
     { value: "pending", label: "Pending" },
     { value: "accepted", label: "Accepted" },
     { value: "packed", label: "Packed" },
@@ -195,19 +270,19 @@ function VendorOrderManagement() {
     { value: "delivered", label: "Delivered" },
     { value: "cancelled", label: "Cancelled" },
     { value: "returned", label: "Returned" },
-  ];
+  ], []);
 
-  const typeOptions = [
-    { value: "", label: "Select all types" },
+  const typeOptions: SelectOption[] = useMemo(() => [
+    { value: "", label: "All types" },
     { value: "cod", label: "COD" },
     { value: "prepaid", label: "Prepaid" },
-  ];
+  ], []);
 
-  const platformOptions = [
-    { value: "", label: "Select all platforms" },
+  const platformOptions: SelectOption[] = useMemo(() => [
+    { value: "", label: "All platforms" },
     { value: "staff", label: "Staff" },
     { value: "webapp", label: "Webapp" },
-  ];
+  ], []);
 
   // ── Handlers ──
   const handleDownloadPdf = useCallback(async (id: string, orderId: string) => {
@@ -230,6 +305,7 @@ function VendorOrderManagement() {
       if (selectedOrder?.id === id) {
         setSelectedOrder(prev => prev ? { ...prev, status: "accepted" } : null);
       }
+      dispatchNotificationsRefresh();
     } catch (err) {
       toast.fromError(err, "Failed to accept order");
     } finally {
@@ -245,6 +321,7 @@ function VendorOrderManagement() {
       if (selectedOrder?.id === id) {
         setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
       }
+      dispatchNotificationsRefresh();
     } catch (err) {
       toast.fromError(err, "Failed to update status");
     } finally {
@@ -281,23 +358,48 @@ function VendorOrderManagement() {
 
     setIsCancelling(true);
     try {
-      await updateStatus({
+      const res = await updateStatus({
         id: cancelModalOrder.id,
         status: "cancelled",
         remark: cancelRemark.trim(),
       }).unwrap();
-      toast.success(`Order #${cancelModalOrder.orderId} cancelled with remark.`);
-      if (selectedOrder?.id === cancelModalOrder.id) {
+
+      const cancelledOrderId = cancelModalOrder.orderId;
+      const cancelledId = cancelModalOrder.id;
+
+      if (selectedOrder?.id === cancelledId) {
         setSelectedOrder(prev => prev ? { ...prev, status: "cancelled" } : null);
       }
       setCancelModalOrder(null);
       setCancelRemark("");
+
+      // Check if this cancellation triggered automatic store deactivation (2 consecutive cancellations)
+      const wasStoreDisabled =
+        Boolean((res as any)?.storeDisabled) ||
+        Boolean(res?.notes?.includes("[Store Disabled")) ||
+        Boolean(res?.notes?.includes("Store Disabled"));
+
+      const profileResult = await refetchProfile();
+      const isNowDisabled = wasStoreDisabled || Boolean(profileResult?.data?.storeDisabledByAdmin);
+
+      if (isNowDisabled) {
+        const reason =
+          (res as any)?.storeDisabledReason ||
+          profileResult?.data?.storeDisabledReason ||
+          "Two consecutive orders were cancelled without accepting an order in between.";
+        setStoreDisabledReason(reason);
+        setStoreDisabledModalOpen(true);
+      } else {
+        toast.success(`Order #${cancelledOrderId} cancelled with remark.`);
+      }
+
+      dispatchNotificationsRefresh();
     } catch (err) {
       toast.fromError(err, "Failed to cancel order");
     } finally {
       setIsCancelling(false);
     }
-  }, [cancelModalOrder, cancelRemark, updateStatus, selectedOrder]);
+  }, [cancelModalOrder, cancelRemark, updateStatus, selectedOrder, refetchProfile]);
 
   const handleDownloadCustomerImage = useCallback(async (imageUrl: string, orderId: string) => {
     try {
@@ -343,119 +445,106 @@ function VendorOrderManagement() {
         />
       ),
     },
-    { 
-      key: "orderId", 
-      header: "Order ID", 
+    {
+      key: "orderId",
+      header: "Order ID",
+      className: "whitespace-nowrap min-w-[7.5rem]",
       render: (row: Order) => (
-        <button 
+        <button
+          type="button"
           onClick={() => setSelectedOrder(row)}
-          className="font-medium text-primary hover:underline"
+          className="font-medium text-primary hover:underline whitespace-nowrap"
         >
           {row.orderId}
         </button>
       )
     },
-    { 
-      key: "createdAt", 
-      header: "Date", 
+    {
+      key: "createdAt",
+      header: "Date",
       render: (row: Order) => (
         <span className="text-xs whitespace-nowrap">{formatDate(row.createdAt)}</span>
       )
     },
-    { key: "customer", header: "Customer", render: (row: Order) => (
-      <div>
-        <div className="font-medium text-sm">{row.customerName}</div>
-        <div className="text-[10px] text-text-muted">{row.phone}</div>
-      </div>
-    )},
-    { key: "product", header: "Product", render: (row: any) => (
-      <div className="space-y-1">
-        <div className="max-w-[150px] truncate font-medium" title={row.product?.name || row.productName || row.productId}>
-          {row.product?.name || row.productName || row.productId}
+    {
+      key: "customer", header: "Customer", render: (row: Order) => (
+        <div>
+          <div className="font-medium text-sm">{row.customerName}</div>
+          <div className="text-[10px] text-text-muted">{row.phone}</div>
         </div>
-        {(row.customText || row.customPhotoUrl || row.notes) && (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200">
-              ✨ Personalized
-            </span>
-            {row.customPhotoUrl && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDownloadCustomerImage(row.customPhotoUrl, row.orderId);
-                }}
-                className="text-purple-700 hover:text-purple-900 text-[10px] font-bold underline inline-flex items-center gap-0.5"
-                title="Download Customer Photo"
-              >
-                <ArrowDownTrayIcon className="h-3 w-3" /> Photo
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    )},
-    { key: "quantity", header: "Qty", render: (row: Order) => row.quantity },
-    { 
-      key: "discount", 
-      header: "Discount", 
-      render: (row: Order) => row.discountAmount ? `₹${Number(row.discountAmount).toFixed(2)}` : "—" 
-    },
-    { 
-      key: "assigned", 
-      header: "Assigned #", 
-      render: (row: Order) => row.staffAssignedNumber?.trim() ? <span className="font-mono text-[10px]">{row.staffAssignedNumber}</span> : "—" 
-    },
-    { 
-      key: "amount", 
-      header: "Total", 
-      render: (row: Order) => `₹${Number(row.sellingAmount).toFixed(2)}` 
-    },
-    { 
-      key: "platform", 
-      header: "Platform", 
-      render: (row: Order) => (
-        <span className="text-[10px] uppercase font-bold text-text-muted">{row.platform || "staff"}</span>
       )
     },
-    { 
-      key: "paymentMethod", 
-      header: "Payment", 
+    {
+      key: "product", header: "Product", render: (row: any) => (
+        <div className="space-y-1">
+          <div className="max-w-[150px] truncate font-medium" title={row.product?.name || row.productName || row.productId}>
+            {row.product?.name || row.productName || row.productId}
+          </div>
+          {(row.customText || row.customPhotoUrl || row.notes) && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200">
+                ✨ Personalized
+              </span>
+              {row.customPhotoUrl && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownloadCustomerImage(row.customPhotoUrl, row.orderId);
+                  }}
+                  className="text-purple-700 hover:text-purple-900 text-[10px] font-bold underline inline-flex items-center gap-0.5"
+                  title="Download Customer Photo"
+                >
+                  <ArrowDownTrayIcon className="h-3 w-3" /> Photo
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )
+    },
+    { key: "quantity", header: "Qty", render: (row: Order) => row.quantity },
+    {
+      key: "amount",
+      header: "Total",
+      render: (row: Order) => `₹${Number(row.sellingAmount).toFixed(2)}`
+    },
+    {
+      key: "paymentMethod",
+      header: "Payment",
       render: (row: Order) => {
         const method = row.paymentMethod ?? "cod";
         const isOnline = method === "razorpay";
         return (
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit ${
-            isOnline
-              ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
-              : "bg-amber-100 text-amber-700 border border-amber-200"
-          }`}>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit ${isOnline
+            ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
+            : "bg-amber-100 text-amber-700 border border-amber-200"
+            }`}>
             {isOnline ? "Online" : "COD"}
           </span>
         );
       }
     },
-    { 
-      key: "paymentStatus", 
-      header: "Payment Status", 
+    {
+      key: "paymentStatus",
+      header: "Payment Status",
       render: (row: Order) => {
         const status = row.paymentStatus ?? "pending";
         const isPaid = status === "paid";
         const isFailed = status === "failed";
         return (
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit ${
-            isPaid ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider w-fit ${isPaid ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
             : isFailed ? "bg-red-100 text-red-700 border border-red-200"
-            : "bg-slate-100 text-slate-500 border border-slate-200"
-          }`}>
+              : "bg-slate-100 text-slate-500 border border-slate-200"
+            }`}>
             {isPaid ? "✓ Paid" : isFailed ? "✗ Failed" : "Pending"}
           </span>
         );
       }
     },
-    { 
-      key: "status", 
-      header: "Status", 
+    {
+      key: "status",
+      header: "Status",
       render: (row: Order) => {
         const isPending = row.status === "pending" || row.status === "scheduled";
         const timer = isPending ? getPendingTimeRemaining(row.createdAt) : null;
@@ -495,9 +584,8 @@ function VendorOrderManagement() {
               )}
             </div>
             {isPending && timer && (
-              <div className={`text-[10px] font-semibold flex items-center gap-1 ${
-                timer.isExpired ? "text-red-600 font-bold" : "text-amber-700"
-              }`}>
+              <div className={`text-[10px] font-semibold flex items-center gap-1 ${timer.isExpired ? "text-red-600 font-bold" : "text-amber-700"
+                }`}>
                 <ClockIcon className="h-3 w-3 shrink-0" />
                 <span>{timer.text}</span>
               </div>
@@ -506,9 +594,9 @@ function VendorOrderManagement() {
         );
       }
     },
-    { 
-      key: "actions", 
-      header: "PDF", 
+    {
+      key: "actions",
+      header: "PDF",
       render: (row: Order) => (
         <button
           onClick={(e) => { e.stopPropagation(); handleDownloadPdf(row.id, row.orderId); }}
@@ -525,147 +613,38 @@ function VendorOrderManagement() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Product Orders" subtitle="Manage orders containing your products" />
-        
-        <div className="mb-4 space-y-2">
-          <ResponsiveManagementFilters modalTitle="Order filters" triggerLabel="Filters">
-            <ManagementFilterPanel>
-              {/* Server-level filters */}
-              <ManagementFilterField label="Search" className="lg:col-span-2 xl:col-span-2">
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
-                  placeholder="Order ID, name, phone, or pincode"
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="Search by order id, customer name, phone, or pincode"
-                />
-              </ManagementFilterField>
-              <ManagementFilterField label="From date">
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="From date"
-                />
-              </ManagementFilterField>
-              <ManagementFilterField label="To date">
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="To date"
-                />
-              </ManagementFilterField>
-              <ManagementFilterField label="Server filters">
-                <div className="flex w-full flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => void handleApplyFilters()}
-                    loading={isLoading}
-                  >
-                    Apply
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => void handleClearFilters()}
-                    disabled={isLoading}
-                  >
-                    Clear all
-                  </Button>
-                </div>
-              </ManagementFilterField>
-
-              {/* Table-level filters */}
-              <ManagementFilterField label="Status">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="Filter by order status"
-                >
-                  {statusOptions.map((opt) => (
-                    <option key={opt.value || "all-status"} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </ManagementFilterField>
-              <ManagementFilterField label="Product">
-                <select
-                  value={productFilter}
-                  onChange={(e) => setProductFilter(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="Filter by product"
-                >
-                  {productOptions.map((opt) => (
-                    <option key={opt.value || "all-products"} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </ManagementFilterField>
-              <ManagementFilterField label="Order type">
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="Filter by order type"
-                >
-                  {typeOptions.map((opt) => (
-                    <option key={opt.value || "all-types"} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </ManagementFilterField>
-              <ManagementFilterField label="Platform">
-                <select
-                  value={platformFilter}
-                  onChange={(e) => setPlatformFilter(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
-                  aria-label="Filter by platform"
-                >
-                  {platformOptions.map((opt) => (
-                    <option key={opt.value || "all-platforms"} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </ManagementFilterField>
-              <ManagementFilterField label="Table filters">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="w-full sm:w-auto"
-                  onClick={resetTableFilters}
-                  aria-label="Reset table filters"
-                >
-                  Reset table filters
-                </Button>
-              </ManagementFilterField>
-            </ManagementFilterPanel>
-          </ResponsiveManagementFilters>
-
-          {(appliedDateFrom || appliedDateTo || appliedSearch.trim()) && (
-            <p className="text-xs text-text-muted">
-              Showing orders
-              {appliedDateFrom ? ` from ${appliedDateFrom}` : ""}
-              {appliedDateTo ? ` through ${appliedDateTo}` : ""}
-              {appliedSearch.trim()
-                ? `${appliedDateFrom || appliedDateTo ? ";" : ""} matching "${appliedSearch.trim()}"`
-                : ""}
-              {appliedDateFrom || appliedDateTo ? " (UTC day boundaries)." : "."}
-            </p>
-          )}
-        </div>
+        <AdminOrderFilters
+          search={searchDraft}
+          onSearchChange={setSearchDraft}
+          dateFrom={dateFromDraft}
+          onDateFromChange={setDateFromDraft}
+          dateTo={dateToDraft}
+          onDateToChange={setDateToDraft}
+          hideVendor={true}
+          statusFilter={statusDraft}
+          onStatusFilterChange={setStatusDraft}
+          statusOptions={statusOptions}
+          productFilter={productDraft}
+          onProductFilterChange={setProductDraft}
+          productOptions={productOptions}
+          typeFilter={typeDraft}
+          onTypeFilterChange={setTypeDraft}
+          typeOptions={typeOptions}
+          platformFilter={platformDraft}
+          onPlatformFilterChange={setPlatformDraft}
+          platformOptions={platformOptions}
+          filtersLoading={isLoading}
+          onApply={handleApplyFilters}
+          onReset={handleResetFilters}
+          onClearAll={handleClearFilters}
+          appliedSearch={appliedSearch}
+          appliedDateFrom={appliedDateFrom}
+          appliedDateTo={appliedDateTo}
+          appliedStatus={appliedStatus}
+          appliedProduct={appliedProduct}
+          appliedType={appliedType}
+          appliedPlatform={appliedPlatform}
+        />
 
         {/* Selection bar */}
         {selectedVisibleCount > 0 && (
@@ -793,7 +772,7 @@ function VendorOrderManagement() {
                   <Badge variant="default">{selectedOrder.orderType.toUpperCase()}</Badge>
                 </dd>
               </div>
-              
+
               {/* Customer Personalization Details Section */}
               {(selectedOrder.customPhotoUrl || selectedOrder.customText || selectedOrder.notes) && (
                 <div className="sm:col-span-2 rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50/50 via-white to-indigo-50/30 p-4 sm:p-5 space-y-4 shadow-sm">
@@ -945,7 +924,7 @@ function VendorOrderManagement() {
               <div>
                 <dt className="text-text-muted mb-1 text-xs uppercase tracking-wider">Tracking ID</dt>
                 <dd>
-                  <Input 
+                  <Input
                     placeholder="Enter Tracking ID"
                     defaultValue={selectedOrder.trackingId || ""}
                     onBlur={(e) => handleTrackingUpdate(selectedOrder.id, e.target.value)}
@@ -974,8 +953,8 @@ function VendorOrderManagement() {
             </div>
 
             <div className="flex justify-between items-center pt-2 border-t">
-              <Button 
-                variant="danger" 
+              <Button
+                variant="danger"
                 size="sm"
                 onClick={() => openCancelModal(selectedOrder)}
                 disabled={selectedOrder.status === "cancelled" || selectedOrder.status === "delivered"}
@@ -996,8 +975,8 @@ function VendorOrderManagement() {
                     Accept Order
                   </Button>
                 )}
-                <Button 
-                  variant="primary" 
+                <Button
+                  variant="primary"
                   icon={<ArrowDownTrayIcon className="h-4 w-4" />}
                   onClick={() => handleDownloadPdf(selectedOrder.id, selectedOrder.orderId)}
                   loading={pdfLoadingId === selectedOrder.id}
@@ -1065,6 +1044,60 @@ function VendorOrderManagement() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Informational Modal for Automatic Store Deactivation (2 consecutive cancellations) */}
+      <Modal
+        isOpen={storeDisabledModalOpen}
+        onClose={() => setStoreDisabledModalOpen(false)}
+        title="Store Deactivated"
+        size="md"
+        footer={
+          <div className="flex items-center justify-end">
+            <Button
+              variant="primary"
+              className="px-6 py-2"
+              onClick={() => setStoreDisabledModalOpen(false)}
+            >
+              OK
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 bg-rose-100 dark:bg-rose-950/60 rounded-full text-rose-600 dark:text-rose-400 shrink-0">
+              <ExclamationTriangleIcon className="h-6 w-6" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold text-text-heading">
+                Store Automatically Set to Inactive
+              </h4>
+              <p className="text-xs text-text-muted leading-relaxed">
+                Your store has been deactivated because{" "}
+                <span className="font-semibold text-rose-600 dark:text-rose-400">
+                  {storeDisabledReason || "two consecutive orders were cancelled without accepting an order in between."}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/80 dark:bg-rose-950/30 p-3.5 space-y-2 text-xs text-rose-900 dark:text-rose-200">
+            <div className="font-semibold">⚠️ Notice:</div>
+            <ul className="list-disc list-inside space-y-1 text-[11px] text-rose-800 dark:text-rose-300">
+              <li>All products in your catalog are now marked as <strong>Out of Stock</strong> on the web app.</li>
+              <li>Customers can no longer place orders with your store.</li>
+              <li>The store status switch is disabled until re-enabled by admin.</li>
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-border bg-surface-alt p-3.5 space-y-1 text-xs text-text-heading">
+            <p className="font-semibold text-primary">How to reactivate your store:</p>
+            <p className="text-[11px] text-text-muted leading-relaxed">
+              Please <strong>contact admin for active your store back</strong>. Once reviewed and approved by the admin team, your store and products will be restored to active status.
+            </p>
+          </div>
+        </div>
       </Modal>
     </div>
   );

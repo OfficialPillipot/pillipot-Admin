@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { 
   Card, 
-  CardHeader, 
   Table, 
   Badge, 
   Button, 
@@ -97,11 +96,6 @@ function VendorManagementPage() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader
-          title="Vendor Management"
-          subtitle="Manage marketplace vendors, review onboarding status, and approve new sellers."
-        />
-        
         <Table
           isLoading={isLoading}
           keyExtractor={(v: Vendor) => v.id}

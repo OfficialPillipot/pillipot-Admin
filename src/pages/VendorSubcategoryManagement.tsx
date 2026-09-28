@@ -123,8 +123,6 @@ function VendorSubcategoryManagement() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="Product Subcategories"
-          subtitle="Manage specific sub-types for your products"
           action={<Button onClick={openAdd}>Add Subcategory</Button>}
         />
         <Table

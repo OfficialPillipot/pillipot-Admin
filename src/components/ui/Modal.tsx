@@ -1,4 +1,5 @@
 import { memo, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "../../lib/utils";
 
 interface ModalProps {
@@ -46,9 +47,9 @@ function ModalComponent({
 
   if (!isOpen) return null;
 
-  return (
+  const content = (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -60,12 +61,12 @@ function ModalComponent({
       />
       <div
         className={cn(
-          "admin-modal-panel-in relative m-0 flex max-h-[min(92dvh,calc(100vh-0.5rem))] w-full flex-col overflow-hidden rounded-t-[var(--radius-xl)] border border-border bg-surface shadow-[var(--shadow-card-lg)] sm:m-auto sm:max-h-[min(88dvh,42rem)] sm:rounded-[var(--radius-xl)]",
+          "admin-modal-panel-in relative flex max-h-[min(90vh,42rem)] w-full flex-col overflow-hidden rounded-[var(--radius-xl)] border border-border bg-surface shadow-[var(--shadow-card-lg)]",
           sizeClasses[size]
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-3 sm:gap-3 sm:px-6 sm:py-4">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3.5 sm:gap-3 sm:px-6 sm:py-4">
           <h3
             id="modal-title"
             className="min-w-0 flex-1 text-sm font-semibold tracking-tight text-text-heading sm:text-base md:text-lg"
@@ -82,11 +83,11 @@ function ModalComponent({
           </button>
         </div>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-6 sm:pb-6">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-4 sm:p-6 sm:pb-6">
             {children}
           </div>
           {footer ? (
-            <div className="shrink-0 border-t border-border bg-surface px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
+            <div className="shrink-0 border-t border-border bg-surface px-4 py-3 sm:px-6 sm:py-4">
               {footer}
             </div>
           ) : null}
@@ -94,6 +95,10 @@ function ModalComponent({
       </div>
     </div>
   );
+
+  return typeof document !== "undefined"
+    ? createPortal(content, document.body)
+    : content;
 }
 
 export const Modal = memo(ModalComponent);

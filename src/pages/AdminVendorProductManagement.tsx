@@ -1,27 +1,33 @@
 import { useMemo } from "react";
 import { 
-  Squares2X2Icon, 
-  TrashIcon
+  Squares2X2Icon
 } from "@heroicons/react/24/outline";
 import {
   Card,
-  CardHeader,
   Table,
   Tooltip,
   ToggleSwitch,
 } from "../components/ui";
 import {
   useGetAdminVendorProductsQuery,
+  useGetVendorsQuery,
   useUpdateProductMutation,
-  useDeleteProductMutation,
 } from "../store/api/edenApi";
 import { toast } from "../lib/toast";
 import type { Product } from "../types";
 
 export default function AdminVendorProductManagement() {
   const { data: products = [], isLoading } = useGetAdminVendorProductsQuery();
+  const { data: vendors = [] } = useGetVendorsQuery();
   const [updateProduct] = useUpdateProductMutation();
-  const [deleteProduct] = useDeleteProductMutation();
+
+  const vendorMap = useMemo(() => {
+    const map = new Map<string, (typeof vendors)[0]>();
+    for (const v of vendors) {
+      if (v.id) map.set(v.id, v);
+    }
+    return map;
+  }, [vendors]);
 
   const handleToggleActive = async (id: string, nextValue: boolean) => {
     try {
@@ -32,22 +38,13 @@ export default function AdminVendorProductManagement() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this vendor product? This action cannot be undone.")) return;
-    try {
-      await deleteProduct(id).unwrap();
-      toast.success("Product deleted successfully");
-    } catch (err) {
-      toast.fromError(err, "Failed to delete product");
-    }
-  };
-
   const columns = useMemo(() => [
     { 
       key: "productCode", 
       header: "ID", 
+      className: "whitespace-nowrap min-w-[6.5rem]",
       render: (row: Product) => (
-        <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+        <span className="text-[10px] font-black uppercase tracking-widest text-text-muted whitespace-nowrap">
           {row.productCode || "—"}
         </span>
       )
@@ -72,6 +69,27 @@ export default function AdminVendorProductManagement() {
           </div>
         </div>
       )
+    },
+    {
+      key: "vendor",
+      header: "Vendor",
+      render: (row: Product) => {
+        const v = row.vendor || (row.vendorId ? vendorMap.get(row.vendorId) : null);
+        const name = v?.businessName?.trim() || v?.ownerName?.trim() || "—";
+        const sub = v?.businessName && v?.ownerName && v.businessName !== v.ownerName ? v.ownerName : null;
+        return (
+          <div className="flex flex-col min-w-0 max-w-[170px]">
+            <span className="font-semibold text-xs text-text-heading truncate" title={name}>
+              {name}
+            </span>
+            {sub && (
+              <span className="text-[10px] text-text-muted truncate" title={sub}>
+                {sub}
+              </span>
+            )}
+          </div>
+        );
+      }
     },
     { 
       key: "price", 
@@ -114,30 +132,14 @@ export default function AdminVendorProductManagement() {
               aria-label={row.isActive ? "Hide product from catalog" : "Show product in catalog"}
             />
           </Tooltip>
-          <Tooltip content="Delete Product">
-            <button 
-              onClick={() => handleDelete(row.id)}
-              className="p-2 text-text-muted hover:text-error transition-colors"
-            >
-              <TrashIcon className="h-4 w-4" />
-            </button>
-          </Tooltip>
         </div>
       )
     }
-  ], [handleToggleActive, handleDelete]);
+  ], [handleToggleActive, vendorMap]);
 
   return (
     <div className="space-y-6">
       <Card padding="none">
-        <div className="p-4 md:p-6 border-b border-border/60">
-          <CardHeader 
-            title="Vendor Products" 
-            subtitle="View all products created by marketplace vendors"
-            icon={<Squares2X2Icon className="h-6 w-6 text-primary" />} 
-          />
-        </div>
-
         <div className="p-1">
           {isLoading ? (
             <div className="py-24 text-center">

@@ -219,8 +219,6 @@ function CategoryManagementPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="Category Management"
-          // subtitle="Create categories here first, then assign products to them in Product Management."
           action={<Button onClick={openAdd}>Add category</Button>}
         />
         <div className="mb-4">

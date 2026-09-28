@@ -153,8 +153,6 @@ function StaffPayrollLedgerPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="Payroll"
-          // subtitle="Choose a period to see earnings, pay status, and record payouts. Pay rules are edited under Staff pay."
           action={
             <Link
               to="/admin/salary"

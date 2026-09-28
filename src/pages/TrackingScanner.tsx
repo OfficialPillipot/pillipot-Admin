@@ -375,10 +375,6 @@ function TrackingScannerPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-4 pb-16 md:p-6">
       <Card>
-        <CardHeader
-          title="Tracking scan"
-          subtitle=" "
-        />
         <div className="space-y-4 px-4 pb-4 md:px-6 md:pb-6">
           {draftOrderId && scanPhase === "tracking" && (
             <div className="space-y-2 rounded-[var(--radius-md)] bg-primary-muted px-3 py-2 text-sm text-text">

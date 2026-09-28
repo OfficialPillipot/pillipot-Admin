@@ -15,7 +15,7 @@ import {
   fetchDeliveryMethods,
 } from "../store/deliveriesSlice";
 import { fetchSettings, selectSettings } from "../store/settingsSlice";
-import { Card, CardHeader, Table } from "../components/ui";
+import { Card, Table } from "../components/ui";
 import { toast } from "../lib/toast";
 import { downloadBulkOrdersPdf, downloadOrderPdf } from "../lib/download-order-pdf";
 import type { Order, OrderStatus } from "../types";
@@ -757,7 +757,6 @@ function AdminVendorOrderManagementPage() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Vendor Order Management" />
         <AdminOrderFilters
           search={searchDraft}
           onSearchChange={setSearchDraft}

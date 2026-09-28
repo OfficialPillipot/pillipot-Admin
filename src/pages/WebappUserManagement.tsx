@@ -329,8 +329,6 @@ function WebappUserManagementPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader
-          title="Platform Customers"
-
           action={
             <Button
               type="button"

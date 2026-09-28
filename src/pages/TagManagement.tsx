@@ -89,7 +89,7 @@ export default function TagManagementPage() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Tag Management" action={<Button onClick={openAdd}>Add tag</Button>} />
+        <CardHeader action={<Button onClick={openAdd}>Add tag</Button>} />
         <div className="mb-4 p-4">
           <Input label="" placeholder="Search tags..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </div>
