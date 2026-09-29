@@ -295,13 +295,13 @@ export interface AppSettings {
   defaultPdfSize: PdfSize;
   defaultSenderId: string | null;
   defaultSender:
-    | {
-        id: string;
-        name: string;
-        contractId?: string | null;
-        customerId?: string | null;
-      }
-    | null;
+  | {
+    id: string;
+    name: string;
+    contractId?: string | null;
+    customerId?: string | null;
+  }
+  | null;
   /** Products with stock ≤ this value are flagged on dashboards (0 = only zero stock). */
   lowStockThreshold: number;
   createdAt: string;
@@ -702,5 +702,42 @@ export interface SalesStatisticsQuery {
   dateTo?: string;
   month?: number;
   year?: number;
+}
+
+export interface Addon {
+  id: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  imageUrl?: string | null;
+  vendorId?: string | null;
+  vendor?: Vendor | null;
+  productId?: string | null;
+  product?: Product | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAddonPayload {
+  name: string;
+  price: number;
+  description?: string;
+  imageUrl?: string;
+  vendorId?: string;
+  productId?: string;
+  isActive?: boolean;
+  image?: File;
+}
+
+export interface UpdateAddonPayload {
+  name?: string;
+  price?: number;
+  description?: string;
+  imageUrl?: string;
+  vendorId?: string;
+  productId?: string;
+  isActive?: boolean;
+  image?: File;
 }
 

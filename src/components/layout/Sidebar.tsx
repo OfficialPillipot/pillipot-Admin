@@ -29,7 +29,6 @@ import {
   PresentationChartLineIcon,
   ShieldCheckIcon,
   IdentificationIcon,
-  QrCodeIcon,
   GiftIcon,
   // BuildingOffice2Icon,
   MegaphoneIcon,
@@ -114,9 +113,9 @@ const VENDOR_NAV_SECTIONS: NavSection<StaffNavItem>[] = [
     items: [
       { to: "/", label: "Dashboard", end: true, icon: HomeIcon },
       { to: "/vendor/products", label: "My Products", end: true, icon: Squares2X2Icon },
-      { to: "/vendor/orders", label: "Product Orders", end: true, icon: ClipboardDocumentListIcon },
+      { to: "/vendor/addons", label: "Add-ons", end: true, icon: GiftIcon },
+      { to: "/vendor/orders", label: "My Orders", end: true, icon: ClipboardDocumentListIcon },
       { to: "/vendor/reviews", label: "Reviews", end: true, icon: StarIcon },
-      { to: "/admin/tracking-scan", label: "Tracking scan", end: true, icon: QrCodeIcon },
       { to: "/vendor/offers", label: "Offers", end: true, icon: TagIcon },
     ],
   },
@@ -153,6 +152,7 @@ const ADMIN_NAV_SECTIONS: NavSection<AdminNavItem>[] = [
       { to: "/admin/vendors", label: "Applications", end: true, icon: BriefcaseIcon, permission: "vendors.view" },
       { to: "/admin/vendors/active", label: "Active Vendors", end: true, icon: UsersIcon, permission: "vendors.view" },
       { to: "/admin/vendors/products", label: "Vendor Products", end: true, icon: Squares2X2Icon, permission: "vendors.view" },
+      { to: "/admin/addons", label: "Vendor Add-ons", end: true, icon: GiftIcon, permission: "vendors.view" },
     ],
   },
   {

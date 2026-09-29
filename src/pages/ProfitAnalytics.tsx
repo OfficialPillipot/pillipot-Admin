@@ -19,7 +19,9 @@ import {
   Select,
   ManagementFilterPanel,
   ManagementFilterField,
-  MANAGEMENT_NATIVE_CONTROL_CLASS,
+  ManagementFilterActions,
+  MANAGEMENT_DATE_CONTROL_CLASS,
+  MANAGEMENT_FILTER_BTN_CLASS,
   ResponsiveManagementFilters,
 } from "../components/ui";
 import type { SelectOption } from "../components/ui/Select";
@@ -287,7 +289,7 @@ function ProfitAnalyticsPage() {
                   setPreset("custom");
                   setDateFrom(e.target.value);
                 }}
-                className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                className={MANAGEMENT_DATE_CONTROL_CLASS}
                 aria-label="From date"
               />
             </ManagementFilterField>
@@ -299,7 +301,7 @@ function ProfitAnalyticsPage() {
                   setPreset("custom");
                   setDateTo(e.target.value);
                 }}
-                className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                className={MANAGEMENT_DATE_CONTROL_CLASS}
                 aria-label="To date"
               />
             </ManagementFilterField>
@@ -315,11 +317,16 @@ function ProfitAnalyticsPage() {
                 aria-label="Chart bucket size"
               />
             </ManagementFilterField>
-            <ManagementFilterField label="Data">
-              <Button type="button" onClick={() => void load()} loading={loading}>
+            <ManagementFilterActions>
+              <Button
+                className={`${MANAGEMENT_FILTER_BTN_CLASS} font-semibold`}
+                type="button"
+                onClick={() => void load()}
+                loading={loading}
+              >
                 Refresh
               </Button>
-            </ManagementFilterField>
+            </ManagementFilterActions>
           </ManagementFilterPanel>
           </ResponsiveManagementFilters>
         </div>

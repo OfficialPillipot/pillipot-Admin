@@ -115,6 +115,10 @@ export const endpoints = {
   vendorPortalOffers: `${V1}/vendor-portal/offers`,
   vendorPortalOfferById: (id: string) => `${V1}/vendor-portal/offers/${id}`,
   vendorPortalReviews: `${V1}/vendor-portal/reviews`,
+  adminAddons: `${V1}/admin/addons`,
+  adminAddonById: (id: string) => `${V1}/admin/addons/${id}`,
+  vendorPortalAddons: `${V1}/vendor-portal/addons`,
+  vendorPortalAddonById: (id: string) => `${V1}/vendor-portal/addons/${id}`,
   tags: `${V1}/tags`,
   tagById: (id: string) => `${V1}/tags/${id}`,
 } as const;

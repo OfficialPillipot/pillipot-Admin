@@ -16,7 +16,7 @@ import {
   ManagementFilterPanel,
   ManagementFilterField,
   ResponsiveManagementFilters,
-  MANAGEMENT_NATIVE_CONTROL_CLASS,
+  MANAGEMENT_DATE_CONTROL_CLASS,
 } from "../components/ui";
 import { staffJobRoleLabel } from "../lib/staffJobRoles";
 import { toast } from "../lib/toast";
@@ -359,7 +359,7 @@ function StaffProfilePage() {
                   type="date"
                   value={dateFilter}
                   onChange={(e) => setDateFilter(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                  className={MANAGEMENT_DATE_CONTROL_CLASS}
                   aria-label="Filter by order date"
                 />
               </ManagementFilterField>

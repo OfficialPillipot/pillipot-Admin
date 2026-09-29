@@ -111,3 +111,12 @@ export function calculateVendorSidebarOrdersCount(orders: Order[]): number {
   const lastSeenMs = last ? new Date(last).getTime() : 0;
   return valid.filter((o) => isVendorOrderUnread(o, lastSeenMs)).length;
 }
+
+export function isVendorReviewUnread(review: AdminReviewRow, lastSeenMs: number): boolean {
+  if (lastSeenMs <= 0) {
+    return true;
+  }
+  const createdMs = new Date(review.createdAt).getTime();
+  return Number.isFinite(createdMs) && createdMs > lastSeenMs;
+}
+

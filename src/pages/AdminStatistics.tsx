@@ -642,10 +642,10 @@ export default function AdminStatistics() {
           </Button>
 
           {/* Date Picker Slot - Perfect inline alignment initially, floats sticky when scrolled */}
-          <div ref={datePickerAnchorRef} className="w-64 sm:w-72 h-11 shrink-0">
+          <div ref={datePickerAnchorRef} className="w-72 sm:w-[260px] h-11 shrink-0">
             <div
               className={cn(
-                "w-64 sm:w-72 transition-all duration-150",
+                "w-72 sm:w-[260px] transition-all duration-150",
                 isSticky
                   ? "fixed z-40 shadow-lg rounded-[var(--radius-md)] bg-surface/95 backdrop-blur-md border border-border"
                   : "relative"

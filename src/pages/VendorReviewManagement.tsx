@@ -1,12 +1,12 @@
 import { memo, useState, useMemo, useDeferredValue, useEffect } from "react";
-import { Card, CardHeader, Table, Badge, Button, Input, Modal, Select } from "../components/ui";
+import { useSearchParams } from "react-router";
+import { Card, Table, Badge, Button, Input, Modal, Select, Tooltip } from "../components/ui";
 import { useGetVendorPortalReviewsQuery } from "../store/api/edenApi";
 import {
   markVendorSidebarReviewsSeen,
   dispatchSidebarVendorReviewsRefresh,
 } from "../lib/header-notifications";
 import {
-  ArrowPathIcon,
   MagnifyingGlassIcon,
   StarIcon as StarOutlineIcon,
   Squares2X2Icon,
@@ -20,15 +20,14 @@ import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 import type { AdminReviewRow } from "../types";
 
 function VendorReviewManagement() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [ratingFilter, setRatingFilter] = useState<string>("all");
   const [selectedReview, setSelectedReview] = useState<AdminReviewRow | null>(null);
 
   const {
     data: rows = [],
     isLoading,
-    isFetching,
-    refetch,
   } = useGetVendorPortalReviewsQuery();
 
   useEffect(() => {
@@ -83,28 +82,46 @@ function VendorReviewManagement() {
     );
   }, [rows, deferredQuery, ratingFilter]);
 
-  // Table columns: date, product name, order id, rating clearly displayed
+  // Table columns: Order ID, Date, Product Name, Customer, Rating, Review Comment
   const columns = [
+    {
+      key: "orderId",
+      header: "Order ID",
+      className: "whitespace-nowrap min-w-[7.5rem]",
+      render: (row: AdminReviewRow) => {
+        const displayId = row.order?.orderId || row.orderId;
+        return displayId ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono font-medium bg-surface-alt border border-border text-primary whitespace-nowrap">
+            #{displayId}
+          </span>
+        ) : (
+          <span className="text-xs text-text-muted italic whitespace-nowrap">N/A</span>
+        );
+      },
+    },
     {
       key: "createdAt",
       header: "Date",
-      className: "w-36",
+      className: "whitespace-nowrap min-w-[7.5rem]",
       render: (row: AdminReviewRow) => {
         const d = new Date(row.createdAt);
+        const dateStr = d.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+        const timeStr = d.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        });
         return (
-          <div className="flex flex-col text-xs">
-            <span className="font-semibold text-text-heading">
-              {d.toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })}
+          <div className="flex flex-col text-xs leading-snug">
+            <span className="font-semibold text-text-heading whitespace-nowrap">
+              {dateStr}
             </span>
-            <span className="text-[11px] text-text-muted">
-              {d.toLocaleTimeString("en-IN", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+            <span className="text-[11px] text-text-muted whitespace-nowrap">
+              {timeStr}
             </span>
           </div>
         );
@@ -114,8 +131,9 @@ function VendorReviewManagement() {
       key: "product",
       header: "Product Name",
       mobileCardTitle: true,
+      className: "min-w-[12rem] max-w-[16rem]",
       render: (row: AdminReviewRow) => (
-        <div className="flex items-center gap-3 py-1">
+        <div className="flex items-center gap-3 py-1 min-w-0">
           <div className="h-10 w-10 shrink-0 rounded-lg overflow-hidden border border-border bg-surface-alt flex items-center justify-center">
             {row.product?.imageUrl ? (
               <img
@@ -142,28 +160,41 @@ function VendorReviewManagement() {
       ),
     },
     {
-      key: "orderId",
-      header: "Order ID",
-      className: "w-36",
+      key: "customer",
+      header: "Customer",
+      className: "whitespace-nowrap min-w-[8.5rem] max-w-[13rem]",
       render: (row: AdminReviewRow) => {
-        const displayId = row.order?.orderId || row.orderId;
-        return displayId ? (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono font-medium bg-surface-alt border border-border text-primary">
-            #{displayId}
-          </span>
-        ) : (
-          <span className="text-xs text-text-muted italic">N/A</span>
+        const name = row.customer?.customerName || "Customer";
+        return (
+          <div className="min-w-0 max-w-[170px] text-xs">
+            <Tooltip content={name} side="top" className="max-w-full min-w-0">
+              <span
+                className="font-medium text-text-heading truncate block whitespace-nowrap cursor-default"
+                title={name}
+              >
+                {name}
+              </span>
+            </Tooltip>
+            {row.customer?.email && (
+              <span
+                className="text-[11px] text-text-muted truncate block max-w-[160px] whitespace-nowrap"
+                title={row.customer.email}
+              >
+                {row.customer.email}
+              </span>
+            )}
+          </div>
         );
       },
     },
     {
       key: "rating",
       header: "Rating",
-      className: "w-36",
+      className: "whitespace-nowrap w-36",
       render: (row: AdminReviewRow) => {
         const score = Number(row.rating) || 0;
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 whitespace-nowrap">
             <div className="flex items-center text-amber-400">
               {[1, 2, 3, 4, 5].map((star) =>
                 star <= score ? (
@@ -186,25 +217,9 @@ function VendorReviewManagement() {
       },
     },
     {
-      key: "customer",
-      header: "Customer",
-      className: "w-44",
-      render: (row: AdminReviewRow) => (
-        <div className="flex flex-col text-xs">
-          <span className="font-medium text-text-heading">
-            {row.customer?.customerName || "Customer"}
-          </span>
-          {row.customer?.email && (
-            <span className="text-[11px] text-text-muted truncate max-w-[150px]">
-              {row.customer.email}
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
       key: "comment",
       header: "Review Comment",
+      className: "min-w-[12rem] max-w-md",
       render: (row: AdminReviewRow) => (
         <div className="max-w-md text-xs text-text-body">
           {row.comment ? (
@@ -219,19 +234,21 @@ function VendorReviewManagement() {
     },
     {
       key: "actions",
-      header: "",
-      className: "w-16 text-right",
+      header: "View",
+      className: "w-20 text-center whitespace-nowrap",
       render: (row: AdminReviewRow) => (
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="p-1.5 hover:text-primary"
-          onClick={() => setSelectedReview(row)}
-          title="View full review details"
-        >
-          <EyeIcon className="h-4 w-4" />
-        </Button>
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="p-1.5 hover:text-primary"
+            onClick={() => setSelectedReview(row)}
+            title="View full review details"
+          >
+            <EyeIcon className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ];
@@ -325,24 +342,6 @@ function VendorReviewManagement() {
 
       {/* Main Reviews Card */}
       <Card>
-        <CardHeader
-          action={
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={isFetching}
-              onClick={() => void refetch()}
-            >
-              <ArrowPathIcon
-                className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
-                aria-hidden
-              />
-              Refresh
-            </Button>
-          }
-        />
-
         {/* Filters */}
         <div className="p-4 border-b border-border flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
           <div className="w-full sm:max-w-md">

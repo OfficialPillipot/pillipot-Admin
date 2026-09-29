@@ -172,6 +172,14 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
           }
         />
         <Route
+          path="/vendor/addons"
+          element={
+            <ProtectedRoute allowedRoles={["vendor"]}>
+              <Pages.VendorAddonManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/vendor/profile"
           element={
             <ProtectedRoute allowedRoles={["vendor"]}>
@@ -358,6 +366,17 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
               requiredPermissions={["vendors.view"]}
             >
               <Pages.AdminVendorOrderManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/addons"
+          element={
+            <ProtectedRoute
+              allowedRoles={["super_admin", "guest"]}
+              requiredPermissions={["vendors.view"]}
+            >
+              <Pages.AdminAddonManagement />
             </ProtectedRoute>
           }
         />

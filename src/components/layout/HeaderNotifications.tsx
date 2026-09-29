@@ -1,10 +1,11 @@
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   BellIcon,
   CheckCircleIcon,
   ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
+import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 import { api } from "../../api/client";
 import { endpoints } from "../../api/endpoints";
 import { hasPermission } from "../../lib/permissions";
@@ -17,9 +18,14 @@ import {
   REMINDER_HOURS,
   getPendingReminderLevel,
   isVendorOrderUnread,
+  isVendorReviewUnread,
 } from "../../lib/header-notifications";
 import { isCompletedOrCodOrder } from "../../lib/orderUtils";
-import type { BlogFeedItem, Order, StaffEnquiryListRow, User } from "../../types";
+import {
+  useGetVendorPortalOrdersQuery,
+  useGetVendorPortalReviewsQuery,
+} from "../../store/api/edenApi";
+import type { AdminReviewRow, BlogFeedItem, Order, StaffEnquiryListRow, User } from "../../types";
 
 function postPublishedMs(iso: string): number {
   const n = new Date(iso).getTime();
@@ -109,7 +115,10 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
   const [blogUnread, setBlogUnread] = useState(0);
   const [enquiryUnread, setEnquiryUnread] = useState(0);
   const [vendorOrders, setVendorOrders] = useState<Order[]>([]);
-  const [vendorUnread, setVendorUnread] = useState(0);
+  const [vendorOrderUnread, setVendorOrderUnread] = useState(0);
+  const [vendorReviews, setVendorReviews] = useState<AdminReviewRow[]>([]);
+  const [vendorReviewUnread, setVendorReviewUnread] = useState(0);
+  const [activeFilter, setActiveFilter] = useState<"all" | "orders" | "reviews">("all");
 
   const isStaff = user.role === "staff";
   const isVendor = user.role === "vendor";
@@ -117,9 +126,118 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
     user.role === "super_admin" ||
     (user.role === "guest" && hasPermission(user, "staff_enquiries.view"));
 
+  // Shared RTK Query hooks: deduplicates requests with Sidebar.tsx automatically
+  const { data: rawVendorOrders = [], refetch: refetchVendorOrders } = useGetVendorPortalOrdersQuery(undefined, {
+    skip: !isVendor,
+    pollingInterval: 20000,
+  });
+
+  const { data: rawVendorReviews = [], refetch: refetchVendorReviews } = useGetVendorPortalReviewsQuery(undefined, {
+    skip: !isVendor,
+    pollingInterval: 20000,
+  });
+
   // Keep track of known orders and triggered reminder milestones
   const knownOrderIdsRef = useRef<Set<string> | null>(null);
   const remindedMilestonesRef = useRef<Set<string>>(new Set());
+
+  // Keep track of known reviews
+  const knownReviewIdsRef = useRef<Set<string> | null>(null);
+
+  // Update vendor orders notification state whenever shared RTK Query orders update
+  useEffect(() => {
+    if (!isVendor) return;
+    const valid = rawVendorOrders.filter(isCompletedOrCodOrder);
+
+    // Sort: Prioritize higher reminder levels (23h, 22h, 20h, 18h, 12h), then pending, then newest
+    const sorted = [...valid].sort((a, b) => {
+      const aLevel = getPendingReminderLevel(a) ?? 0;
+      const bLevel = getPendingReminderLevel(b) ?? 0;
+      if (aLevel !== bLevel) return bLevel - aLevel;
+      const aPending = a.status === "pending";
+      const bPending = b.status === "pending";
+      if (aPending && !bPending) return -1;
+      if (!aPending && bPending) return 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    setVendorOrders(sorted.slice(0, 10));
+
+    // Check unread count for header bell (based on notification bell's own last seen)
+    const last = localStorage.getItem(LS_VENDOR_HEADER_NOTIF_LAST_SEEN);
+    const lastSeenMs = last ? new Date(last).getTime() : 0;
+    const unreadCount = valid.filter((o) => isVendorOrderUnread(o, lastSeenMs)).length;
+    setVendorOrderUnread(unreadCount);
+
+    // Detect real-time new incoming orders and reminder milestones (12h, 18h, 20h, 22h, 23h)
+    if (knownOrderIdsRef.current === null) {
+      knownOrderIdsRef.current = new Set(valid.map((o) => o.id));
+      valid.forEach((o) => {
+        if (o.status === "pending") {
+          const elapsedMs = Date.now() - new Date(o.createdAt).getTime();
+          REMINDER_HOURS.forEach((h) => {
+            if (elapsedMs >= h * 60 * 60 * 1000) {
+              remindedMilestonesRef.current.add(`${o.id}-${h}`);
+            }
+          });
+        }
+      });
+    } else {
+      const freshOrders = valid.filter((o) => !knownOrderIdsRef.current!.has(o.id));
+      let hasNewMilestone = false;
+
+      valid.forEach((o) => {
+        if (o.status === "pending") {
+          const elapsedMs = Date.now() - new Date(o.createdAt).getTime();
+          REMINDER_HOURS.forEach((h) => {
+            if (elapsedMs >= h * 60 * 60 * 1000) {
+              const key = `${o.id}-${h}`;
+              if (!remindedMilestonesRef.current.has(key)) {
+                remindedMilestonesRef.current.add(key);
+                hasNewMilestone = true;
+              }
+            }
+          });
+        }
+      });
+
+      let shouldAlert = false;
+      if (freshOrders.length > 0) {
+        freshOrders.forEach((o) => knownOrderIdsRef.current!.add(o.id));
+        shouldAlert = true;
+      }
+      if (hasNewMilestone) {
+        shouldAlert = true;
+      }
+
+      if (shouldAlert) {
+        playNotificationSound();
+      }
+    }
+  }, [rawVendorOrders, isVendor]);
+
+  // Update vendor reviews notification state whenever shared RTK Query reviews update
+  useEffect(() => {
+    if (!isVendor) return;
+    const sorted = [...rawVendorReviews].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    setVendorReviews(sorted.slice(0, 10));
+
+    const last = localStorage.getItem(LS_VENDOR_HEADER_NOTIF_LAST_SEEN);
+    const lastSeenMs = last ? new Date(last).getTime() : 0;
+    const unreadCount = sorted.filter((r) => isVendorReviewUnread(r, lastSeenMs)).length;
+    setVendorReviewUnread(unreadCount);
+
+    if (knownReviewIdsRef.current === null) {
+      knownReviewIdsRef.current = new Set(rawVendorReviews.map((r) => r.id));
+    } else {
+      const freshReviews = rawVendorReviews.filter((r) => !knownReviewIdsRef.current!.has(r.id));
+      if (freshReviews.length > 0) {
+        freshReviews.forEach((r) => knownReviewIdsRef.current!.add(r.id));
+        playNotificationSound();
+      }
+    }
+  }, [rawVendorReviews, isVendor]);
 
   const refresh = useCallback(async () => {
     if (isStaff) {
@@ -163,91 +281,15 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
         /* ignore */
       }
     }
+  }, [isStaff, showAdminEnquiries]);
 
-    if (isVendor) {
-      try {
-        const orders = await api.get<Order[]>(endpoints.vendorPortalOrders, {
-          silent: true,
-        });
-        const valid = orders.filter(isCompletedOrCodOrder);
-
-        // Sort: Prioritize higher reminder levels (23h, 22h, 20h, 18h, 12h), then pending, then newest
-        const sorted = [...valid].sort((a, b) => {
-          const aLevel = getPendingReminderLevel(a) ?? 0;
-          const bLevel = getPendingReminderLevel(b) ?? 0;
-          if (aLevel !== bLevel) return bLevel - aLevel;
-          const aPending = a.status === "pending";
-          const bPending = b.status === "pending";
-          if (aPending && !bPending) return -1;
-          if (!aPending && bPending) return 1;
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        });
-        setVendorOrders(sorted.slice(0, 8));
-
-        // Check unread count for header bell (based on notification bell's own last seen)
-        const last = localStorage.getItem(LS_VENDOR_HEADER_NOTIF_LAST_SEEN);
-        const lastSeenMs = last ? new Date(last).getTime() : 0;
-        const unreadCount = valid.filter((o) => isVendorOrderUnread(o, lastSeenMs)).length;
-        setVendorUnread(unreadCount);
-
-        // Detect real-time new incoming orders and reminder milestones (12h, 18h, 20h, 22h, 23h)
-        if (knownOrderIdsRef.current === null) {
-          knownOrderIdsRef.current = new Set(valid.map((o) => o.id));
-          valid.forEach((o) => {
-            if (o.status === "pending") {
-              const elapsedMs = Date.now() - new Date(o.createdAt).getTime();
-              REMINDER_HOURS.forEach((h) => {
-                if (elapsedMs >= h * 60 * 60 * 1000) {
-                  remindedMilestonesRef.current.add(`${o.id}-${h}`);
-                }
-              });
-            }
-          });
-        } else {
-          const freshOrders = valid.filter((o) => !knownOrderIdsRef.current!.has(o.id));
-          let hasNewMilestone = false;
-
-          valid.forEach((o) => {
-            if (o.status === "pending") {
-              const elapsedMs = Date.now() - new Date(o.createdAt).getTime();
-              REMINDER_HOURS.forEach((h) => {
-                if (elapsedMs >= h * 60 * 60 * 1000) {
-                  const key = `${o.id}-${h}`;
-                  if (!remindedMilestonesRef.current.has(key)) {
-                    remindedMilestonesRef.current.add(key);
-                    hasNewMilestone = true;
-                  }
-                }
-              });
-            }
-          });
-
-          let shouldAlert = false;
-          if (freshOrders.length > 0) {
-            freshOrders.forEach((o) => knownOrderIdsRef.current!.add(o.id));
-            shouldAlert = true;
-          }
-          if (hasNewMilestone) {
-            shouldAlert = true;
-          }
-
-          if (shouldAlert) {
-            playNotificationSound();
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-  }, [isStaff, showAdminEnquiries, isVendor]);
-
-  // Polling: 20 seconds for vendors so new orders arrive quickly; 60 seconds for staff
-  const pollIntervalMs = isVendor ? 20_000 : 60_000;
-
+  // Polling for non-RTK staff / admin feeds
   useEffect(() => {
+    if (!isStaff && !showAdminEnquiries) return;
     void refresh();
 
     let intervalId: ReturnType<typeof setInterval> | null = null;
+    const pollIntervalMs = 60_000;
 
     const stopPolling = () => {
       if (intervalId != null) {
@@ -284,13 +326,21 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
       stopPolling();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [refresh, pollIntervalMs]);
+  }, [refresh, isStaff, showAdminEnquiries]);
 
   useEffect(() => {
-    const onRefresh = () => void refresh();
+    const onRefresh = () => {
+      if (isVendor) {
+        void refetchVendorOrders();
+        void refetchVendorReviews();
+      }
+      if (isStaff || showAdminEnquiries) {
+        void refresh();
+      }
+    };
     window.addEventListener(HEADER_NOTIFICATIONS_REFRESH, onRefresh);
     return () => window.removeEventListener(HEADER_NOTIFICATIONS_REFRESH, onRefresh);
-  }, [refresh]);
+  }, [refresh, isVendor, isStaff, showAdminEnquiries, refetchVendorOrders, refetchVendorReviews]);
 
   useEffect(() => {
     if (!open) return;
@@ -305,9 +355,10 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
     return () => document.removeEventListener("click", onDoc);
   }, [open]);
 
-  const markAllVendorOrdersRead = () => {
+  const markAllVendorNotificationsRead = () => {
     markVendorNotificationsSeen();
-    setVendorUnread(0);
+    setVendorOrderUnread(0);
+    setVendorReviewUnread(0);
   };
 
   const toggleOpen = () => {
@@ -315,7 +366,8 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
       const next = !prev;
       if (next && isVendor) {
         markVendorNotificationsSeen();
-        setVendorUnread(0);
+        setVendorOrderUnread(0);
+        setVendorReviewUnread(0);
       }
       return next;
     });
@@ -323,19 +375,50 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
 
   const handleOrderClick = (order: Order) => {
     markVendorNotificationsSeen();
-    setVendorUnread(0);
+    setVendorOrderUnread(0);
+    setVendorReviewUnread(0);
     setOpen(false);
-    // Navigate to vendor orders filtered by order ID or status
     navigate(`/vendor/orders?search=${encodeURIComponent(order.orderId)}`);
   };
 
-  const total = blogUnread + enquiryUnread + vendorUnread;
+  const handleReviewClick = (review: AdminReviewRow) => {
+    markVendorNotificationsSeen();
+    setVendorOrderUnread(0);
+    setVendorReviewUnread(0);
+    setOpen(false);
+    const searchTarget = review.order?.orderId || review.orderId || review.product?.name || "";
+    navigate(searchTarget ? `/vendor/reviews?search=${encodeURIComponent(searchTarget)}` : `/vendor/reviews`);
+  };
+
+  const vendorTotalUnread = vendorOrderUnread + vendorReviewUnread;
+  const total = blogUnread + enquiryUnread + vendorTotalUnread;
   if (!isStaff && !showAdminEnquiries && !isVendor) return null;
 
   const vendorLastSeenMs = (() => {
     const s = localStorage.getItem(LS_VENDOR_HEADER_NOTIF_LAST_SEEN);
     return s ? new Date(s).getTime() : 0;
   })();
+
+  type VendorNotifItem =
+    | { type: "order"; id: string; date: string; data: Order }
+    | { type: "review"; id: string; date: string; data: AdminReviewRow };
+
+  const items: VendorNotifItem[] = useMemo(() => {
+    const list: VendorNotifItem[] = [];
+    if (activeFilter === "all" || activeFilter === "orders") {
+      vendorOrders.forEach((o) =>
+        list.push({ type: "order", id: o.id, date: o.createdAt, data: o })
+      );
+    }
+    if (activeFilter === "all" || activeFilter === "reviews") {
+      vendorReviews.forEach((r) =>
+        list.push({ type: "review", id: r.id, date: r.createdAt, data: r })
+      );
+    }
+    return list.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [vendorOrders, vendorReviews, activeFilter]);
 
   return (
     <div className="relative">
@@ -362,7 +445,7 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
       {open ? (
         <div
           id="header-notifications-panel"
-          className="absolute right-0 top-full z-50 mt-1.5 w-[min(calc(100vw-1.5rem),22rem)] overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-[var(--shadow-dropdown)] ring-1 ring-black/5"
+          className="absolute right-0 top-full z-50 mt-1.5 w-[min(calc(100vw-1.5rem),23rem)] overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-[var(--shadow-dropdown)] ring-1 ring-black/5"
           role="menu"
           onClick={(e) => e.stopPropagation()}
         >
@@ -378,10 +461,10 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
                 </span>
               )}
             </div>
-            {isVendor && vendorUnread > 0 && (
+            {isVendor && vendorTotalUnread > 0 && (
               <button
                 type="button"
-                onClick={markAllVendorOrdersRead}
+                onClick={markAllVendorNotificationsRead}
                 className="text-xs font-medium text-primary hover:underline focus:outline-none"
               >
                 Mark all read
@@ -389,139 +472,250 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
             )}
           </div>
 
-          {/* Vendor Orders Section */}
+          {/* Vendor Filter Tabs */}
+          {isVendor && (vendorOrders.length > 0 || vendorReviews.length > 0) && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border bg-surface-alt/40">
+              <button
+                type="button"
+                onClick={() => setActiveFilter("all")}
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-colors ${
+                  activeFilter === "all"
+                    ? "bg-primary text-white shadow-xs"
+                    : "text-text-muted hover:text-text-heading hover:bg-surface-alt"
+                }`}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveFilter("orders")}
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-colors inline-flex items-center gap-1 ${
+                  activeFilter === "orders"
+                    ? "bg-primary text-white shadow-xs"
+                    : "text-text-muted hover:text-text-heading hover:bg-surface-alt"
+                }`}
+              >
+                Orders
+                {vendorOrderUnread > 0 && (
+                  <span className={`px-1 rounded-full text-[9px] ${
+                    activeFilter === "orders" ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+                  }`}>
+                    {vendorOrderUnread}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveFilter("reviews")}
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-colors inline-flex items-center gap-1 ${
+                  activeFilter === "reviews"
+                    ? "bg-primary text-white shadow-xs"
+                    : "text-text-muted hover:text-text-heading hover:bg-surface-alt"
+                }`}
+              >
+                Reviews
+                {vendorReviewUnread > 0 && (
+                  <span className={`px-1 rounded-full text-[9px] ${
+                    activeFilter === "reviews" ? "bg-white/20 text-white" : "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                  }`}>
+                    {vendorReviewUnread}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Vendor Notifications Feed */}
           {isVendor && (
             <div className="max-h-[22rem] overflow-y-auto divide-y divide-border">
-              {vendorOrders.length === 0 ? (
+              {items.length === 0 ? (
                 <div className="px-4 py-8 text-center">
                   <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-surface-alt text-text-muted">
                     <CheckCircleIcon className="h-5 w-5" />
                   </div>
-                  <p className="text-sm font-medium text-text-heading">No orders yet</p>
+                  <p className="text-sm font-medium text-text-heading">No notifications</p>
                   <p className="mt-0.5 text-xs text-text-muted">
-                    New customer orders will appear here in real time.
+                    New orders and customer reviews will appear here in real time.
                   </p>
                 </div>
               ) : (
-                vendorOrders.map((ord) => {
-                  const reminderLevel = getPendingReminderLevel(ord);
-                  const balance = ord.status === "pending" ? getBalanceTime24h(ord.createdAt) : null;
-                  const isUnread = isVendorOrderUnread(ord, vendorLastSeenMs);
-                  const isPending = ord.status === "pending";
+                items.map((item) => {
+                  if (item.type === "order") {
+                    const ord = item.data;
+                    const reminderLevel = getPendingReminderLevel(ord);
+                    const balance = ord.status === "pending" ? getBalanceTime24h(ord.createdAt) : null;
+                    const isUnread = isVendorOrderUnread(ord, vendorLastSeenMs);
+                    const isPending = ord.status === "pending";
+
+                    return (
+                      <button
+                        key={`order-${ord.id}`}
+                        type="button"
+                        onClick={() => handleOrderClick(ord)}
+                        className={`group flex w-full items-start gap-3 p-3 text-left transition-colors hover:bg-surface-alt/80 ${
+                          reminderLevel && reminderLevel >= 20
+                            ? "bg-rose-500/[0.06]"
+                            : reminderLevel
+                            ? "bg-amber-500/[0.04]"
+                            : isUnread
+                            ? "bg-primary/[0.04]"
+                            : ""
+                        }`}
+                      >
+                        <div
+                          className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                            reminderLevel && reminderLevel >= 20
+                              ? "bg-rose-500/20 text-rose-600 dark:bg-rose-500/30 dark:text-rose-400"
+                              : reminderLevel
+                              ? "bg-amber-500/15 text-amber-600 dark:bg-amber-500/25 dark:text-amber-400"
+                              : isPending
+                              ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
+                              : ord.status === "accepted"
+                              ? "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
+                              : "bg-surface-alt text-text-muted"
+                          }`}
+                        >
+                          <ClipboardDocumentListIcon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="truncate text-xs font-semibold text-text-heading group-hover:text-primary">
+                              #{ord.orderId}
+                            </p>
+                            <span className="shrink-0 text-[10px] text-text-muted">
+                              {timeAgo(ord.createdAt)}
+                            </span>
+                          </div>
+                          <p className="truncate text-xs font-medium text-text-muted">
+                            {ord.productName || "Product"} {ord.quantity > 1 ? `(x${ord.quantity})` : ""}
+                          </p>
+
+                          {/* 24-hr Balance Time & Reminder Pill */}
+                          {balance && (
+                            <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                              <span
+                                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                                  balance.isExpired
+                                    ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                                    : balance.hours < 2
+                                    ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-bold"
+                                    : balance.hours < 6
+                                    ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                                    : "border border-border/70 bg-surface-alt text-text-muted"
+                                }`}
+                              >
+                                ⏱ {balance.text}
+                              </span>
+                              {reminderLevel ? (
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                                    reminderLevel >= 22
+                                      ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                                      : reminderLevel >= 18
+                                      ? "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
+                                      : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                                  }`}
+                                >
+                                  <span
+                                    className={`h-1.5 w-1.5 rounded-full ${
+                                      reminderLevel >= 20 ? "bg-rose-600" : "bg-amber-600"
+                                    }`}
+                                  />
+                                  {reminderLevel}h Reminder
+                                </span>
+                              ) : null}
+                            </div>
+                          )}
+
+                          <div className="mt-1 flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-semibold text-text-heading">
+                              ₹{ord.sellingAmount}
+                            </span>
+                            {!reminderLevel && (
+                              <span
+                                className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium capitalize ${
+                                  isPending
+                                    ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                                    : ord.status === "accepted"
+                                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
+                                    : ord.status === "dispatch"
+                                    ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300"
+                                    : ord.status === "delivered"
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+                                    : "bg-surface-alt text-text-muted"
+                                }`}
+                              >
+                                {ord.status === "pending" ? "Pending acceptance" : ord.status}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {isUnread && (
+                          <span
+                            className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ring-2 ${
+                              reminderLevel && reminderLevel >= 20
+                                ? "bg-rose-600 ring-rose-600/30"
+                                : reminderLevel
+                                ? "bg-amber-500 ring-amber-500/30"
+                                : "bg-primary ring-primary/20"
+                            }`}
+                            title={reminderLevel ? `${reminderLevel}h Reminder` : "Unread order"}
+                            aria-hidden
+                          />
+                        )}
+                      </button>
+                    );
+                  }
+
+                  // Review Item
+                  const rev = item.data;
+                  const isUnread = isVendorReviewUnread(rev, vendorLastSeenMs);
+                  const ratingNum = Number(rev.rating) || 0;
 
                   return (
                     <button
-                      key={ord.id}
+                      key={`review-${rev.id}`}
                       type="button"
-                      onClick={() => handleOrderClick(ord)}
+                      onClick={() => handleReviewClick(rev)}
                       className={`group flex w-full items-start gap-3 p-3 text-left transition-colors hover:bg-surface-alt/80 ${
-                        reminderLevel && reminderLevel >= 20
-                          ? "bg-rose-500/[0.06]"
-                          : reminderLevel
-                          ? "bg-amber-500/[0.04]"
-                          : isUnread
-                          ? "bg-primary/[0.04]"
-                          : ""
+                        isUnread ? "bg-amber-500/[0.05]" : ""
                       }`}
                     >
-                      <div
-                        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                          reminderLevel && reminderLevel >= 20
-                            ? "bg-rose-500/20 text-rose-600 dark:bg-rose-500/30 dark:text-rose-400"
-                            : reminderLevel
-                            ? "bg-amber-500/15 text-amber-600 dark:bg-amber-500/25 dark:text-amber-400"
-                            : isPending
-                            ? "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
-                            : ord.status === "accepted"
-                            ? "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
-                            : "bg-surface-alt text-text-muted"
-                        }`}
-                      >
-                        <ClipboardDocumentListIcon className="h-4 w-4" />
+                      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
+                        <StarSolidIcon className="h-4 w-4 fill-amber-400" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1">
                           <p className="truncate text-xs font-semibold text-text-heading group-hover:text-primary">
-                            #{ord.orderId}
+                            New Review ({ratingNum.toFixed(1)}★)
                           </p>
                           <span className="shrink-0 text-[10px] text-text-muted">
-                            {timeAgo(ord.createdAt)}
+                            {timeAgo(rev.createdAt)}
                           </span>
                         </div>
                         <p className="truncate text-xs font-medium text-text-muted">
-                          {ord.productName || "Product"} {ord.quantity > 1 ? `(x${ord.quantity})` : ""}
+                          {rev.product?.name || "Product"} {rev.customer?.customerName ? `· ${rev.customer.customerName}` : ""}
                         </p>
-
-                        {/* 24-hr Balance Time & Reminder Pill */}
-                        {balance && (
-                          <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                            <span
-                              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                                balance.isExpired
-                                  ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
-                                  : balance.hours < 2
-                                  ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-bold"
-                                  : balance.hours < 6
-                                  ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
-                                  : "border border-border/70 bg-surface-alt text-text-muted"
-                              }`}
-                            >
-                              ⏱ {balance.text}
-                            </span>
-                            {reminderLevel ? (
-                              <span
-                                className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                                  reminderLevel >= 22
-                                    ? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
-                                    : reminderLevel >= 18
-                                    ? "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
-                                    : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
-                                }`}
-                              >
-                                <span
-                                  className={`h-1.5 w-1.5 rounded-full ${
-                                    reminderLevel >= 20 ? "bg-rose-600" : "bg-amber-600"
-                                  }`}
-                                />
-                                {reminderLevel}h Reminder
-                              </span>
-                            ) : null}
-                          </div>
-                        )}
-
-                        <div className="mt-1 flex items-center justify-between gap-2">
-                          <span className="text-[11px] font-semibold text-text-heading">
-                            ₹{ord.sellingAmount}
+                        {rev.comment ? (
+                          <p className="mt-0.5 text-xs text-text-body line-clamp-1 italic text-text-muted" title={rev.comment}>
+                            “{rev.comment}”
+                          </p>
+                        ) : null}
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200/60">
+                            ⭐ {ratingNum.toFixed(1)}
                           </span>
-                          {!reminderLevel && (
-                            <span
-                              className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium capitalize ${
-                                isPending
-                                  ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
-                                  : ord.status === "accepted"
-                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
-                                  : ord.status === "dispatch"
-                                  ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300"
-                                  : ord.status === "delivered"
-                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
-                                  : "bg-surface-alt text-text-muted"
-                              }`}
-                            >
-                              {ord.status === "pending" ? "Pending acceptance" : ord.status}
+                          {rev.order?.orderId ? (
+                            <span className="text-[10px] text-text-muted font-mono">
+                              #{rev.order.orderId}
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                       {isUnread && (
                         <span
-                          className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ring-2 ${
-                            reminderLevel && reminderLevel >= 20
-                              ? "bg-rose-600 ring-rose-600/30"
-                              : reminderLevel
-                              ? "bg-amber-500 ring-amber-500/30"
-                              : "bg-primary ring-primary/20"
-                          }`}
-                          title={reminderLevel ? `${reminderLevel}h Reminder` : "Unread order"}
+                          className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500 ring-2 ring-amber-500/30"
+                          title="Unread review"
                           aria-hidden
                         />
                       )}
@@ -580,15 +774,23 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
             </Link>
           ) : null}
 
-          {/* Vendor Footer Link */}
+          {/* Vendor Footer Links */}
           {isVendor && (
-            <div className="border-t border-border bg-surface-alt/40 p-2 text-center">
+            <div className="border-t border-border bg-surface-alt/40 p-2 flex items-center justify-around text-xs font-medium text-primary">
               <Link
                 to="/vendor/orders"
                 onClick={() => setOpen(false)}
-                className="block rounded-[var(--radius-sm)] py-1 text-xs font-medium text-primary hover:bg-surface-alt transition-colors"
+                className="py-1 px-3 rounded-[var(--radius-sm)] hover:bg-surface-alt transition-colors"
               >
-                View all product orders →
+                View all orders →
+              </Link>
+              <span className="text-border">|</span>
+              <Link
+                to="/vendor/reviews"
+                onClick={() => setOpen(false)}
+                className="py-1 px-3 rounded-[var(--radius-sm)] hover:bg-surface-alt transition-colors"
+              >
+                View all reviews →
               </Link>
             </div>
           )}

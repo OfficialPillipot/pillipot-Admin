@@ -14,8 +14,11 @@ import {
   Select,
   ManagementFilterPanel,
   ManagementFilterField,
+  ManagementFilterActions,
+  MANAGEMENT_FILTER_BTN_CLASS,
   ResponsiveManagementFilters,
   MANAGEMENT_NATIVE_CONTROL_CLASS,
+  MANAGEMENT_DATE_CONTROL_CLASS,
 } from "../components/ui";
 import { OrderStatusBadge } from "../components/orders/OrderStatusBadge";
 import type { Order } from "../types";
@@ -125,6 +128,16 @@ function OrdersListPage() {
     if (toDate) p.set("to", toDate);
     setSearchParams(p, { replace: true });
   }, [productFilter, typeFilter, statusFilter, searchTerm, fromDate, toDate, setSearchParams]);
+
+  const clearFilters = useCallback(() => {
+    setProductFilter("");
+    setTypeFilter("");
+    setStatusFilter("");
+    setSearchTerm("");
+    setFromDate("");
+    setToDate("");
+    setSearchParams(new URLSearchParams(), { replace: true });
+  }, [setSearchParams]);
 
   const columns = useMemo(
     () => [
@@ -286,7 +299,7 @@ function OrdersListPage() {
                   type="date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                  className={MANAGEMENT_DATE_CONTROL_CLASS}
                   title="From date"
                   aria-label="From date"
                 />
@@ -296,7 +309,7 @@ function OrdersListPage() {
                   type="date"
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                  className={MANAGEMENT_DATE_CONTROL_CLASS}
                   title="To date"
                   aria-label="To date"
                 />
@@ -331,11 +344,25 @@ function OrdersListPage() {
                   aria-label="Filter by order line status"
                 />
               </ManagementFilterField>
-              <ManagementFilterField label="Apply">
-                <Button variant="secondary" size="sm" type="button" onClick={applyFilters}>
+              <ManagementFilterActions>
+                <Button
+                  size="sm"
+                  type="button"
+                  className={`${MANAGEMENT_FILTER_BTN_CLASS} font-semibold`}
+                  onClick={applyFilters}
+                >
                   Apply
                 </Button>
-              </ManagementFilterField>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  className={`${MANAGEMENT_FILTER_BTN_CLASS} font-medium`}
+                  onClick={clearFilters}
+                >
+                  Clear
+                </Button>
+              </ManagementFilterActions>
             </ManagementFilterPanel>
           </ResponsiveManagementFilters>
         </div>

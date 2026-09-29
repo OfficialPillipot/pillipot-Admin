@@ -14,3 +14,5 @@ export { default as CustomerManagement } from "./CustomerManagement";
 export { default as ExportData } from "./ExportData";
 export { default as WebappUserManagement } from "./WebappUserManagement";
 export { default as BannerManagement } from "./BannerManagement";
+export { default as VendorAddonManagement } from "./VendorAddonManagement";
+export { default as AdminAddonManagement } from "./AdminAddonManagement";

@@ -3,7 +3,9 @@ import {
   Button,
   ManagementFilterField,
   ManagementFilterPanel,
+  ManagementFilterActions,
   MANAGEMENT_NATIVE_CONTROL_CLASS,
+  MANAGEMENT_FILTER_BTN_CLASS,
   ResponsiveManagementFilters,
   SingleCalendarDateRangePicker,
   toDisplayDate,
@@ -149,10 +151,7 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
           </ManagementFilterField>
 
           {/* Merged Single Calendar Date Range Picker */}
-          <ManagementFilterField
-            label="Date range"
-            className="sm:col-span-2 lg:col-span-1 xl:col-span-2"
-          >
+          <ManagementFilterField label="Date range" className="sm:col-span-2 lg:col-span-2 xl:col-span-2">
             <SingleCalendarDateRangePicker
               dateFrom={dateFrom}
               dateTo={dateTo}
@@ -235,45 +234,43 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
             </ManagementFilterField>
           )}
 
-          {/* Common Apply, Reset & Clear Buttons */}
-          <ManagementFilterField label="Filter Actions" className="sm:col-span-2 lg:col-span-1 xl:col-span-2">
-            <div className="flex w-full items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                className="min-h-11 flex-1 font-semibold"
-                onClick={onApply}
-                loading={Boolean(applyLoading ?? (filtersLoading && !resetLoading && !clearLoading))}
-                disabled={Boolean(filtersLoading || applyLoading || resetLoading || clearLoading)}
-              >
-                Apply
-              </Button>
-              {onReset && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="min-h-11 flex-1 font-medium"
-                  onClick={onReset}
-                  loading={Boolean(resetLoading)}
-                  disabled={Boolean(filtersLoading || applyLoading || resetLoading || clearLoading)}
-                >
-                  Reset
-                </Button>
-              )}
+          {/* Common Apply, Clear & Reset Buttons */}
+          <ManagementFilterActions>
+            <Button
+              type="button"
+              size="sm"
+              className={`${MANAGEMENT_FILTER_BTN_CLASS} font-semibold`}
+              onClick={onApply}
+              loading={Boolean(applyLoading ?? (filtersLoading && !resetLoading && !clearLoading))}
+              disabled={Boolean(filtersLoading || applyLoading || resetLoading || clearLoading)}
+            >
+              Apply
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className={`${MANAGEMENT_FILTER_BTN_CLASS} font-medium`}
+              onClick={onClearAll}
+              loading={Boolean(clearLoading)}
+              disabled={Boolean(filtersLoading || applyLoading || resetLoading || clearLoading)}
+            >
+              Clear
+            </Button>
+            {onReset && (
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="min-h-11 flex-1 font-medium"
-                onClick={onClearAll}
-                loading={Boolean(clearLoading)}
+                className={`${MANAGEMENT_FILTER_BTN_CLASS} font-medium`}
+                onClick={onReset}
+                loading={Boolean(resetLoading)}
                 disabled={Boolean(filtersLoading || applyLoading || resetLoading || clearLoading)}
               >
-                Clear all
+                Reset
               </Button>
-            </div>
-          </ManagementFilterField>
+            )}
+          </ManagementFilterActions>
         </ManagementFilterPanel>
       </ResponsiveManagementFilters>
 

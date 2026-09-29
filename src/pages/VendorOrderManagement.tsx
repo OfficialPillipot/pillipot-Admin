@@ -8,6 +8,7 @@ import {
   Modal,
   Select,
   Input,
+  Tooltip,
 } from "../components/ui";
 import {
   AdminOrderFilters,
@@ -467,12 +468,29 @@ function VendorOrderManagement() {
       )
     },
     {
-      key: "customer", header: "Customer", render: (row: Order) => (
-        <div>
-          <div className="font-medium text-sm">{row.customerName}</div>
-          <div className="text-[10px] text-text-muted">{row.phone}</div>
-        </div>
-      )
+      key: "customer",
+      header: "Customer",
+      className: "whitespace-nowrap min-w-[8rem] max-w-[12rem]",
+      render: (row: Order) => {
+        const name = row.customerName || "—";
+        return (
+          <div className="min-w-0 max-w-[160px]">
+            <Tooltip content={name} side="top" className="max-w-full min-w-0">
+              <span
+                className="truncate block font-medium text-sm text-text-heading whitespace-nowrap cursor-default"
+                title={name}
+              >
+                {name}
+              </span>
+            </Tooltip>
+            {row.phone && (
+              <div className="text-[10px] text-text-muted whitespace-nowrap">
+                {row.phone}
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "product", header: "Product", render: (row: any) => (

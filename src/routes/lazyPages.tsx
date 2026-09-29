@@ -123,5 +123,7 @@ export const AdminVendorProductManagement = lazyRoute(() => import("../pages/Adm
 export const AdminVendorOrderManagement = lazyRoute(() => import("../pages/AdminVendorOrderManagement"));
 export const VendorProfile = lazyRoute(() => import("../pages/VendorProfile"));
 export const VendorReviewManagement = lazyRoute(() => import("../pages/VendorReviewManagement"));
+export const VendorAddonManagement = lazyRoute(() => import("../pages/VendorAddonManagement"));
+export const AdminAddonManagement = lazyRoute(() => import("../pages/AdminAddonManagement"));
 
 

@@ -2,6 +2,9 @@ import { createApi } from "@reduxjs/toolkit/query/react";
 import { endpoints } from "../../api/endpoints";
 import { normalizeStaff } from "../../lib/staffNormalize";
 import type {
+  Addon,
+  CreateAddonPayload,
+  UpdateAddonPayload,
   AdminReviewRow,
   AppSettings,
   AssignedNumber,
@@ -159,6 +162,8 @@ export const edenApi = createApi({
     "Vendor",
     "VendorPortalProduct",
     "VendorPortalOrder",
+    "Addon",
+    "VendorPortalAddon",
   ],
   endpoints: (builder) => ({
     getProducts: builder.query<Product[], void>({
@@ -166,9 +171,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "Product" as const, id: "LIST" },
-              ...r.map((p) => ({ type: "Product" as const, id: p.id })),
-            ]
+            { type: "Product" as const, id: "LIST" },
+            ...r.map((p) => ({ type: "Product" as const, id: p.id })),
+          ]
           : [{ type: "Product", id: "LIST" }],
     }),
     createProduct: builder.mutation<Product, NewProductPayload>({
@@ -297,9 +302,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "Category", id: "LIST" },
-              ...r.map((c) => ({ type: "Category" as const, id: c.id })),
-            ]
+            { type: "Category", id: "LIST" },
+            ...r.map((c) => ({ type: "Category" as const, id: c.id })),
+          ]
           : [{ type: "Category", id: "LIST" }],
     }),
     createCategory: builder.mutation<
@@ -361,9 +366,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "Subcategory", id: "LIST" },
-              ...r.map((s) => ({ type: "Subcategory" as const, id: s.id })),
-            ]
+            { type: "Subcategory", id: "LIST" },
+            ...r.map((s) => ({ type: "Subcategory" as const, id: s.id })),
+          ]
           : [{ type: "Subcategory", id: "LIST" }],
     }),
     createSubcategory: builder.mutation<
@@ -409,9 +414,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "Banner", id: "LIST" },
-              ...r.map((b) => ({ type: "Banner" as const, id: b.id })),
-            ]
+            { type: "Banner", id: "LIST" },
+            ...r.map((b) => ({ type: "Banner" as const, id: b.id })),
+          ]
           : [{ type: "Banner", id: "LIST" }],
     }),
     createBanner: builder.mutation<
@@ -487,9 +492,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r?.items?.length
           ? [
-              { type: "Order" as const, id: "LIST" },
-              ...r.items.map((o) => ({ type: "Order" as const, id: o.id })),
-            ]
+            { type: "Order" as const, id: "LIST" },
+            ...r.items.map((o) => ({ type: "Order" as const, id: o.id })),
+          ]
           : [{ type: "Order", id: "LIST" }],
     }),
     createOrder: builder.mutation<Order, CreateOrderPayload>({
@@ -567,9 +572,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "Staff", id: "LIST" },
-              ...r.map((s) => ({ type: "Staff" as const, id: s.id })),
-            ]
+            { type: "Staff", id: "LIST" },
+            ...r.map((s) => ({ type: "Staff" as const, id: s.id })),
+          ]
           : [{ type: "Staff", id: "LIST" }],
     }),
     getStaffMe: builder.query<Staff, void>({
@@ -680,9 +685,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "Sender", id: "LIST" },
-              ...r.map((s) => ({ type: "Sender" as const, id: s.id })),
-            ]
+            { type: "Sender", id: "LIST" },
+            ...r.map((s) => ({ type: "Sender" as const, id: s.id })),
+          ]
           : [{ type: "Sender", id: "LIST" }],
     }),
     createSender: builder.mutation<Sender, SenderPayload>({
@@ -751,9 +756,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "StaffPosition", id: "LIST" },
-              ...r.map((p) => ({ type: "StaffPosition" as const, id: p.id })),
-            ]
+            { type: "StaffPosition", id: "LIST" },
+            ...r.map((p) => ({ type: "StaffPosition" as const, id: p.id })),
+          ]
           : [{ type: "StaffPosition", id: "LIST" }],
     }),
     createStaffPosition: builder.mutation<StaffPosition, { name: string }>({
@@ -794,9 +799,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "AssignedNumber", id: "LIST" },
-              ...r.map((n) => ({ type: "AssignedNumber" as const, id: n.id })),
-            ]
+            { type: "AssignedNumber", id: "LIST" },
+            ...r.map((n) => ({ type: "AssignedNumber" as const, id: n.id })),
+          ]
           : [{ type: "AssignedNumber", id: "LIST" }],
     }),
     createAssignedNumber: builder.mutation<
@@ -840,9 +845,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "DeliveryMethod", id: "LIST" },
-              ...r.map((m) => ({ type: "DeliveryMethod" as const, id: m.id })),
-            ]
+            { type: "DeliveryMethod", id: "LIST" },
+            ...r.map((m) => ({ type: "DeliveryMethod" as const, id: m.id })),
+          ]
           : [{ type: "DeliveryMethod", id: "LIST" }],
     }),
     createDeliveryMethod: builder.mutation<
@@ -891,9 +896,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "ProductDeliveryFee", id: "LIST" },
-              ...r.map((f) => ({ type: "ProductDeliveryFee" as const, id: f.id })),
-            ]
+            { type: "ProductDeliveryFee", id: "LIST" },
+            ...r.map((f) => ({ type: "ProductDeliveryFee" as const, id: f.id })),
+          ]
           : [{ type: "ProductDeliveryFee", id: "LIST" }],
     }),
 
@@ -903,9 +908,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "Offer" as const, id: "LIST" },
-              ...r.map((o) => ({ type: "Offer" as const, id: o.id })),
-            ]
+            { type: "Offer" as const, id: "LIST" },
+            ...r.map((o) => ({ type: "Offer" as const, id: o.id })),
+          ]
           : [{ type: "Offer", id: "LIST" }],
     }),
     createProductOffer: builder.mutation<
@@ -948,9 +953,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "Review", id: "LIST" },
-              ...r.map((row) => ({ type: "Review" as const, id: row.id })),
-            ]
+            { type: "Review", id: "LIST" },
+            ...r.map((row) => ({ type: "Review" as const, id: row.id })),
+          ]
           : [{ type: "Review", id: "LIST" }],
     }),
     deleteAdminReview: builder.mutation<void, string>({
@@ -968,9 +973,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "Blog", id: "LIST" },
-              ...r.map((row) => ({ type: "Blog" as const, id: row.id })),
-            ]
+            { type: "Blog", id: "LIST" },
+            ...r.map((row) => ({ type: "Blog" as const, id: row.id })),
+          ]
           : [{ type: "Blog", id: "LIST" }],
     }),
     getBlogAdminPostById: builder.query<BlogAdminDetail, string>({
@@ -1097,9 +1102,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "GuestUser", id: "LIST" },
-              ...r.map((u) => ({ type: "GuestUser" as const, id: u.id })),
-            ]
+            { type: "GuestUser", id: "LIST" },
+            ...r.map((u) => ({ type: "GuestUser" as const, id: u.id })),
+          ]
           : [{ type: "GuestUser", id: "LIST" }],
     }),
     createRbacGuestUser: builder.mutation<
@@ -1306,15 +1311,15 @@ export const edenApi = createApi({
         return { data: parsed };
       },
     }),
- 
+
     getVendors: builder.query<Vendor[], void>({
       query: () => endpoints.adminVendors,
       providesTags: (r) =>
         r
           ? [
-              { type: "Vendor" as const, id: "LIST" },
-              ...r.map((v) => ({ type: "Vendor" as const, id: v.id })),
-            ]
+            { type: "Vendor" as const, id: "LIST" },
+            ...r.map((v) => ({ type: "Vendor" as const, id: v.id })),
+          ]
           : [{ type: "Vendor", id: "LIST" }],
     }),
     approveVendor: builder.mutation<Vendor, { id: string; password?: string }>({
@@ -1383,10 +1388,10 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "VendorPortalProduct" as const, id: "LIST" },
-              { type: "Product" as const, id: "LIST" },
-              ...r.map((p) => ({ type: "VendorPortalProduct" as const, id: p.id })),
-            ]
+            { type: "VendorPortalProduct" as const, id: "LIST" },
+            { type: "Product" as const, id: "LIST" },
+            ...r.map((p) => ({ type: "VendorPortalProduct" as const, id: p.id })),
+          ]
           : [{ type: "VendorPortalProduct", id: "LIST" }],
     }),
     createVendorPortalProduct: builder.mutation<Product, Partial<Product> & { image?: File | File[]; video?: File }>({
@@ -1459,8 +1464,8 @@ export const edenApi = createApi({
       ],
     }),
 
-    getVendorPortalOrders: builder.query<Order[], { 
-      search?: string, 
+    getVendorPortalOrders: builder.query<Order[], {
+      search?: string,
       status?: string,
       dateFrom?: string,
       dateTo?: string,
@@ -1474,10 +1479,10 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "VendorPortalOrder" as const, id: "LIST" },
-              { type: "Order" as const, id: "LIST" },
-              ...r.map((o) => ({ type: "VendorPortalOrder" as const, id: o.id })),
-            ]
+            { type: "VendorPortalOrder" as const, id: "LIST" },
+            { type: "Order" as const, id: "LIST" },
+            ...r.map((o) => ({ type: "VendorPortalOrder" as const, id: o.id })),
+          ]
           : [{ type: "VendorPortalOrder", id: "LIST" }],
     }),
     updateVendorPortalOrderStatus: builder.mutation<
@@ -1577,9 +1582,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "Offer" as const, id: "LIST" },
-              ...r.map((o) => ({ type: "Offer" as const, id: o.id })),
-            ]
+            { type: "Offer" as const, id: "LIST" },
+            ...r.map((o) => ({ type: "Offer" as const, id: o.id })),
+          ]
           : [{ type: "Offer", id: "LIST" }],
     }),
     createVendorPortalOffer: builder.mutation<
@@ -1622,9 +1627,9 @@ export const edenApi = createApi({
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ id }) => ({ type: "Product" as const, id })),
-              { type: "Product", id: "LIST" },
-            ]
+            ...result.map(({ id }) => ({ type: "Product" as const, id })),
+            { type: "Product", id: "LIST" },
+          ]
           : [{ type: "Product", id: "LIST" }],
     }),
     getAdminVendorOrders: builder.query<OrderListPayload, void>({
@@ -1632,9 +1637,9 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r?.items?.length
           ? [
-              { type: "Order" as const, id: "VENDOR_LIST" },
-              ...r.items.map((o) => ({ type: "Order" as const, id: o.id })),
-            ]
+            { type: "Order" as const, id: "VENDOR_LIST" },
+            ...r.items.map((o) => ({ type: "Order" as const, id: o.id })),
+          ]
           : [{ type: "Order", id: "VENDOR_LIST" }],
     }),
     getVendorPortalProfile: builder.query<Vendor, void>({
@@ -1657,10 +1662,116 @@ export const edenApi = createApi({
       providesTags: (r) =>
         r
           ? [
-              { type: "Review" as const, id: "VENDOR_LIST" },
-              ...r.map((rw) => ({ type: "Review" as const, id: rw.id })),
-            ]
+            { type: "Review" as const, id: "VENDOR_LIST" },
+            ...r.map((rw) => ({ type: "Review" as const, id: rw.id })),
+          ]
           : [{ type: "Review", id: "VENDOR_LIST" }],
+    }),
+    getAdminAddons: builder.query<Addon[], { vendorId?: string; productId?: string; search?: string; isActive?: boolean } | void>({
+      query: (params) => {
+        const queryParams = new URLSearchParams();
+        if (params?.vendorId) queryParams.set("vendorId", params.vendorId);
+        if (params?.productId) queryParams.set("productId", params.productId);
+        if (params?.search) queryParams.set("search", params.search);
+        if (params?.isActive !== undefined) queryParams.set("isActive", String(params.isActive));
+        const qs = queryParams.toString();
+        return qs ? `${endpoints.adminAddons}?${qs}` : endpoints.adminAddons;
+      },
+      providesTags: (r) =>
+        r
+          ? [{ type: "Addon" as const, id: "LIST" }, ...r.map((a) => ({ type: "Addon" as const, id: a.id }))]
+          : [{ type: "Addon", id: "LIST" }],
+    }),
+    createAdminAddon: builder.mutation<Addon, CreateAddonPayload>({
+      query: (payload) => {
+        if (payload.image) {
+          const form = new FormData();
+          form.append("name", payload.name);
+          form.append("price", String(payload.price));
+          if (payload.description) form.append("description", payload.description);
+          if (payload.vendorId) form.append("vendorId", payload.vendorId);
+          if (payload.productId) form.append("productId", payload.productId);
+          if (payload.isActive !== undefined) form.append("isActive", String(payload.isActive));
+          form.append("image", payload.image);
+          return { url: endpoints.adminAddons, method: "POST", body: form };
+        }
+        return { url: endpoints.adminAddons, method: "POST", body: payload };
+      },
+      invalidatesTags: [{ type: "Addon", id: "LIST" }],
+    }),
+    updateAdminAddon: builder.mutation<Addon, { id: string; patch: UpdateAddonPayload }>({
+      query: ({ id, patch }) => {
+        if (patch.image) {
+          const form = new FormData();
+          if (patch.name) form.append("name", patch.name);
+          if (patch.price !== undefined) form.append("price", String(patch.price));
+          if (patch.description !== undefined) form.append("description", patch.description);
+          if (patch.vendorId !== undefined) form.append("vendorId", patch.vendorId);
+          if (patch.productId !== undefined) form.append("productId", patch.productId);
+          if (patch.isActive !== undefined) form.append("isActive", String(patch.isActive));
+          form.append("image", patch.image);
+          return { url: endpoints.adminAddonById(id), method: "PUT", body: form };
+        }
+        return { url: endpoints.adminAddonById(id), method: "PUT", body: patch };
+      },
+      invalidatesTags: (_r, _e, { id }) => [{ type: "Addon", id }, { type: "Addon", id: "LIST" }],
+    }),
+    deleteAdminAddon: builder.mutation<{ success: boolean }, string>({
+      query: (id) => ({ url: endpoints.adminAddonById(id), method: "DELETE" }),
+      invalidatesTags: (_r, _e, id) => [{ type: "Addon", id }, { type: "Addon", id: "LIST" }],
+    }),
+    getVendorPortalAddons: builder.query<Addon[], void>({
+      query: () => endpoints.vendorPortalAddons,
+      providesTags: (r) =>
+        r
+          ? [{ type: "VendorPortalAddon" as const, id: "LIST" }, ...r.map((a) => ({ type: "VendorPortalAddon" as const, id: a.id }))]
+          : [{ type: "VendorPortalAddon", id: "LIST" }],
+    }),
+    createVendorPortalAddon: builder.mutation<Addon, CreateAddonPayload>({
+      query: (payload) => {
+        if (payload.image) {
+          const form = new FormData();
+          form.append("name", payload.name);
+          form.append("price", String(payload.price));
+          if (payload.description) form.append("description", payload.description);
+          if (payload.productId) form.append("productId", payload.productId);
+          if (payload.isActive !== undefined) form.append("isActive", String(payload.isActive));
+          form.append("image", payload.image);
+          return { url: endpoints.vendorPortalAddons, method: "POST", body: form };
+        }
+        return { url: endpoints.vendorPortalAddons, method: "POST", body: payload };
+      },
+      invalidatesTags: [{ type: "VendorPortalAddon", id: "LIST" }, { type: "Addon", id: "LIST" }],
+    }),
+    updateVendorPortalAddon: builder.mutation<Addon, { id: string; patch: UpdateAddonPayload }>({
+      query: ({ id, patch }) => {
+        if (patch.image) {
+          const form = new FormData();
+          if (patch.name) form.append("name", patch.name);
+          if (patch.price !== undefined) form.append("price", String(patch.price));
+          if (patch.description !== undefined) form.append("description", patch.description);
+          if (patch.productId !== undefined) form.append("productId", patch.productId);
+          if (patch.isActive !== undefined) form.append("isActive", String(patch.isActive));
+          form.append("image", patch.image);
+          return { url: endpoints.vendorPortalAddonById(id), method: "PUT", body: form };
+        }
+        return { url: endpoints.vendorPortalAddonById(id), method: "PUT", body: patch };
+      },
+      invalidatesTags: (_r, _e, { id }) => [
+        { type: "VendorPortalAddon", id },
+        { type: "VendorPortalAddon", id: "LIST" },
+        { type: "Addon", id },
+        { type: "Addon", id: "LIST" },
+      ],
+    }),
+    deleteVendorPortalAddon: builder.mutation<{ success: boolean }, string>({
+      query: (id) => ({ url: endpoints.vendorPortalAddonById(id), method: "DELETE" }),
+      invalidatesTags: (_r, _e, id) => [
+        { type: "VendorPortalAddon", id },
+        { type: "VendorPortalAddon", id: "LIST" },
+        { type: "Addon", id },
+        { type: "Addon", id: "LIST" },
+      ],
     }),
   }),
 });
@@ -1738,4 +1849,12 @@ export const {
   useGetVendorPortalProfileQuery,
   useUpdateVendorPortalProfileMutation,
   useGetVendorPortalReviewsQuery,
+  useGetAdminAddonsQuery,
+  useCreateAdminAddonMutation,
+  useUpdateAdminAddonMutation,
+  useDeleteAdminAddonMutation,
+  useGetVendorPortalAddonsQuery,
+  useCreateVendorPortalAddonMutation,
+  useUpdateVendorPortalAddonMutation,
+  useDeleteVendorPortalAddonMutation,
 } = edenApi;

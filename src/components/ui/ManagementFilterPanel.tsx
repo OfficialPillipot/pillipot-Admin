@@ -5,9 +5,17 @@ import {
   type ReactNode,
 } from "react";
 
-/** Native `<select>` / `<input type="date">` — full width, consistent height with `Select` / `Input`. */
+/** Native `<select>` / `<input>` — full width, consistent height with `Select` / `Input`. */
 export const MANAGEMENT_NATIVE_CONTROL_CLASS =
   "w-full min-h-11 rounded-[var(--radius-md)] border border-border bg-surface-elevated/85 px-3 py-2 text-sm text-text-heading shadow-sm outline-none transition-all focus:border-primary focus:shadow-[var(--shadow-focus)]";
+
+/** Single date input (`<input type="date">`) — compact fixed width tailored to DD-MM-YYYY */
+export const MANAGEMENT_DATE_CONTROL_CLASS =
+  "w-[180px] max-w-full min-h-11 rounded-[var(--radius-md)] border border-border bg-surface-elevated/85 px-3 py-2 text-sm text-text-heading shadow-sm outline-none transition-all focus:border-primary focus:shadow-[var(--shadow-focus)]";
+
+/** Standard height and width for filter action buttons (Apply, Clear, Reset) across all pages */
+export const MANAGEMENT_FILTER_BTN_CLASS =
+  "h-11 w-28 shrink-0 justify-center text-sm rounded-[var(--radius-md)]";
 
 const panelClass =
   "rounded-[var(--radius-xl)] border border-border/80 bg-surface p-4 shadow-[var(--shadow-card)] backdrop-blur-sm md:p-5";
@@ -77,3 +85,23 @@ export const ManagementFilterField = memo(function ManagementFilterField({
     </div>
   );
 });
+
+export interface ManagementFilterActionsProps {
+  children: ReactNode;
+  className?: string;
+}
+
+/** Filter action buttons container aligned totally on the right side across all screens */
+export const ManagementFilterActions = memo(function ManagementFilterActions({
+  children,
+  className = "",
+}: ManagementFilterActionsProps) {
+  return (
+    <div
+      className={`col-span-full flex flex-wrap items-center justify-end gap-2 pt-2 ${className}`.trim()}
+    >
+      {children}
+    </div>
+  );
+});
+

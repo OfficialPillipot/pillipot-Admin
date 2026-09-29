@@ -16,6 +16,7 @@ import {
   ManagementFilterPanel,
   ManagementFilterField,
   MANAGEMENT_NATIVE_CONTROL_CLASS,
+  MANAGEMENT_DATE_CONTROL_CLASS,
   ResponsiveManagementFilters,
   Select,
 } from "../components/ui";
@@ -237,7 +238,7 @@ function BonusDailyLogPage() {
                         from: e.target.value,
                       }))
                     }
-                    className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                    className={MANAGEMENT_DATE_CONTROL_CLASS}
                   />
                 </ManagementFilterField>
                 <ManagementFilterField label="To">
@@ -250,7 +251,7 @@ function BonusDailyLogPage() {
                         to: e.target.value,
                       }))
                     }
-                    className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                    className={MANAGEMENT_DATE_CONTROL_CLASS}
                   />
                 </ManagementFilterField>
                 <ManagementFilterField label="Staff">
@@ -291,7 +292,7 @@ function BonusDailyLogPage() {
                         from: e.target.value,
                       }))
                     }
-                    className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                    className={MANAGEMENT_DATE_CONTROL_CLASS}
                   />
                 </ManagementFilterField>
                 <ManagementFilterField label="To">
@@ -304,7 +305,7 @@ function BonusDailyLogPage() {
                         to: e.target.value,
                       }))
                     }
-                    className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                    className={MANAGEMENT_DATE_CONTROL_CLASS}
                   />
                 </ManagementFilterField>
               </ManagementFilterPanel>

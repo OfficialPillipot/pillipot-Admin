@@ -4,6 +4,7 @@ import {
   ArrowUturnLeftIcon,
 } from "@heroicons/react/24/outline";
 import type { Column } from "../components/ui/Table";
+import { Tooltip } from "../components/ui";
 import { OrderStatusBadge } from "../components/orders/OrderStatusBadge";
 import type { Order, Product, Staff, Vendor } from "../types";
 import { formatDate, orderLineProductLabel, uniformOrderGroupStatus } from "../lib/orderUtils";
@@ -125,7 +126,20 @@ export function useAdminOrderTableColumns({
       { 
         key: "customerName", 
         header: "Customer",
-        className: "md:min-w-[12rem]"
+        className: "whitespace-nowrap md:min-w-[10rem] max-w-[14rem]",
+        render: (row: Order) => {
+          const name = row.customerName || "—";
+          return (
+            <Tooltip content={name} side="top" className="max-w-full min-w-0">
+              <span
+                className="truncate block font-medium text-sm text-text-heading whitespace-nowrap cursor-default max-w-[170px]"
+                title={name}
+              >
+                {name}
+              </span>
+            </Tooltip>
+          );
+        },
       },
       {
         key: "productId",

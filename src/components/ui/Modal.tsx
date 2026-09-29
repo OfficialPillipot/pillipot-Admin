@@ -7,16 +7,18 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "screen-gap";
+  className?: string;
   /** Pinned below scrollable body (e.g. primary action on mobile filter sheets). */
   footer?: React.ReactNode;
 }
 
 const sizeClasses = {
-  sm: "max-w-sm",
-  md: "max-w-md",
-  lg: "max-w-lg",
-  xl: "max-w-4xl",
+  sm: "max-w-sm max-h-[min(90vh,42rem)]",
+  md: "max-w-md max-h-[min(90vh,42rem)]",
+  lg: "max-w-lg max-h-[min(90vh,42rem)]",
+  xl: "max-w-4xl max-h-[min(90vh,42rem)]",
+  "screen-gap": "w-[calc(100vw-2rem)] sm:w-[calc(100vw-200px)] max-w-[calc(100vw-200px)] max-h-[92vh]",
 };
 
 function ModalComponent({
@@ -25,6 +27,7 @@ function ModalComponent({
   title,
   children,
   size = "md",
+  className,
   footer,
 }: ModalProps) {
   const handleEscape = useCallback(
@@ -49,7 +52,10 @@ function ModalComponent({
 
   const content = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+      className={cn(
+        "fixed inset-0 z-50 flex items-center justify-center p-4",
+        size === "screen-gap" ? "sm:p-0" : "sm:p-6"
+      )}
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -61,8 +67,9 @@ function ModalComponent({
       />
       <div
         className={cn(
-          "admin-modal-panel-in relative flex max-h-[min(90vh,42rem)] w-full flex-col overflow-hidden rounded-[var(--radius-xl)] border border-border bg-surface shadow-[var(--shadow-card-lg)]",
-          sizeClasses[size]
+          "admin-modal-panel-in relative flex w-full flex-col overflow-hidden rounded-[var(--radius-xl)] border border-border bg-surface shadow-[var(--shadow-card-lg)]",
+          sizeClasses[size],
+          className
         )}
         onClick={(e) => e.stopPropagation()}
       >

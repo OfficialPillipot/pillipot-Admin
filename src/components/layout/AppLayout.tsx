@@ -21,7 +21,7 @@ const DEFAULT_TITLES: Record<string, string> = {
   "/orders/:id": "Order Detail",
   "/profile": "Profile",
   "/vendor/profile": "My Profile",
-  "/vendor/orders": "Orders",
+  "/vendor/orders": "My Orders",
   "/vendor/products": "My Products",
   "/vendor/categories": "Categories",
   "/vendor/subcategories": "Subcategories",

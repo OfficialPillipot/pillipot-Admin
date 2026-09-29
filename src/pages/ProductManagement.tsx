@@ -663,6 +663,7 @@ function ProductManagementPage() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editingId ? "Edit Product" : "Add Product"}
+        size="screen-gap"
       >
         <div className="space-y-4">
           <Input

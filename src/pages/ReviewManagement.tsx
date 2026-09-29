@@ -1,5 +1,5 @@
 import { memo, useState, useMemo, useDeferredValue } from "react";
-import { Card, CardHeader, Table, Badge, Button, Input, Modal } from "../components/ui";
+import { Card, CardHeader, Table, Badge, Button, Input, Modal, Tooltip } from "../components/ui";
 import {
   useDeleteAdminReviewMutation,
   useGetAdminReviewsQuery,
@@ -53,24 +53,83 @@ function ReviewManagementPage() {
   }, [rows, deferredQuery]);
 
   const columns = [
+    {
+      key: "orderId",
+      header: "Order ID",
+      className: "whitespace-nowrap min-w-[7.5rem]",
+      render: (row: AdminReviewRow) => {
+        const displayId = row.order?.orderId || row.orderId;
+        return (
+          <span className="font-mono text-xs font-medium whitespace-nowrap">
+            {displayId ? (displayId.includes('-') ? displayId.toUpperCase() : displayId) : <span className="italic text-muted-foreground">N/A</span>}
+          </span>
+        );
+      }
+    },
+    {
+      key: "createdAt",
+      header: "Date",
+      className: "whitespace-nowrap min-w-[7.5rem]",
+      render: (row: AdminReviewRow) => {
+        const d = new Date(row.createdAt);
+        const dateStr = d.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+        const timeStr = d.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        });
+        return (
+          <div className="flex flex-col text-xs leading-snug">
+            <span className="font-semibold text-text-heading whitespace-nowrap">
+              {dateStr}
+            </span>
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+              {timeStr}
+            </span>
+          </div>
+        );
+      },
+    },
     { 
       key: "product", 
       header: "Product",
-      render: (row: AdminReviewRow) => row.product?.name || row.productId
+      className: "min-w-[10rem] max-w-[15rem]",
+      render: (row: AdminReviewRow) => (
+        <span className="truncate block" title={row.product?.name || row.productId}>
+          {row.product?.name || row.productId}
+        </span>
+      )
     },
     { 
       key: "customer", 
       header: "Customer",
-      render: (row: AdminReviewRow) => (
-        <div>
-          <div className="font-medium">{row.customer?.customerName || "Unknown"}</div>
-          <div className="text-xs text-muted-foreground">{row.customer?.email}</div>
-        </div>
-      )
+      className: "whitespace-nowrap min-w-[8.5rem] max-w-[13rem]",
+      render: (row: AdminReviewRow) => {
+        const name = row.customer?.customerName || "Unknown";
+        return (
+          <div className="min-w-0 max-w-[160px]">
+            <Tooltip content={name} side="top" className="max-w-full min-w-0">
+              <span className="font-medium truncate block whitespace-nowrap cursor-default" title={name}>
+                {name}
+              </span>
+            </Tooltip>
+            {row.customer?.email && (
+              <div className="text-xs text-muted-foreground truncate whitespace-nowrap" title={row.customer.email}>
+                {row.customer.email}
+              </div>
+            )}
+          </div>
+        );
+      }
     },
     {
       key: "rating",
       header: "Rating",
+      className: "whitespace-nowrap",
       render: (row: AdminReviewRow) => (
         <Badge variant={row.rating >= 4 ? "success" : row.rating <= 2 ? "error" : "warning"}>
           {row.rating} / 5
@@ -87,21 +146,9 @@ function ReviewManagementPage() {
       )
     },
     {
-      key: "orderId",
-      header: "Order ID",
-      render: (row: AdminReviewRow) => {
-        const displayId = row.order?.orderId || row.orderId;
-        return <span className="font-mono text-xs">{displayId ? (displayId.includes('-') ? displayId.toUpperCase() : displayId) : <span className="italic text-muted-foreground">N/A</span>}</span>;
-      }
-    },
-    {
-      key: "createdAt",
-      header: "Date",
-      render: (row: AdminReviewRow) => new Date(row.createdAt).toLocaleDateString()
-    },
-    {
       key: "actions",
       header: "",
+      className: "w-16 text-right whitespace-nowrap",
       render: (row: AdminReviewRow) => (
         <div className="flex justify-end">
           <button

@@ -12,6 +12,8 @@ import {
   toDisplayDate,
   ManagementFilterPanel,
   ManagementFilterField,
+  ManagementFilterActions,
+  MANAGEMENT_FILTER_BTN_CLASS,
   ResponsiveManagementFilters,
 } from "../components/ui";
 import { api } from "../api/client";
@@ -423,7 +425,7 @@ function WebappUserManagementPage() {
               </ManagementFilterField>
 
               {/* Created Date Range */}
-              <ManagementFilterField label="Created Date" className="xl:col-span-2 2xl:col-span-1">
+              <ManagementFilterField label="Created Date" className="sm:col-span-2 lg:col-span-2 xl:col-span-2">
                 <SingleCalendarDateRangePicker
                   dateFrom={dateFromDraft}
                   dateTo={dateToDraft}
@@ -436,27 +438,34 @@ function WebappUserManagementPage() {
               </ManagementFilterField>
 
               {/* Filter Actions */}
-              <ManagementFilterField label="Filter Actions" className="sm:col-span-2 lg:col-span-1 xl:col-span-2 2xl:col-span-1">
-                <div className="flex w-full items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="min-h-11 flex-1 font-semibold"
-                    onClick={handleApply}
-                  >
-                    Apply
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="min-h-11 flex-1 font-medium"
-                    onClick={handleReset}
-                  >
-                    Reset
-                  </Button>
-                </div>
-              </ManagementFilterField>
+              <ManagementFilterActions>
+                <Button
+                  type="button"
+                  size="sm"
+                  className={`${MANAGEMENT_FILTER_BTN_CLASS} font-semibold`}
+                  onClick={handleApply}
+                >
+                  Apply
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className={`${MANAGEMENT_FILTER_BTN_CLASS} font-medium`}
+                  onClick={handleReset}
+                >
+                  Clear
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className={`${MANAGEMENT_FILTER_BTN_CLASS} font-medium`}
+                  onClick={handleReset}
+                >
+                  Reset
+                </Button>
+              </ManagementFilterActions>
             </ManagementFilterPanel>
           </ResponsiveManagementFilters>
 

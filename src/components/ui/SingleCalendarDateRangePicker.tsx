@@ -14,6 +14,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { cn } from "../../lib/utils";
 
+export const DATE_RANGE_PICKER_WIDTH_CLASS = "w-[260px] max-w-full";
+
 export interface SingleCalendarDateRangePickerProps {
   dateFrom: string; // YYYY-MM-DD
   dateTo: string; // YYYY-MM-DD
@@ -293,7 +295,14 @@ export function SingleCalendarDateRangePicker({
   }, [dateFrom, dateTo, granularity, viewYear]);
 
   return (
-    <div ref={containerRef} className={`relative ${iconOnly ? "inline-flex" : "w-full"} ${className}`}>
+    <div
+      ref={containerRef}
+      className={cn(
+        "relative",
+        iconOnly ? "inline-flex" : DATE_RANGE_PICKER_WIDTH_CLASS,
+        className
+      )}
+    >
       {/* Trigger: icon-only button or full input field */}
       {iconOnly ? (
         <button
@@ -321,16 +330,19 @@ export function SingleCalendarDateRangePicker({
               setIsOpen((prev) => !prev);
             }
           }}
-          className="w-full min-h-11 rounded-[var(--radius-md)] border border-border bg-surface-elevated/85 px-3 py-2 text-sm text-text-heading shadow-sm outline-none transition-all flex items-center justify-between cursor-pointer hover:border-primary focus:border-primary focus:shadow-[var(--shadow-focus)]"
+          className={cn(
+            "min-h-11 rounded-[var(--radius-md)] border border-border bg-surface-elevated/85 px-3 py-2 text-sm text-text-heading shadow-sm outline-none transition-all flex items-center justify-between cursor-pointer hover:border-primary focus:border-primary focus:shadow-[var(--shadow-focus)]",
+            DATE_RANGE_PICKER_WIDTH_CLASS
+          )}
         >
-          <div className="flex items-center gap-2 truncate">
+          <div className="flex min-w-0 items-center gap-2 truncate">
             <CalendarDaysIcon className="h-4 w-4 shrink-0 text-text-muted" />
-            <span className={displayText ? "font-medium text-text-heading" : "text-text-muted"}>
+            <span className={cn("truncate whitespace-nowrap", displayText ? "font-medium text-text-heading" : "text-text-muted")}>
               {displayText || placeholder}
             </span>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             {onReset ? (
               <button
                 type="button"
@@ -617,12 +629,12 @@ export function SingleCalendarDateRangePicker({
               {granularity === "month"
                 ? `12 Months of ${dateFrom ? dateFrom.split("-")[0] : viewYear}`
                 : granularity === "year"
-                ? `Past 5 Years up to ${dateTo ? dateTo.split("-")[0] : viewYear}`
-                : internalFrom && internalTo
-                ? `${toDisplayDate(internalFrom)} – ${toDisplayDate(internalTo)}`
-                : internalFrom
-                  ? `From ${toDisplayDate(internalFrom)} (click end date)`
-                  : "Click start date"}
+                  ? `Past 5 Years up to ${dateTo ? dateTo.split("-")[0] : viewYear}`
+                  : internalFrom && internalTo
+                    ? `${toDisplayDate(internalFrom)} – ${toDisplayDate(internalTo)}`
+                    : internalFrom
+                      ? `From ${toDisplayDate(internalFrom)} (click end date)`
+                      : "Click start date"}
             </span>
             <button
               type="button"

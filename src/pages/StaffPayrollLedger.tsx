@@ -8,7 +8,9 @@ import {
   Badge,
   ManagementFilterPanel,
   ManagementFilterField,
-  MANAGEMENT_NATIVE_CONTROL_CLASS,
+  ManagementFilterActions,
+  MANAGEMENT_DATE_CONTROL_CLASS,
+  MANAGEMENT_FILTER_BTN_CLASS,
   ResponsiveManagementFilters,
   Select,
 } from "../components/ui";
@@ -227,7 +229,7 @@ function StaffPayrollLedgerPage() {
                       from: e.target.value,
                     }))
                   }
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                  className={MANAGEMENT_DATE_CONTROL_CLASS}
                   aria-label="From date"
                 />
               </ManagementFilterField>
@@ -238,7 +240,7 @@ function StaffPayrollLedgerPage() {
                   onChange={(e) =>
                     setPeriodDates((prev) => ({ ...prev, to: e.target.value }))
                   }
-                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                  className={MANAGEMENT_DATE_CONTROL_CLASS}
                   aria-label="To date"
                 />
               </ManagementFilterField>
@@ -264,11 +266,16 @@ function StaffPayrollLedgerPage() {
                   }
                 />
               </ManagementFilterField>
-              <ManagementFilterField label="Apply">
-                <Button className="cursor-pointer" type="button" onClick={refreshAll} loading={busy}>
+              <ManagementFilterActions>
+                <Button
+                  className={`${MANAGEMENT_FILTER_BTN_CLASS} font-semibold`}
+                  type="button"
+                  onClick={refreshAll}
+                  loading={busy}
+                >
                   Refresh
                 </Button>
-              </ManagementFilterField>
+              </ManagementFilterActions>
             </ManagementFilterPanel>
           </ResponsiveManagementFilters>
           {!periodComplete ? (
