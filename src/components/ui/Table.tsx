@@ -206,7 +206,7 @@ function TableComponent<T>({
       ref={containerRef}
       style={containerMaxHeight ? { maxHeight: `${containerMaxHeight}px` } : undefined}
       className={cn(
-        "overflow-auto overscroll-contain rounded-[var(--radius-lg)] border border-border bg-surface [-webkit-overflow-scrolling:touch] md:rounded-[var(--radius-xl)] shadow-[var(--shadow-card)]",
+        "overflow-auto overscroll-auto rounded-[var(--radius-lg)] border border-border bg-surface [-webkit-overflow-scrolling:touch] md:rounded-[var(--radius-xl)] shadow-[var(--shadow-card)]",
         mobileCards ? "hidden md:block" : "block"
       )}
     >
@@ -258,7 +258,7 @@ function TableComponent<T>({
     <div className={className}>
       <div 
         style={containerMaxHeight ? { maxHeight: `${containerMaxHeight}px` } : undefined}
-        className="md:hidden space-y-3 pb-1 overflow-y-auto overscroll-contain pr-0.5"
+        className="md:hidden space-y-3 pb-1 overflow-y-auto overscroll-auto pr-0.5"
       >
         {data.map((row) => (
           <article

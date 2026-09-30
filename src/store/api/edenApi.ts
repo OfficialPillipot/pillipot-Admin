@@ -61,6 +61,16 @@ export type OrderListPayload = { items: Order[]; total: number };
 export type NewProductPayload = Pick<Product, "name" | "price"> & {
   categoryId: string;
   subcategoryId?: string;
+  categoryIds?: string[];
+  subcategoryIds?: string[];
+  sku?: string;
+  brand?: string;
+  productType?: string;
+  shortDescription?: string;
+  weight?: string;
+  length?: string;
+  width?: string;
+  height?: string;
   buyingPrice?: number;
   stockQuantity?: number;
   size?: string;
@@ -199,6 +209,20 @@ export const edenApi = createApi({
         fd.append("name", body.name);
         fd.append("categoryId", body.categoryId);
         if (body.subcategoryId) fd.append("subcategoryId", body.subcategoryId);
+        if (body.categoryIds && Array.isArray(body.categoryIds)) {
+          body.categoryIds.forEach((id) => fd.append("categoryIds", id));
+        }
+        if (body.subcategoryIds && Array.isArray(body.subcategoryIds)) {
+          body.subcategoryIds.forEach((id) => fd.append("subcategoryIds", id));
+        }
+        if (body.sku) fd.append("sku", body.sku);
+        if (body.brand) fd.append("brand", body.brand);
+        if (body.productType) fd.append("productType", body.productType);
+        if (body.shortDescription) fd.append("shortDescription", body.shortDescription);
+        if (body.weight) fd.append("weight", body.weight);
+        if (body.length) fd.append("length", body.length);
+        if (body.width) fd.append("width", body.width);
+        if (body.height) fd.append("height", body.height);
         fd.append("price", String(body.price));
         if (body.description != null && body.description !== "") {
           fd.append("description", body.description);

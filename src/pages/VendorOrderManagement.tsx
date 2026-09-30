@@ -72,7 +72,6 @@ function VendorOrderManagement() {
     return pid ? [pid] : [];
   });
   const [typeDraft, setTypeDraft] = useState("");
-  const [platformDraft, setPlatformDraft] = useState("");
 
   // ── Applied filter states (used for querying server and filtering list) ──
   const [appliedSearch, setAppliedSearch] = useState(() => searchParams.get("search") || "");
@@ -87,7 +86,6 @@ function VendorOrderManagement() {
     return pid ? [pid] : [];
   });
   const [appliedType, setAppliedType] = useState("");
-  const [appliedPlatform, setAppliedPlatform] = useState("");
 
   // Pagination state (default: 10 items)
   const [currentPage, setCurrentPage] = useState(1);
@@ -172,11 +170,8 @@ function VendorOrderManagement() {
         return o.orderType === appliedType;
       });
     }
-    if (appliedPlatform) {
-      result = result.filter(o => (o.platform || "staff") === appliedPlatform);
-    }
     return result;
-  }, [allOrders, appliedStatus, appliedProduct, appliedType, appliedPlatform]);
+  }, [allOrders, appliedStatus, appliedProduct, appliedType]);
 
   const paginatedOrders = useMemo(
     () => orders.slice((currentPage - 1) * pageSize, currentPage * pageSize),
@@ -234,10 +229,9 @@ function VendorOrderManagement() {
     setAppliedStatus(statusDraft);
     setAppliedProduct(productDraft);
     setAppliedType(typeDraft);
-    setAppliedPlatform(platformDraft);
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [searchDraft, dateFromDraft, dateToDraft, statusDraft, productDraft, typeDraft, platformDraft]);
+  }, [searchDraft, dateFromDraft, dateToDraft, statusDraft, productDraft, typeDraft]);
 
   const handleResetFilters = useCallback(() => {
     setSearchDraft(appliedSearch);
@@ -246,10 +240,9 @@ function VendorOrderManagement() {
     setStatusDraft(appliedStatus);
     setProductDraft(appliedProduct);
     setTypeDraft(appliedType);
-    setPlatformDraft(appliedPlatform);
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [appliedSearch, appliedDateFrom, appliedDateTo, appliedStatus, appliedProduct, appliedType, appliedPlatform]);
+  }, [appliedSearch, appliedDateFrom, appliedDateTo, appliedStatus, appliedProduct, appliedType]);
 
   const handleClearFilters = useCallback(() => {
     setSearchDraft("");
@@ -258,7 +251,6 @@ function VendorOrderManagement() {
     setStatusDraft([]);
     setProductDraft([]);
     setTypeDraft("");
-    setPlatformDraft("");
 
     setAppliedSearch("");
     setAppliedDateFrom("");
@@ -266,7 +258,6 @@ function VendorOrderManagement() {
     setAppliedStatus([]);
     setAppliedProduct([]);
     setAppliedType("");
-    setAppliedPlatform("");
     setCurrentPage(1);
     setSelectedIds(new Set());
 
@@ -293,12 +284,6 @@ function VendorOrderManagement() {
     { value: "", label: "All types" },
     { value: "cod", label: "COD" },
     { value: "prepaid", label: "Prepaid" },
-  ], []);
-
-  const platformOptions: SelectOption[] = useMemo(() => [
-    { value: "", label: "All platforms" },
-    { value: "staff", label: "Staff" },
-    { value: "webapp", label: "Webapp" },
   ], []);
 
   // ── Handlers ──
@@ -664,9 +649,6 @@ function VendorOrderManagement() {
           typeFilter={typeDraft}
           onTypeFilterChange={setTypeDraft}
           typeOptions={typeOptions}
-          platformFilter={platformDraft}
-          onPlatformFilterChange={setPlatformDraft}
-          platformOptions={platformOptions}
           filtersLoading={isLoading}
           onApply={handleApplyFilters}
           onReset={handleResetFilters}
@@ -677,7 +659,6 @@ function VendorOrderManagement() {
           appliedStatus={appliedStatus}
           appliedProduct={appliedProduct}
           appliedType={appliedType}
-          appliedPlatform={appliedPlatform}
         />
 
         {/* Selection bar */}

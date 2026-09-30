@@ -1,5 +1,15 @@
-import { memo, useState, useCallback, useMemo, useEffect } from "react";
-import { PencilIcon, XMarkIcon, TagIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import { memo, useState, useCallback, useMemo } from "react";
+import {
+  PencilIcon,
+  XMarkIcon,
+  TagIcon,
+  ExclamationTriangleIcon,
+  PhotoIcon,
+  VideoCameraIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+} from "@heroicons/react/24/outline";
+import { StarIcon } from "@heroicons/react/24/solid";
 import {
   Card,
   CardHeader,
@@ -30,10 +40,27 @@ import {
   useUpdateVendorPortalProductMutation,
   useDeleteVendorPortalProductMutation,
   useGetVendorPortalCategoriesQuery,
-  useGetVendorPortalOffersQuery
+  useGetVendorPortalOffersQuery,
+  useGetTagsQuery,
 } from "../store/api/edenApi";
 import { OfferEditModal } from "./VendorOfferManagement";
 
+export interface FormMediaItem {
+  id: string;
+  type: "image" | "video";
+  file?: File;
+  url: string;
+  isExisting?: boolean;
+  existingKey?: "imageUrl" | "imageUrl2" | "imageUrl3" | "imageUrl4" | "videoUrl";
+}
+
+export const PRODUCT_TYPE_OPTIONS: SelectOption[] = [
+  { value: "simple", label: "Simple Product" },
+  { value: "variable", label: "Variable / Configurable" },
+  { value: "digital", label: "Digital / Downloadable" },
+  { value: "perishable", label: "Perishable / Fresh Goods" },
+  { value: "customized", label: "Customized / Personalized Gift" },
+];
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
@@ -88,29 +115,49 @@ function VendorProductManagement() {
   const [updateProduct] = useUpdateVendorPortalProductMutation();
   const [deleteProduct] = useDeleteVendorPortalProductMutation();
 
+  const { data: allTags = [] } = useGetTagsQuery();
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [offerEditingProductId, setOfferEditingProductId] = useState<string | null>(null);
+
+  // 1. Product Details
   const [name, setName] = useState("");
+  const [sku, setSku] = useState("");
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [subcategoryIds, setSubcategoryIds] = useState<string[]>([]);
+  const [brand, setBrand] = useState("");
+  const [productType, setProductType] = useState("simple");
+  const [shortDescription, setShortDescription] = useState("");
+  const [description, setDescription] = useState("");
+  const [weight, setWeight] = useState("");
+  const [length, setLength] = useState("");
+  const [width, setWidth] = useState("");
+  const [height, setHeight] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+
+  // Media items (max 4, slot 1 = primary thumb image)
+  const [mediaItems, setMediaItems] = useState<FormMediaItem[]>([]);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // 2. Pricing & Specifications
   const [buyingPrice, setBuyingPrice] = useState("");
   const [price, setPrice] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
   const [stockQuantity, setStockQuantity] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [subcategoryId, setSubcategoryId] = useState("");
   const [size, setSize] = useState("");
   const [color, setColor] = useState("");
   const [preparationDays, setPreparationDays] = useState("2");
+
+  // 3. Product Customization
   const [isCustomizable, setIsCustomizable] = useState(false);
   const [allowPhotoUpload, setAllowPhotoUpload] = useState(false);
   const [allowTextInput, setAllowTextInput] = useState(false);
   const [customTextPrompt, setCustomTextPrompt] = useState("");
   const [customTextLimit, setCustomTextLimit] = useState("50");
-  const [description, setDescription] = useState("");
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
-  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const [deactivatingProduct, setDeactivatingProduct] = useState<Product | null>(null);
   const [deactivatingLoading, setDeactivatingLoading] = useState(false);
@@ -154,30 +201,6 @@ function VendorProductManagement() {
     appliedSubcategory.length > 0
   );
 
-  useEffect(() => {
-    if (imageFiles.length === 0) {
-      setImagePreviewUrls([]);
-      return;
-    }
-    const urls = imageFiles.map((file) => URL.createObjectURL(file));
-    setImagePreviewUrls(urls);
-    return () => urls.forEach((url) => URL.revokeObjectURL(url));
-  }, [imageFiles]);
-
-  useEffect(() => {
-    if (!videoFile) {
-      setVideoPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(videoFile);
-    setVideoPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [videoFile]);
-
-  const categoryOptions: SelectOption[] = useMemo(() => [
-    { value: "", label: "Select category…" },
-    ...categories.map((c) => ({ value: c.id, label: c.name })),
-  ], [categories]);
 
   const categoryMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -225,14 +248,6 @@ function VendorProductManagement() {
     }));
   }, [allSubcategories, categoryDraft]);
 
-  const subcategoryOptions: SelectOption[] = useMemo(() => {
-    if (!categoryId) return [{ value: "", label: "Select subcategory…" }];
-    const cat = categories.find(c => c.id === categoryId);
-    return [
-      { value: "", label: "Select subcategory…" },
-      ...(cat?.subcategories || []).map((s: any) => ({ value: s.id, label: s.name }))
-    ];
-  }, [categories, categoryId]);
 
   const filteredProducts = useMemo(() => {
     const q = appliedSearch.trim().toLowerCase();
@@ -297,11 +312,190 @@ function VendorProductManagement() {
     });
   }, [products, appliedSearch, appliedCategory, appliedSubcategory, categoryMap, subcategoryMap]);
 
+  const categoryFormOptions = useMemo<MultiSelectOption[]>(() => {
+    return categories.map((c) => ({
+      value: c.id,
+      label: c.name,
+    }));
+  }, [categories]);
+
+  const subcategoryFormOptions = useMemo<MultiSelectOption[]>(() => {
+    let list = allSubcategories;
+    if (categoryIds.length > 0) {
+      const selectedCatIds = new Set(categoryIds);
+      list = allSubcategories.filter((s) => selectedCatIds.has(s.categoryId));
+    }
+    return list.map((s) => ({
+      value: s.id,
+      label: s.name,
+      subLabel: s.categoryName,
+    }));
+  }, [allSubcategories, categoryIds]);
+
+  const handleAddTag = useCallback((tagToAdd?: string) => {
+    const raw = (tagToAdd || tagInput).trim();
+    if (!raw) return;
+    const cleanTag = raw.replace(/^#/, "").trim().toLowerCase();
+    if (!cleanTag) return;
+    if (!selectedTags.includes(cleanTag)) {
+      setSelectedTags((prev) => [...prev, cleanTag]);
+    }
+    setTagInput("");
+  }, [tagInput, selectedTags]);
+
+  const handleAddImages = useCallback((files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const currentCount = mediaItems.length;
+    const remainingSlots = 4 - currentCount;
+    if (remainingSlots <= 0) {
+      toast.error("Maximum 4 media items can be uploaded.");
+      return;
+    }
+
+    const filesArray = Array.from(files).slice(0, remainingSlots);
+    const newItems: FormMediaItem[] = [];
+
+    for (const file of filesArray) {
+      const err = validateImageFile(file);
+      if (err) {
+        toast.error(err);
+        continue;
+      }
+      newItems.push({
+        id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        type: "image",
+        file,
+        url: URL.createObjectURL(file),
+      });
+    }
+
+    if (newItems.length > 0) {
+      setMediaItems((prev) => [...prev, ...newItems]);
+      toast.success(`${newItems.length} image${newItems.length > 1 ? "s" : ""} added`);
+    }
+  }, [mediaItems]);
+
+  const handleAddVideo = useCallback((file: File | null) => {
+    if (!file) return;
+    if (mediaItems.some((m) => m.type === "video")) {
+      toast.error("Only 1 video can be uploaded.");
+      return;
+    }
+    if (mediaItems.length >= 4) {
+      toast.error("Maximum 4 media items can be uploaded.");
+      return;
+    }
+    if (mediaItems.length === 0) {
+      toast.error("Please upload the primary thumbnail image first before adding a video.");
+      return;
+    }
+
+    const err = validateVideoFile(file);
+    if (err) {
+      toast.error(err);
+      return;
+    }
+
+    const newItem: FormMediaItem = {
+      id: `vid-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      type: "video",
+      file,
+      url: URL.createObjectURL(file),
+    };
+    setMediaItems((prev) => [...prev, newItem]);
+    toast.success("Video added");
+  }, [mediaItems]);
+
+  const handleRemoveMedia = useCallback((index: number) => {
+    setMediaItems((prev) => {
+      const item = prev[index];
+      if (item?.file && item.url.startsWith("blob:")) {
+        URL.revokeObjectURL(item.url);
+      }
+      const updated = prev.filter((_, i) => i !== index);
+      // Ensure slot 0 is not a video if items remain
+      if (updated.length > 0 && updated[0].type === "video") {
+        const firstImgIdx = updated.findIndex((m) => m.type === "image");
+        if (firstImgIdx !== -1) {
+          const [img] = updated.splice(firstImgIdx, 1);
+          updated.unshift(img);
+        } else {
+          toast.error("The primary thumbnail must be an image. Please add an image thumbnail.");
+        }
+      }
+      return updated;
+    });
+  }, []);
+
+  const handleMediaDragStart = useCallback((index: number) => {
+    setDraggedIndex(index);
+  }, []);
+
+  const handleMediaDrop = useCallback((targetIndex: number) => {
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const draggedItem = mediaItems[draggedIndex];
+    if (targetIndex === 0 && draggedItem.type === "video") {
+      toast.error("The first slot is reserved for the primary thumbnail and must be an image.");
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const updated = [...mediaItems];
+    const [moved] = updated.splice(draggedIndex, 1);
+    updated.splice(targetIndex, 0, moved);
+
+    if (updated[0].type === "video") {
+      toast.error("The first slot must be an image thumbnail.");
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    setMediaItems(updated);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    toast.success("Media reordered");
+  }, [draggedIndex, mediaItems]);
+
+  const handleMoveMedia = useCallback((index: number, direction: "left" | "right") => {
+    const target = direction === "left" ? index - 1 : index + 1;
+    if (target < 0 || target >= mediaItems.length) return;
+    if (target === 0 && mediaItems[index].type === "video") {
+      toast.error("The first slot is reserved for the primary thumbnail and must be an image.");
+      return;
+    }
+    const updated = [...mediaItems];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(target, 0, moved);
+    if (updated[0].type === "video") {
+      toast.error("The first slot must be an image thumbnail.");
+      return;
+    }
+    setMediaItems(updated);
+  }, [mediaItems]);
+
   const openAdd = useCallback(() => {
     setEditingId(null);
     setName("");
-    setCategoryId("");
-    setSubcategoryId("");
+    setSku("");
+    setCategoryIds([]);
+    setSubcategoryIds([]);
+    setBrand("");
+    setProductType("simple");
+    setShortDescription("");
+    setDescription("");
+    setWeight("");
+    setLength("");
+    setWidth("");
+    setHeight("");
+    setSelectedTags([]);
+    setTagInput("");
+    setMediaItems([]);
     setBuyingPrice("");
     setPrice("");
     setOriginalPrice("");
@@ -314,17 +508,37 @@ function VendorProductManagement() {
     setAllowTextInput(false);
     setCustomTextPrompt("");
     setCustomTextLimit("50");
-    setDescription("");
-    setImageFiles([]);
-    setVideoFile(null);
     setModalOpen(true);
   }, []);
 
   const openEdit = useCallback((p: Product) => {
     setEditingId(p.id);
     setName(p.name);
-    setCategoryId(p.categoryId ?? "");
-    setSubcategoryId(p.subcategoryId ?? "");
+    setSku(p.sku || p.productCode || "");
+    const cats = p.categoryIds?.length ? p.categoryIds : p.categoryId ? [p.categoryId] : [];
+    const subs = p.subcategoryIds?.length ? p.subcategoryIds : p.subcategoryId ? [p.subcategoryId] : [];
+    setCategoryIds(cats);
+    setSubcategoryIds(subs);
+    setBrand(p.brand || "");
+    setProductType(p.productType || "simple");
+    setShortDescription(p.shortDescription || "");
+    setDescription(p.description || "");
+    setWeight(p.weight || "");
+    setLength(p.length || "");
+    setWidth(p.width || "");
+    setHeight(p.height || "");
+    setSelectedTags(p.tags || []);
+    setTagInput("");
+
+    // Populate existing media items up to 4
+    const existing: FormMediaItem[] = [];
+    if (p.imageUrl) existing.push({ id: "exist-img-1", type: "image", url: p.imageUrl, isExisting: true, existingKey: "imageUrl" });
+    if (p.imageUrl2) existing.push({ id: "exist-img-2", type: "image", url: p.imageUrl2, isExisting: true, existingKey: "imageUrl2" });
+    if (p.imageUrl3) existing.push({ id: "exist-img-3", type: "image", url: p.imageUrl3, isExisting: true, existingKey: "imageUrl3" });
+    if (p.imageUrl4) existing.push({ id: "exist-img-4", type: "image", url: p.imageUrl4, isExisting: true, existingKey: "imageUrl4" });
+    if (p.videoUrl) existing.push({ id: "exist-vid-1", type: "video", url: p.videoUrl, isExisting: true, existingKey: "videoUrl" });
+    setMediaItems(existing.slice(0, 4));
+
     setBuyingPrice(p.buyingPrice != null ? String(p.buyingPrice) : "");
     setPrice(String(p.price ?? 0));
     setOriginalPrice(p.originalPrice?.toString() || "");
@@ -338,16 +552,16 @@ function VendorProductManagement() {
     setAllowTextInput(!!p.allowTextInput);
     setCustomTextPrompt(p.customTextPrompt || "");
     setCustomTextLimit(p.customTextLimit ? String(p.customTextLimit) : "50");
-    setDescription(p.description ?? "");
-    setImageFiles([]);
-    setVideoFile(null);
     setModalOpen(true);
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!name.trim()) return;
-    if (!categoryId) {
-      toast.error("Select a category");
+    if (!name.trim()) {
+      toast.error("Please enter a product name");
+      return;
+    }
+    if (categoryIds.length === 0) {
+      toast.error("Please select at least one category");
       return;
     }
     const priceNum = parseFloat(price);
@@ -361,12 +575,34 @@ function VendorProductManagement() {
       return;
     }
 
+    if (mediaItems.length > 0 && mediaItems[0].type === "video") {
+      toast.error("The first media item is the primary thumbnail and must be an image.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const payload = {
+      const images = mediaItems.filter((m) => m.type === "image");
+      const videoItem = mediaItems.find((m) => m.type === "video");
+      const newImageFiles = images.filter((m) => m.file).map((m) => m.file!);
+      const newVideoFile = videoItem?.file ?? undefined;
+
+      const payload: any = {
         name: name.trim(),
-        categoryId,
-        subcategoryId: subcategoryId || undefined,
+        categoryId: categoryIds[0] || "",
+        subcategoryId: subcategoryIds[0] || undefined,
+        categoryIds,
+        subcategoryIds,
+        sku: sku.trim() || undefined,
+        brand: brand.trim() || undefined,
+        productType: productType || undefined,
+        shortDescription: shortDescription.trim() || undefined,
+        description: description.trim() || undefined,
+        weight: weight.trim() || undefined,
+        length: length.trim() || undefined,
+        width: width.trim() || undefined,
+        height: height.trim() || undefined,
+        tags: selectedTags,
         price: priceNum,
         buyingPrice: buyingPrice ? parseFloat(buyingPrice) : 0,
         originalPrice: originalPrice ? parseFloat(originalPrice) : 0,
@@ -378,17 +614,27 @@ function VendorProductManagement() {
         allowTextInput: isCustomizable ? allowTextInput : false,
         customTextPrompt: (isCustomizable && allowTextInput && customTextPrompt.trim()) ? customTextPrompt.trim() : "",
         customTextLimit: (isCustomizable && allowTextInput && customTextLimit) ? parseInt(customTextLimit, 10) : undefined,
-        description: description.trim() || undefined,
-        image: imageFiles.length > 0 ? imageFiles : undefined,
-        video: videoFile ?? undefined,
+        image: newImageFiles.length > 0 ? newImageFiles : undefined,
+        video: newVideoFile,
       };
 
       if (editingId) {
+        images.forEach((img, idx) => {
+          const key = idx === 0 ? "imageUrl" : idx === 1 ? "imageUrl2" : idx === 2 ? "imageUrl3" : "imageUrl4";
+          if (img.isExisting) {
+            payload[key] = img.url;
+          }
+        });
+        if (images.length < 4) payload.imageUrl4 = null;
+        if (images.length < 3) payload.imageUrl3 = null;
+        if (images.length < 2) payload.imageUrl2 = null;
+        if (!videoItem) payload.videoUrl = null;
+
         await updateProduct({ id: editingId, patch: payload }).unwrap();
-        toast.success("Product updated");
+        toast.success("Product updated successfully");
       } else {
         await createProduct(payload).unwrap();
-        toast.success("Product created");
+        toast.success("Product created successfully");
       }
       setModalOpen(false);
     } catch (err) {
@@ -399,8 +645,19 @@ function VendorProductManagement() {
   }, [
     editingId,
     name,
-    categoryId,
-    subcategoryId,
+    categoryIds,
+    subcategoryIds,
+    sku,
+    brand,
+    productType,
+    shortDescription,
+    description,
+    weight,
+    length,
+    width,
+    height,
+    selectedTags,
+    mediaItems,
     price,
     buyingPrice,
     originalPrice,
@@ -413,11 +670,8 @@ function VendorProductManagement() {
     allowTextInput,
     customTextPrompt,
     customTextLimit,
-    description,
-    imageFiles,
-    videoFile,
     createProduct,
-    updateProduct
+    updateProduct,
   ]);
 
   const handleDelete = useCallback(async (id: string) => {
@@ -830,64 +1084,518 @@ function VendorProductManagement() {
         onClose={() => setModalOpen(false)}
         title={editingId ? "Edit Product" : "Add Product"}
         size="screen-gap"
+        closeOnOutsideClick={false}
+        footer={
+          <div className="flex items-center justify-end gap-3">
+            <Button variant="secondary" onClick={() => setModalOpen(false)} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={submitting}>
+              {submitting ? "Saving Product..." : editingId ? "Save Changes" : "Save Product"}
+            </Button>
+          </div>
+        }
       >
-        <div className="space-y-5">
-          {/* Product Name & Categories Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            <div className={categoryId ? "md:col-span-6" : "md:col-span-7"}>
-              <Input label="Product name *" value={name} onChange={(e) => setName(e.target.value)} />
+        <div className="space-y-6">
+          {/* SECTION 1: PRODUCT DETAILS */}
+          <div className="space-y-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
+            <div className="border-b border-border pb-3">
+              <h3 className="text-base font-bold text-text-heading flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                  1
+                </span>
+                Product Details
+              </h3>
+
             </div>
-            <div className={categoryId ? "md:col-span-3" : "md:col-span-5"}>
-              <Select label="Category *" options={categoryOptions} value={categoryId} onChange={(e) => setCategoryId(e.target.value)} />
-            </div>
-            {categoryId && (
-              <div className="md:col-span-3">
-                <Select label="Subcategory *" options={subcategoryOptions} value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)} />
+
+            {/* Product Name & Product Code / SKU */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              <div className="md:col-span-8">
+                <Input
+                  label="Product Name *"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Handmade Ceramic Flower Pot"
+                />
               </div>
-            )}
-          </div>
+              <div className="md:col-span-4">
+                <Input
+                  label="Product Code / SKU"
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
+                  placeholder="e.g. SKU-POT-101"
+                />
+              </div>
+            </div>
 
-          {/* Description */}
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-text">Description</label>
-            <RichTextEditor
-              key={editingId || "new-vendor-product"}
-              value={description}
-              onChange={setDescription}
-              placeholder="Product details, bullet points, bold text..."
-            />
-          </div>
+            {/* Category & Subcategory Multi-Select with Searchability */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-text">
+                  Category * <span className="text-xs text-text-muted">(Multi-select & Searchable)</span>
+                </label>
+                <SearchableMultiSelect
+                  selectedValues={categoryIds}
+                  onChange={setCategoryIds}
+                  options={categoryFormOptions}
+                  placeholder="Select one or more categories..."
+                  searchPlaceholder="Search categories..."
+                  itemNoun="category"
+                />
+              </div>
 
-          {/* Pricing, Inventory & Specifications Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <Input label="Buying price (₹)" type="number" value={buyingPrice} onChange={(e) => setBuyingPrice(e.target.value)} placeholder="Cost to you" />
-            <Input label="Selling price (₹) *" type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price for customers" />
-            <Input label="Actual price (MRP) (₹)" type="number" value={originalPrice} onChange={(e) => setOriginalPrice(e.target.value)} placeholder="Original price before discount" />
-            <Input label="Stock quantity" type="number" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} placeholder="Available stock" />
-            <Input label="Size" value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. Medium, 1kg" />
-            <Input label="Color" value={color} onChange={(e) => setColor(e.target.value)} placeholder="e.g. Red, Blue" />
-            <div className="sm:col-span-2 space-y-1">
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-text">
+                  Subcategory <span className="text-xs text-text-muted">(Multi-select & Searchable)</span>
+                </label>
+                <SearchableMultiSelect
+                  selectedValues={subcategoryIds}
+                  onChange={setSubcategoryIds}
+                  options={subcategoryFormOptions}
+                  placeholder={categoryIds.length > 0 ? "Select subcategories..." : "Select categories first..."}
+                  searchPlaceholder="Search subcategories..."
+                  itemNoun="subcategory"
+                />
+              </div>
+            </div>
+
+            {/* Brand & Product Type */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
-                label="Preparation Days (Days to prepare/pack) *"
-                type="number"
-                min="0"
-                value={preparationDays}
-                onChange={(e) => setPreparationDays(e.target.value)}
-                placeholder="e.g. 2"
+                label="Brand"
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                placeholder="e.g. Artisans Clay, Pillipot Crafts"
               />
-              <p className="text-[11px] text-text-muted">
-                Number of days required to prepare this item. Customer delivery date picker will disable dates before this period.
+              <Select
+                label="Product Type"
+                options={PRODUCT_TYPE_OPTIONS}
+                value={productType}
+                onChange={(e) => setProductType(e.target.value)}
+              />
+            </div>
+
+            {/* Short Description */}
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-text">
+                Short Description <span className="text-xs text-text-muted">(Brief overview for cards & previews)</span>
+              </label>
+              <textarea
+                rows={2}
+                value={shortDescription}
+                onChange={(e) => setShortDescription(e.target.value)}
+                placeholder="Brief summary of the product..."
+                className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            {/* Detailed Description */}
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-text">
+                Detailed Description <span className="text-xs text-text-muted">(Rich text with formatting)</span>
+              </label>
+              <RichTextEditor
+                key={editingId || "new-vendor-product"}
+                value={description}
+                onChange={setDescription}
+                placeholder="Product details, features, care instructions, bullet points..."
+              />
+            </div>
+
+            {/* Product Dimensions & Weight Grid */}
+            <div>
+              <label className="text-sm font-medium text-text block mb-2">
+                Product Weight & Dimensions
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Input
+                  label="Product Weight"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  placeholder="e.g. 500g, 1.2kg"
+                />
+                <Input
+                  label="Length"
+                  value={length}
+                  onChange={(e) => setLength(e.target.value)}
+                  placeholder="e.g. 15 cm"
+                />
+                <Input
+                  label="Width"
+                  value={width}
+                  onChange={(e) => setWidth(e.target.value)}
+                  placeholder="e.g. 10 cm"
+                />
+                <Input
+                  label="Height"
+                  value={height}
+                  onChange={(e) => setHeight(e.target.value)}
+                  placeholder="e.g. 20 cm"
+                />
+              </div>
+            </div>
+
+            {/* Tags / Keywords */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-text">
+                Tags / Keywords <span className="text-xs text-text-muted">(Press Enter or click Add)</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
+                  placeholder="Type tag (e.g. handmade, gift, ceramic) and press Enter..."
+                  className="flex-1 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <Button type="button" variant="secondary" onClick={() => handleAddTag()}>
+                  Add Tag
+                </Button>
+              </div>
+
+              {/* Tag Chips */}
+              {selectedTags.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {selectedTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary border border-primary/20"
+                    >
+                      #{tag}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTags((prev) => prev.filter((t) => t !== tag))}
+                        className="hover:text-red-500 transition-colors cursor-pointer"
+                        title="Remove tag"
+                      >
+                        <XMarkIcon className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted italic">No tags added yet.</p>
+              )}
+
+              {/* Tag Suggestions from allTags */}
+              {allTags.length > 0 && (
+                <div className="pt-1">
+                  <p className="text-[11px] font-medium text-text-muted mb-1">Suggested Tags:</p>
+                  <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto pr-1">
+                    {allTags
+                      .filter((t) => !selectedTags.includes(t.name.toLowerCase()))
+                      .slice(0, 15)
+                      .map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => handleAddTag(t.name)}
+                          className="inline-flex items-center rounded-md bg-surface-muted px-2 py-0.5 text-[11px] text-text-muted hover:bg-primary/10 hover:text-primary border border-border transition-colors cursor-pointer"
+                        >
+                          +{t.name}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Media Upload & Drag-and-Drop Reordering Grid */}
+            <div className="space-y-3 rounded-lg border border-border p-4 bg-surface-muted/20">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2.5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <PhotoIcon className="h-5 w-5 text-primary" />
+                    <p className="text-sm font-semibold text-text">Product Images & Video</p>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                      {mediaItems.length} / 4 items
+                    </span>
+                  </div>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    <strong>Slot 1</strong> is the <span className="text-primary font-semibold">Primary Thumbnail</span> (Image only).
+                    Slots 2–4 can be images or 1 video. Drag cards or use arrow buttons to rearrange.
+                  </p>
+                </div>
+
+                {/* Upload Buttons */}
+                <div className="flex items-center gap-2">
+                  <label
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors shadow-sm ${mediaItems.length >= 4
+                      ? "bg-surface-muted text-text-muted cursor-not-allowed border border-border"
+                      : "bg-primary text-white hover:bg-primary/90"
+                      }`}
+                  >
+                    <PhotoIcon className="h-4 w-4" />
+                    <span>+ Add Images</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      multiple
+                      accept="image/jpeg,image/png,image/webp"
+                      disabled={mediaItems.length >= 4}
+                      onChange={(e) => {
+                        handleAddImages(e.target.files);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+
+                  <label
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors shadow-sm ${mediaItems.length >= 4 ||
+                      mediaItems.some((m) => m.type === "video") ||
+                      mediaItems.length === 0
+                      ? "bg-surface-muted text-text-muted cursor-not-allowed border border-border"
+                      : "bg-surface text-text hover:bg-surface-muted border border-border"
+                      }`}
+                    title={
+                      mediaItems.length === 0
+                        ? "Upload primary thumbnail image first"
+                        : mediaItems.some((m) => m.type === "video")
+                          ? "Only 1 video allowed"
+                          : "Upload a product video (MP4/MOV)"
+                    }
+                  >
+                    <VideoCameraIcon className="h-4 w-4 text-purple-600" />
+                    <span>+ Add Video</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="video/mp4,video/quicktime"
+                      disabled={
+                        mediaItems.length >= 4 ||
+                        mediaItems.some((m) => m.type === "video") ||
+                        mediaItems.length === 0
+                      }
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        handleAddVideo(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* 4-Slots Visual Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                {[0, 1, 2, 3].map((slotIndex) => {
+                  const item = mediaItems[slotIndex];
+                  const isThumbSlot = slotIndex === 0;
+
+                  if (item) {
+                    return (
+                      <div
+                        key={item.id || slotIndex}
+                        draggable
+                        onDragStart={() => handleMediaDragStart(slotIndex)}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setDragOverIndex(slotIndex);
+                        }}
+                        onDragLeave={() => setDragOverIndex(null)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          handleMediaDrop(slotIndex);
+                        }}
+                        className={`group relative flex flex-col rounded-lg border bg-surface p-2 transition-all cursor-grab active:cursor-grabbing ${dragOverIndex === slotIndex
+                          ? "border-primary ring-2 ring-primary/40 scale-[1.02]"
+                          : isThumbSlot
+                            ? "border-amber-400 bg-amber-500/5 shadow-sm"
+                            : "border-border hover:border-text-muted hover:shadow"
+                          }`}
+                      >
+                        {/* Slot Badge */}
+                        <div className="flex items-center justify-between mb-1.5">
+                          {isThumbSlot ? (
+                            <span className="inline-flex items-center gap-1 rounded bg-amber-500 text-white px-1.5 py-0.5 text-[10px] font-bold shadow-xs">
+                              <StarIcon className="h-3 w-3" />
+                              Primary Thumb
+                            </span>
+                          ) : (
+                            <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[10px] font-semibold text-text-muted border border-border">
+                              Slot {slotIndex + 1}
+                            </span>
+                          )}
+
+                          {/* Reorder Buttons (Left / Right) */}
+                          <div className="flex items-center gap-0.5">
+                            {slotIndex > 0 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveMedia(slotIndex, "left");
+                                }}
+                                title="Move left"
+                                className="rounded p-0.5 text-text-muted hover:bg-surface-muted hover:text-text cursor-pointer"
+                              >
+                                <ArrowLeftIcon className="h-3 w-3" />
+                              </button>
+                            )}
+                            {slotIndex < mediaItems.length - 1 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveMedia(slotIndex, "right");
+                                }}
+                                title="Move right"
+                                className="rounded p-0.5 text-text-muted hover:bg-surface-muted hover:text-text cursor-pointer"
+                              >
+                                <ArrowRightIcon className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Media Preview Box */}
+                        <div className="relative aspect-square w-full overflow-hidden rounded-md bg-black/5 border border-border/80">
+                          {item.type === "image" ? (
+                            <img
+                              src={item.url}
+                              alt={`Slot ${slotIndex + 1}`}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="relative h-full w-full bg-slate-900 flex items-center justify-center">
+                              <video src={item.url} className="h-full w-full object-cover" />
+                              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                <VideoCameraIcon className="h-8 w-8 text-white/90 drop-shadow" />
+                              </div>
+                              <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-0.5 text-[9px] font-bold text-white">
+                                VIDEO
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Delete Item Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveMedia(slotIndex);
+                            }}
+                            className="absolute top-1 right-1 rounded-full bg-error p-1 text-white shadow-md hover:bg-error/90 transition-opacity cursor-pointer"
+                            title="Remove media"
+                          >
+                            <XMarkIcon className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Drag instruction tip */}
+                        <div className="mt-1 text-center text-[10px] text-text-muted flex items-center justify-center gap-1">
+                          <span className="text-xs">⠿</span> Drag to reorder
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Empty Slot
+                  return (
+                    <div
+                      key={`empty-${slotIndex}`}
+                      className={`flex flex-col items-center justify-center aspect-square rounded-lg border-2 border-dashed p-3 text-center transition-colors ${isThumbSlot
+                        ? "border-amber-400/60 bg-amber-500/5"
+                        : "border-border bg-surface-muted/30"
+                        }`}
+                    >
+                      {isThumbSlot ? (
+                        <>
+                          <StarIcon className="h-6 w-6 text-amber-500 mb-1" />
+                          <p className="text-xs font-bold text-text-heading">Slot 1: Thumb</p>
+                          <p className="text-[10px] text-text-muted mt-0.5">Primary Cover (Image only)</p>
+                        </>
+                      ) : (
+                        <>
+                          <PhotoIcon className="h-6 w-6 text-text-muted mb-1" />
+                          <p className="text-xs font-semibold text-text-muted">Slot {slotIndex + 1}</p>
+                          <p className="text-[10px] text-text-muted mt-0.5">Image or Video</p>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 2: PRICING & INVENTORY */}
+          <div className="space-y-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
+            <div className="border-b border-border pb-3">
+              <h3 className="text-base font-bold text-text-heading flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                  2
+                </span>
+                Pricing & Specifications
+              </h3>
+              <p className="text-xs text-text-muted mt-0.5">
+                Set cost, customer prices, inventory, size/color, and preparation fulfillment days.
               </p>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <Input
+                label="Buying price (₹)"
+                type="number"
+                value={buyingPrice}
+                onChange={(e) => setBuyingPrice(e.target.value)}
+                placeholder="Cost to you"
+              />
+              <Input
+                label="Selling price (₹) *"
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="Price for customers"
+              />
+              <Input
+                label="Actual price (MRP) (₹)"
+                type="number"
+                value={originalPrice}
+                onChange={(e) => setOriginalPrice(e.target.value)}
+                placeholder="Original price before discount"
+              />
+              <Input
+                label="Stock quantity"
+                type="number"
+                value={stockQuantity}
+                onChange={(e) => setStockQuantity(e.target.value)}
+                placeholder="Available stock"
+              />
+              <Input
+                label="Size"
+                value={size}
+                onChange={(e) => setSize(e.target.value)}
+                placeholder="e.g. Medium, 1kg"
+              />
+              <Input
+                label="Color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                placeholder="e.g. Red, Blue"
+              />
+            </div>
           </div>
 
-          {/* Product Customization */}
-          <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+          {/* SECTION 3: PRODUCT CUSTOMIZATION */}
+          <div className="space-y-4 rounded-xl border border-primary/30 bg-primary/5 p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-text">Product Customization</p>
-                <p className="text-xs text-text-muted">
-                  Allow customers to personalize this product before buying (e.g. photo print, engraved name).
+                <h3 className="text-base font-bold text-text-heading flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold">
+                    3
+                  </span>
+                  Product Customization & Lead Time
+                </h3>
+                <p className="text-xs text-text-muted mt-0.5">
+                  Set preparation days and allow customers to personalize this product before buying.
                 </p>
               </div>
               <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -906,12 +1614,27 @@ function VendorProductManagement() {
                     }
                   }}
                 />
-                <span className="text-sm font-medium text-text">Enable Customization</span>
+                <span className="text-sm font-semibold text-text">Enable Customization</span>
               </label>
             </div>
 
+            {/* Preparation Days inside customization box */}
+            <div className="rounded-lg border border-primary/20 bg-surface p-3.5 space-y-1">
+              <Input
+                label="Preparation Days (Days to prepare/pack) *"
+                type="number"
+                min="0"
+                value={preparationDays}
+                onChange={(e) => setPreparationDays(e.target.value)}
+                placeholder="e.g. 2"
+              />
+              <p className="text-[11px] text-text-muted">
+                Number of days required to prepare this item. Customer delivery date picker will disable dates before this period.
+              </p>
+            </div>
+
             {isCustomizable && (
-              <div className="space-y-3 pt-2 border-t border-primary/20">
+              <div className="space-y-3 pt-3 border-t border-primary/20">
                 <div>
                   <p className="text-xs font-semibold text-text mb-1">
                     Allowed Customization Options *
@@ -923,8 +1646,8 @@ function VendorProductManagement() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <label
-                    className={`flex items-start gap-2.5 p-2.5 rounded border cursor-pointer transition-colors ${allowPhotoUpload
-                      ? "border-primary bg-primary/10"
+                    className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${allowPhotoUpload
+                      ? "border-primary bg-primary/10 shadow-xs"
                       : "border-border bg-surface"
                       }`}
                   >
@@ -935,16 +1658,16 @@ function VendorProductManagement() {
                       onChange={(e) => setAllowPhotoUpload(e.target.checked)}
                     />
                     <div>
-                      <span className="block text-sm font-medium text-text">Image</span>
+                      <span className="block text-sm font-semibold text-text">Image Upload</span>
                       <span className="block text-[11px] text-text-muted">
-                        Allow customer to upload photos / images
+                        Allow customer to upload photos / designs to customize
                       </span>
                     </div>
                   </label>
 
                   <label
-                    className={`flex items-start gap-2.5 p-2.5 rounded border cursor-pointer transition-colors ${allowTextInput
-                      ? "border-primary bg-primary/10"
+                    className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${allowTextInput
+                      ? "border-primary bg-primary/10 shadow-xs"
                       : "border-border bg-surface"
                       }`}
                   >
@@ -955,16 +1678,16 @@ function VendorProductManagement() {
                       onChange={(e) => setAllowTextInput(e.target.checked)}
                     />
                     <div>
-                      <span className="block text-sm font-medium text-text">Text</span>
+                      <span className="block text-sm font-semibold text-text">Custom Text</span>
                       <span className="block text-[11px] text-text-muted">
-                        Allow customer to enter custom text / names
+                        Allow customer to enter custom text, wishes or names
                       </span>
                     </div>
                   </label>
                 </div>
 
                 {!allowPhotoUpload && !allowTextInput && (
-                  <div className="rounded bg-error/10 border border-error/30 p-2 text-xs font-medium text-error flex items-center gap-1.5">
+                  <div className="rounded-lg bg-error/10 border border-error/30 p-2.5 text-xs font-medium text-error flex items-center gap-1.5">
                     <span>⚠️</span>
                     <span>Validation error: At least one option (Image or Text) must be selected before saving.</span>
                   </div>
@@ -993,107 +1716,6 @@ function VendorProductManagement() {
             )}
           </div>
 
-          {/* Media Section: Upload & Current Media in Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="space-y-3 rounded-lg border border-border p-4 bg-surface-muted/30">
-              <p className="text-sm font-semibold text-text">Media Upload</p>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-text-muted">Images (Up to 3 — JPG, PNG, WebP — max 5MB each)</label>
-                <div className="grid grid-cols-3 gap-2.5">
-                  {imagePreviewUrls.map((url, idx) => (
-                    <div key={idx} className="relative aspect-square">
-                      <img src={url} className="h-full w-full rounded-md object-cover border border-border" />
-                      <button onClick={() => setImageFiles(prev => prev.filter((_, i) => i !== idx))} className="absolute -right-2 -top-2 rounded-full bg-error p-1 text-white shadow"><XMarkIcon className="h-3 w-3" /></button>
-                    </div>
-                  ))}
-                  {imageFiles.length < 3 && (
-                    <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-border hover:bg-surface-muted/50 transition-colors">
-                      <span className="text-xl font-bold text-primary">+</span>
-                      <span className="text-[11px] text-text-muted">Add Image</span>
-                      <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp" onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) {
-                          const err = validateImageFile(f);
-                          if (err) { toast.error(err); return; }
-                          setImageFiles(prev => [...prev, f]);
-                        }
-                        e.target.value = "";
-                      }} />
-                    </label>
-                  )}
-                </div>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-text-muted">Video (MP4, MOV — max 50MB)</label>
-                <input
-                  type="file"
-                  accept="video/mp4,video/quicktime"
-                  className="block w-full text-sm text-text-muted file:mr-2 file:rounded file:border-0 file:bg-primary-muted file:px-2.5 file:py-1.5 file:text-xs file:font-semibold file:text-primary hover:file:bg-primary-muted/80 cursor-pointer"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) {
-                      const err = validateVideoFile(f);
-                      if (err) { toast.error(err); e.target.value = ""; return; }
-                    }
-                    setVideoFile(f ?? null);
-                    e.target.value = "";
-                  }}
-                />
-                {videoPreviewUrl && <video controls className="mt-2 max-h-48 w-full rounded-md border border-border" src={videoPreviewUrl} />}
-              </div>
-            </div>
-
-            {editingId && (
-              <div className="space-y-3 rounded-lg border border-border p-4 bg-surface">
-                <p className="text-sm font-semibold text-text">Current Media</p>
-                <div className="flex flex-wrap gap-2.5">
-                  {[
-                    { url: products.find(p => p.id === editingId)?.imageUrl, key: "imageUrl" },
-                    { url: products.find(p => p.id === editingId)?.imageUrl2, key: "imageUrl2" },
-                    { url: products.find(p => p.id === editingId)?.imageUrl3, key: "imageUrl3" },
-                  ].map((item, idx) => item.url && (
-                    <div key={idx} className="relative group">
-                      <img src={item.url} className="h-20 w-20 rounded-md object-cover border border-border" />
-                      <button
-                        onClick={async () => {
-                          if (!window.confirm("Delete image permanently?")) return;
-                          try {
-                            await updateProduct({ id: editingId, patch: { [item.key]: null } as any }).unwrap();
-                            toast.success("Image deleted");
-                          } catch (err) { toast.fromError(err, "Failed to delete image"); }
-                        }}
-                        className="absolute -right-1.5 -top-1.5 rounded-full bg-error p-1 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow"
-                      >
-                        <XMarkIcon className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                {products.find(p => p.id === editingId)?.videoUrl && (
-                  <div className="relative group w-fit mt-2">
-                    <video src={products.find(p => p.id === editingId)?.videoUrl ?? undefined} className="h-24 rounded-md border border-border" controls />
-                    <button
-                      onClick={async () => {
-                        if (!window.confirm("Delete video permanently?")) return;
-                        try {
-                          await updateProduct({ id: editingId, patch: { videoUrl: null } as any }).unwrap();
-                          toast.success("Video deleted");
-                        } catch (err) { toast.fromError(err, "Failed to delete video"); }
-                      }}
-                      className="absolute -right-1.5 -top-1.5 rounded-full bg-error p-1 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow"
-                    >
-                      <XMarkIcon className="h-3 w-3" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-2 pt-4">
-            <Button onClick={handleSave} disabled={submitting}>{submitting ? "Saving…" : "Save Product"}</Button>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-          </div>
         </div>
       </Modal>
 

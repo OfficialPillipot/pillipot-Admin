@@ -11,6 +11,8 @@ interface ModalProps {
   className?: string;
   /** Pinned below scrollable body (e.g. primary action on mobile filter sheets). */
   footer?: React.ReactNode;
+  /** Whether clicking the backdrop closes the modal. Defaults to true. */
+  closeOnOutsideClick?: boolean;
 }
 
 const sizeClasses = {
@@ -29,6 +31,7 @@ function ModalComponent({
   size = "md",
   className,
   footer,
+  closeOnOutsideClick = true,
 }: ModalProps) {
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
@@ -61,8 +64,11 @@ function ModalComponent({
       aria-labelledby="modal-title"
     >
       <div
-        className="admin-modal-backdrop-in absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
+        className={cn(
+          "admin-modal-backdrop-in absolute inset-0 bg-black/40 backdrop-blur-sm",
+          !closeOnOutsideClick && "cursor-default"
+        )}
+        onClick={closeOnOutsideClick ? onClose : undefined}
         aria-hidden="true"
       />
       <div

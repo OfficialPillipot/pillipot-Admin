@@ -116,13 +116,13 @@ function AdminOrderFiltersComponent(props: AdminOrderFiltersProps) {
 
   const hasAnyApplied = Boolean(
     appliedSearch.trim() ||
-      appliedDateFrom ||
-      appliedDateTo ||
-      (showVendorField && appliedVendor && appliedVendor.length > 0) ||
-      (appliedStatus && appliedStatus.length > 0) ||
-      (appliedProduct && appliedProduct.length > 0) ||
-      appliedType ||
-      appliedPlatform,
+    appliedDateFrom ||
+    appliedDateTo ||
+    (showVendorField && appliedVendor && appliedVendor.length > 0) ||
+    (appliedStatus && appliedStatus.length > 0) ||
+    (appliedProduct && appliedProduct.length > 0) ||
+    appliedType ||
+    appliedPlatform,
   );
 
   return (
