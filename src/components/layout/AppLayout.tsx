@@ -3,6 +3,7 @@ import { useLocation } from "react-router";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { MainPane } from "./MainPane";
+import { PetCompanion } from "../pet";
 import type { User } from "../../types";
 
 interface AppLayoutProps {
@@ -242,6 +243,7 @@ function AppLayoutComponent({
             <MainPane>{children}</MainPane>
           </div>
         </main>
+        <PetCompanion user={user} />
       </div>
     </div>
   );
