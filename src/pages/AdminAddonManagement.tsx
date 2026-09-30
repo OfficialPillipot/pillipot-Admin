@@ -9,6 +9,8 @@ import {
   CheckCircleIcon,
   ArrowPathIcon,
   BuildingStorefrontIcon,
+  ListBulletIcon,
+  Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 import {
   Card,
@@ -17,6 +19,9 @@ import {
   ToggleSwitch,
   Modal,
   Badge,
+  Table,
+  type Column,
+  Tooltip,
 } from "../components/ui";
 import {
   useGetAdminAddonsQuery,
@@ -42,6 +47,7 @@ export default function AdminAddonManagement() {
   const [selectedVendorId, setSelectedVendorId] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAddon, setEditingAddon] = useState<Addon | null>(null);
@@ -215,6 +221,165 @@ export default function AdminAddonManagement() {
     }
   };
 
+  const columns: Column<Addon>[] = useMemo(
+    () => [
+      {
+        key: "image",
+        header: "Image",
+        className: "w-16",
+        mobileHide: true,
+        render: (row: Addon) => (
+          <div className="h-12 w-12 rounded-xl bg-surface-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
+            {row.imageUrl ? (
+              <img
+                src={row.imageUrl}
+                alt={row.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <GiftIcon className="h-6 w-6 text-text-muted/40" />
+            )}
+          </div>
+        ),
+      },
+      {
+        key: "name",
+        header: "Add-on Details",
+        mobileCardTitle: true,
+        render: (row: Addon) => (
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 md:hidden rounded-lg bg-surface-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
+              {row.imageUrl ? (
+                <img
+                  src={row.imageUrl}
+                  alt={row.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <GiftIcon className="h-5 w-5 text-text-muted/40" />
+              )}
+            </div>
+            <div className="space-y-0.5 min-w-0">
+              <span className="font-bold text-sm text-text-heading block truncate max-w-xs" title={row.name}>
+                {row.name}
+              </span>
+              {row.description ? (
+                <p className="text-xs text-text-muted line-clamp-1 max-w-sm" title={row.description}>
+                  {row.description}
+                </p>
+              ) : (
+                <span className="text-xs text-text-muted/50 italic">No description</span>
+              )}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: "vendor",
+        header: "Vendor / Source",
+        className: "min-w-[170px]",
+        render: (row: Addon) => {
+          const vendor = row.vendor || (row.vendorId ? vendorMap.get(row.vendorId) : null);
+          return vendor ? (
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-text-heading">
+              <BuildingStorefrontIcon className="h-4 w-4 text-text-muted shrink-0" />
+              <span className="truncate max-w-[160px]" title={vendor.businessName || vendor.ownerName}>
+                {vendor.businessName || vendor.ownerName}
+              </span>
+            </div>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+              Platform-Wide
+            </span>
+          );
+        },
+      },
+      {
+        key: "price",
+        header: "Price",
+        className: "w-28",
+        render: (row: Addon) => (
+          <span className="font-black text-sm text-primary">
+            ₹{Number(row.price).toLocaleString("en-IN")}
+          </span>
+        ),
+      },
+      {
+        key: "scope",
+        header: "Applies To",
+        className: "min-w-[170px]",
+        render: (row: Addon) => {
+          const product = row.product || (row.productId ? productMap.get(row.productId) : null);
+          const vendor = row.vendor || (row.vendorId ? vendorMap.get(row.vendorId) : null);
+          return product ? (
+            <span
+              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50 px-2.5 py-1 rounded-lg truncate max-w-[200px]"
+              title={product.name}
+            >
+              🎯 {product.name}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-2.5 py-1 rounded-lg">
+              {vendor ? "🌟 All Vendor Products" : "🌐 All Products"}
+            </span>
+          );
+        },
+      },
+      {
+        key: "status",
+        header: "Status",
+        className: "w-36",
+        render: (row: Addon) => (
+          <div className="flex items-center gap-2">
+            <ToggleSwitch
+              checked={row.isActive}
+              onChange={() => handleToggleStatus(row)}
+              aria-label={row.isActive ? "Active" : "Inactive"}
+            />
+            <span
+              className={`text-xs font-bold ${
+                row.isActive ? "text-emerald-600 dark:text-emerald-400" : "text-text-muted"
+              }`}
+            >
+              {row.isActive ? "Active" : "Inactive"}
+            </span>
+          </div>
+        ),
+      },
+      {
+        key: "actions",
+        header: "Actions",
+        className: "w-24 text-right",
+        mobileHeaderEnd: true,
+        render: (row: Addon) => (
+          <div className="flex items-center justify-end gap-1">
+            <Tooltip content="Edit Add-on">
+              <button
+                type="button"
+                onClick={() => openEditModal(row)}
+                className="p-1.5 text-text-muted hover:text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
+                aria-label="Edit Add-on"
+              >
+                <PencilIcon className="h-4 w-4" />
+              </button>
+            </Tooltip>
+            <Tooltip content="Delete Add-on">
+              <button
+                type="button"
+                onClick={() => setDeletingAddonId(row.id)}
+                className="p-1.5 text-text-muted hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer"
+                aria-label="Delete Add-on"
+              >
+                <TrashIcon className="h-4 w-4" />
+              </button>
+            </Tooltip>
+          </div>
+        ),
+      },
+    ],
+    [vendorMap, productMap, handleToggleStatus, openEditModal]
+  );
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       {/* Header */}
@@ -337,12 +502,54 @@ export default function AdminAddonManagement() {
               <option value="active">Active Only</option>
               <option value="inactive">Inactive Only</option>
             </select>
+
+            {/* View Mode Switcher */}
+            <div className="flex items-center bg-surface-muted/40 border border-border rounded-xl p-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setViewMode("table")}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  viewMode === "table"
+                    ? "bg-surface text-primary shadow-xs font-bold"
+                    : "text-text-muted hover:text-text-heading"
+                }`}
+                title="Table View"
+                aria-label="Table View"
+              >
+                <ListBulletIcon className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  viewMode === "grid"
+                    ? "bg-surface text-primary shadow-xs font-bold"
+                    : "text-text-muted hover:text-text-heading"
+                }`}
+                title="Grid View"
+                aria-label="Grid View"
+              >
+                <Squares2X2Icon className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </Card>
 
-      {/* Add-ons List */}
-      {isLoadingAddons || isLoadingProducts || isLoadingVendors ? (
+      {/* Add-ons Content: Table or Grid */}
+      {viewMode === "table" ? (
+        <Table
+          columns={columns}
+          data={filteredAddons}
+          keyExtractor={(addon) => addon.id}
+          isLoading={isLoadingAddons || isLoadingProducts || isLoadingVendors}
+          emptyMessage={
+            searchQuery || selectedVendorId || selectedProductId || filterStatus !== "all"
+              ? "No add-ons match your current filters."
+              : "No add-ons created yet. Click 'Create Add-on' to add one."
+          }
+        />
+      ) : isLoadingAddons || isLoadingProducts || isLoadingVendors ? (
         <div className="py-20 flex flex-col items-center justify-center text-text-muted">
           <ArrowPathIcon className="h-8 w-8 animate-spin text-primary mb-3" />
           <p className="text-sm font-bold">Loading all vendor add-ons...</p>
