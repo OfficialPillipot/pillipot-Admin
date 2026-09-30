@@ -21,7 +21,7 @@ import {
 } from "../store/deliveriesSlice";
 import { fetchSettings, selectSettings } from "../store/settingsSlice";
 import { fetchSenders, selectSenders } from "../store/sendersSlice";
-import { Card, Table } from "../components/ui";
+import { Card, Table, TablePagination } from "../components/ui";
 import { toast } from "../lib/toast";
 import { downloadBulkOrdersPdf, downloadOrderPdf } from "../lib/download-order-pdf";
 import type { Order, OrderStatus } from "../types";
@@ -29,7 +29,6 @@ import { AdminOrderBulkBar, type AdminBulkAdvanceAction } from "../components/or
 import { AdminOrderDetailModal } from "../components/orders/AdminOrderDetailModal";
 import { AdminOrderFilters } from "../components/orders/AdminOrderFilters";
 import { AdminOrderMobileSelectAll } from "../components/orders/AdminOrderMobileSelectAll";
-import { AdminOrderPagination } from "../components/orders/AdminOrderPagination";
 import {
   groupOrdersForAdminList,
   orderLineIds,
@@ -61,9 +60,10 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
   const { data: vendorProducts = [] } = useGetAdminVendorProductsQuery();
   const [listLines, setListLines] = useState<Order[]>([]);
   const [listPage, setListPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const lastQueryRef = useRef<AdminOrdersQuery>({
     page: 1,
-    limit: ADMIN_ORDERS_PAGE_SIZE,
+    limit: 10,
   });
   const loadSeqRef = useRef(0);
   const staff = useAppSelector(selectStaff);
@@ -198,17 +198,17 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
   const totalFilteredCount = filteredOrders.length;
   const totalPages = Math.max(
     1,
-    Math.ceil(totalFilteredCount / ADMIN_ORDERS_PAGE_SIZE),
+    Math.ceil(totalFilteredCount / pageSize),
   );
   const safePage = Math.min(Math.max(1, listPage), totalPages);
 
   const paginatedOrders = useMemo(
     () =>
       filteredOrders.slice(
-        (safePage - 1) * ADMIN_ORDERS_PAGE_SIZE,
-        safePage * ADMIN_ORDERS_PAGE_SIZE,
+        (safePage - 1) * pageSize,
+        safePage * pageSize,
       ),
-    [filteredOrders, safePage],
+    [filteredOrders, safePage, pageSize],
   );
 
   const goToOrdersPage = useCallback(
@@ -920,13 +920,19 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
           emptyMessage="No orders."
         />
 
-        <AdminOrderPagination
-          visible={totalFilteredCount > ADMIN_ORDERS_PAGE_SIZE}
-          listTotal={totalFilteredCount}
-          listPage={safePage}
+        <TablePagination
+          currentPage={safePage}
+          pageSize={pageSize}
+          totalItems={totalFilteredCount}
           totalPages={totalPages}
-          loading={filtersLoading}
-          onGoToPage={goToOrdersPage}
+          onPageChange={goToOrdersPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setListPage(1);
+          }}
+          pageSizeOptions={[10, 20, 50, 80, 100]}
+          itemLabel="orders"
+          disabled={filtersLoading}
         />
 
       </Card>

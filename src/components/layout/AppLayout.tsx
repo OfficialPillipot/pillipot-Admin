@@ -27,6 +27,7 @@ const DEFAULT_TITLES: Record<string, string> = {
   "/vendor/subcategories": "Subcategories",
   "/vendor/offers": "Offers",
   "/vendor/reviews": "Reviews",
+  "/vendor/addons": "Add-ons",
   "/admin": "Admin Dashboard",
   "/admin/staff": "Staff Management",
   "/admin/staff/:id": "Staff Profile",
@@ -43,6 +44,7 @@ const DEFAULT_TITLES: Record<string, string> = {
   "/admin/active-vendors": "Active Vendors",
   "/admin/delivery": "Delivery Management",
   "/admin/offers": "Offer Management",
+  "/admin/addons": "Add-on Management",
   "/admin/salary": "Salary Management",
   "/admin/bonus-daily-logs": "Daily Bonus Logs",
   "/admin/sender": "Sender Management",
@@ -75,6 +77,7 @@ const TABLE_SHOWING_PATHS = new Set([
   "/vendor/subcategories",
   "/vendor/offers",
   "/vendor/reviews",
+  "/vendor/addons",
   "/orders",
   "/staff/orders/recent",
   "/staff/product-stock",
@@ -94,6 +97,7 @@ const TABLE_SHOWING_PATHS = new Set([
   "/admin/staff",
   "/admin/delivery",
   "/admin/offers",
+  "/admin/addons",
   "/admin/salary",
   "/admin/bonus-daily-logs",
   "/admin/sender",
@@ -116,7 +120,8 @@ function isTableShowingPage(pathname: string): boolean {
     clean.endsWith("/subcategories") ||
     clean.endsWith("/customers") ||
     clean.endsWith("/vendors") ||
-    clean.endsWith("/reviews")
+    clean.endsWith("/reviews") ||
+    clean.endsWith("/addons")
   ) {
     return true;
   }

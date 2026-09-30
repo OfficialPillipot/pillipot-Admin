@@ -1,4 +1,4 @@
-import { memo, type ReactNode } from "react";
+import { memo, type ReactNode, useRef, useState, useLayoutEffect, useEffect } from "react";
 import { cn } from "../../lib/utils";
 
 export interface Column<T> {
@@ -27,6 +27,14 @@ export interface TableProps<T> {
   /** When false, only the horizontal table is shown (all breakpoints). */
   mobileCards?: boolean;
   isLoading?: boolean;
+  /**
+   * If true (or number of items, defaults to 10), sets the maximum height of the container
+   * to match the exact size of 10 items, making the content scrollable for 20, 50, etc. items.
+   * There is no minimum height constraint.
+   * Defaults to true (10 items).
+   */
+  maxHeightForItems?: number | boolean;
+  fixedHeightForItems?: number | boolean;
 }
 
 function cellContent<T>(row: T, col: Column<T>): ReactNode {
@@ -73,13 +81,92 @@ function TableComponent<T>({
   className = "",
   mobileCards = true,
   isLoading = false,
+  maxHeightForItems = true,
+  fixedHeightForItems,
 }: TableProps<T>) {
+  const heightSetting = fixedHeightForItems !== undefined ? fixedHeightForItems : maxHeightForItems;
+  const targetItemCount =
+    typeof heightSetting === "number"
+      ? heightSetting
+      : heightSetting === false
+      ? null
+      : 10;
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const [containerMaxHeight, setContainerMaxHeight] = useState<number | null>(null);
+  const measuredHeightRef = useRef<number | null>(null);
+
+  const measure10ItemsHeight = () => {
+    if (!targetItemCount || !tableRef.current || !containerRef.current) return;
+    const table = tableRef.current;
+    const thead = table.querySelector("thead");
+    const tbody = table.querySelector("tbody");
+    if (!thead || !tbody) return;
+
+    const rows = tbody.querySelectorAll("tr");
+    if (rows.length === 0) return;
+
+    const tableTop = table.getBoundingClientRect().top;
+    let computedHeight = 0;
+
+    if (rows.length >= targetItemCount) {
+      const targetRow = rows[targetItemCount - 1];
+      computedHeight = targetRow.getBoundingClientRect().bottom - tableTop;
+    } else {
+      const firstRowTop = rows[0].getBoundingClientRect().top;
+      const lastRowBottom = rows[rows.length - 1].getBoundingClientRect().bottom;
+      const totalRowsHeight = lastRowBottom - firstRowTop;
+      const avgRow = totalRowsHeight / rows.length;
+      const theadHeight = thead.getBoundingClientRect().height;
+      computedHeight = theadHeight + avgRow * targetItemCount;
+    }
+
+    const borderAdjustment = 2; // container border top + bottom
+    const isHorizontallyScrollable = table.scrollWidth > containerRef.current.clientWidth;
+    const scrollbarAdjustment = isHorizontallyScrollable
+      ? Math.max(0, containerRef.current.offsetHeight - containerRef.current.clientHeight)
+      : 0;
+
+    const finalHeight = Math.ceil(computedHeight + borderAdjustment + scrollbarAdjustment);
+
+    if (finalHeight > 0 && Math.abs((measuredHeightRef.current ?? 0) - finalHeight) > 2) {
+      measuredHeightRef.current = finalHeight;
+      setContainerMaxHeight(finalHeight);
+    }
+  };
+
+  useLayoutEffect(() => {
+    measure10ItemsHeight();
+  }, [data, columns, targetItemCount]);
+
+  useEffect(() => {
+    if (!targetItemCount || !tableRef.current) return;
+    let timeoutId: number;
+
+    const ro = new ResizeObserver(() => {
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        measure10ItemsHeight();
+      }, 50);
+    });
+
+    ro.observe(tableRef.current);
+    return () => {
+      window.clearTimeout(timeoutId);
+      ro.disconnect();
+    };
+  }, [targetItemCount]);
+
   if (isLoading) {
     return (
-      <div className={cn(
-        "rounded-[var(--radius-lg)] border border-border bg-surface py-12 flex flex-col items-center justify-center gap-3 md:rounded-[var(--radius-xl)] md:py-16 shadow-[var(--shadow-card)]",
-        className
-      )}>
+      <div 
+        style={containerMaxHeight ? { maxHeight: `${containerMaxHeight}px` } : undefined}
+        className={cn(
+          "rounded-[var(--radius-lg)] border border-border bg-surface py-12 flex flex-col items-center justify-center gap-3 md:rounded-[var(--radius-xl)] md:py-16 shadow-[var(--shadow-card)]",
+          className
+        )}
+      >
         <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
         <p className="text-sm text-text-muted animate-pulse">Loading data...</p>
       </div>
@@ -116,20 +203,21 @@ function TableComponent<T>({
 
   const desktopTable = (
     <div
-      className={
-        mobileCards
-          ? "hidden md:block overflow-x-auto overscroll-x-contain rounded-[var(--radius-lg)] border border-border bg-surface [-webkit-overflow-scrolling:touch] md:rounded-[var(--radius-xl)] shadow-[var(--shadow-card)]"
-          : "overflow-x-auto overscroll-x-contain rounded-[var(--radius-lg)] border border-border bg-surface [-webkit-overflow-scrolling:touch] md:rounded-[var(--radius-xl)] shadow-[var(--shadow-card)]"
-      }
+      ref={containerRef}
+      style={containerMaxHeight ? { maxHeight: `${containerMaxHeight}px` } : undefined}
+      className={cn(
+        "overflow-auto overscroll-contain rounded-[var(--radius-lg)] border border-border bg-surface [-webkit-overflow-scrolling:touch] md:rounded-[var(--radius-xl)] shadow-[var(--shadow-card)]",
+        mobileCards ? "hidden md:block" : "block"
+      )}
     >
-      <table className="w-full min-w-[600px] text-left text-sm">
+      <table ref={tableRef} className="w-full min-w-[600px] text-left text-sm border-separate border-spacing-0">
         <thead>
-          <tr className="border-b border-border bg-[var(--color-table-header-bg)]">
+          <tr className="bg-[var(--color-table-header-bg)]">
             {columns.map((col) => (
               <th
                 key={col.key}
                 className={cn(
-                  "whitespace-nowrap px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.08em] text-text-muted first:pl-5 last:pr-5 md:px-5 md:py-4",
+                  "sticky top-0 z-10 whitespace-nowrap px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-[0.08em] text-text-muted first:pl-5 last:pr-5 md:px-5 md:py-4 bg-[var(--color-table-header-bg)] border-b border-border shadow-[0_1px_0_0_var(--color-border)]",
                   col.className
                 )}
               >
@@ -148,7 +236,7 @@ function TableComponent<T>({
                 <td
                   key={col.key}
                   className={cn(
-                    "px-4 py-3.5 align-top text-sm text-text first:pl-5 last:pr-5 md:px-5 md:py-4",
+                    "border-b border-border px-4 py-3.5 align-top text-sm text-text first:pl-5 last:pr-5 md:px-5 md:py-4",
                     col.className
                   )}
                 >
@@ -168,7 +256,10 @@ function TableComponent<T>({
 
   return (
     <div className={className}>
-      <div className="md:hidden space-y-3 pb-1">
+      <div 
+        style={containerMaxHeight ? { maxHeight: `${containerMaxHeight}px` } : undefined}
+        className="md:hidden space-y-3 pb-1 overflow-y-auto overscroll-contain pr-0.5"
+      >
         {data.map((row) => (
           <article
             key={keyExtractor(row)}

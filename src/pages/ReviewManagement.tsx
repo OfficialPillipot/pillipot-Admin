@@ -1,5 +1,5 @@
 import { memo, useState, useMemo, useDeferredValue } from "react";
-import { Card, CardHeader, Table, Badge, Button, Input, Modal, Tooltip } from "../components/ui";
+import { Card, CardHeader, Table, TablePagination, Badge, Button, Input, Modal, Tooltip } from "../components/ui";
 import {
   useDeleteAdminReviewMutation,
   useGetAdminReviewsQuery,
@@ -12,6 +12,14 @@ function ReviewManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
+
+  // Pagination state (default: 10 items)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Checkbox selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const {
     data: rows = [],
     isLoading,
@@ -52,7 +60,79 @@ function ReviewManagementPage() {
     );
   }, [rows, deferredQuery]);
 
+  const paginatedRows = useMemo(
+    () => filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filteredRows, currentPage, pageSize]
+  );
+
+  const allOnPageSelected = paginatedRows.length > 0 && paginatedRows.every((r) => selectedIds.has(r.id));
+  const isIndeterminate = selectedIds.size > 0 && !allOnPageSelected;
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        paginatedRows.forEach((r) => next.delete(r.id));
+      } else {
+        paginatedRows.forEach((r) => next.add(r.id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} selected review(s)? This action cannot be undone.`)) return;
+    setBulkActionLoading(true);
+    try {
+      await Promise.all(
+        Array.from(selectedIds).map((id) => deleteAdminReview(id).unwrap())
+      );
+      toast.success(`${selectedIds.size} review(s) deleted successfully`);
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast.fromError(err, "Failed to delete selected reviews");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   const columns = [
+    {
+      key: "select",
+      header: (
+        <input
+          type="checkbox"
+          ref={(el) => {
+            if (el) el.indeterminate = isIndeterminate;
+          }}
+          checked={allOnPageSelected}
+          onChange={toggleSelectAll}
+          className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+          aria-label="Select all reviews on page"
+        />
+      ),
+      className: "w-10 px-3 text-center",
+      mobileHeaderStart: true,
+      render: (row: AdminReviewRow) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.has(row.id)}
+          onChange={() => toggleSelectRow(row.id)}
+          className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+          aria-label="Select review"
+        />
+      ),
+    },
     {
       key: "orderId",
       header: "Order ID",
@@ -190,17 +270,67 @@ function ReviewManagementPage() {
           <Input
             placeholder="Search reviews..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+              setSelectedIds(new Set());
+            }}
             endNode={<MagnifyingGlassIcon className="h-4 w-4 text-muted-foreground" />}
           />
         </div>
 
-        <div className="px-4 pb-4">
+        {/* Bulk Actions Bar */}
+        {selectedIds.size > 0 && (
+          <div className="mx-4 mb-4 flex flex-wrap items-center justify-between gap-3 p-3 bg-primary/5 border border-primary/20 rounded-[var(--radius-lg)]">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-white text-xs font-bold">
+                {selectedIds.size}
+              </span>
+              <span className="text-sm font-medium text-text">
+                {selectedIds.size === 1 ? "1 review selected" : `${selectedIds.size} reviews selected`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={bulkActionLoading}
+                onClick={handleBulkDelete}
+              >
+                Delete Selected
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="px-4 pb-4 space-y-3">
           <Table
             columns={columns}
-            data={filteredRows}
+            data={paginatedRows}
             keyExtractor={(row) => row.id}
             emptyMessage={isLoading ? "Loading..." : "No reviews found."}
+          />
+
+          <TablePagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={filteredRows.length}
+            totalPages={Math.max(1, Math.ceil(filteredRows.length / pageSize))}
+            onPageChange={(page) => setCurrentPage(page)}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+            pageSizeOptions={[10, 20, 50, 80, 100]}
+            itemLabel="reviews"
+            disabled={isLoading}
           />
         </div>
       </Card>

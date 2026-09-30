@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router";
 import {
   Card,
   Table,
+  TablePagination,
   Badge,
   Button,
   Modal,
@@ -87,6 +88,10 @@ function VendorOrderManagement() {
   });
   const [appliedType, setAppliedType] = useState("");
   const [appliedPlatform, setAppliedPlatform] = useState("");
+
+  // Pagination state (default: 10 items)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     const s = searchParams.get("status");
@@ -173,10 +178,15 @@ function VendorOrderManagement() {
     return result;
   }, [allOrders, appliedStatus, appliedProduct, appliedType, appliedPlatform]);
 
+  const paginatedOrders = useMemo(
+    () => orders.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [orders, currentPage, pageSize]
+  );
+
   // ── Checkbox selection logic ──
-  const allVisibleSelected = orders.length > 0 && orders.every(o => selectedIds.has(o.id));
-  const someVisibleSelected = orders.some(o => selectedIds.has(o.id));
-  const selectedVisibleCount = orders.filter(o => selectedIds.has(o.id)).length;
+  const allVisibleSelected = paginatedOrders.length > 0 && paginatedOrders.every(o => selectedIds.has(o.id));
+  const someVisibleSelected = paginatedOrders.some(o => selectedIds.has(o.id));
+  const selectedVisibleCount = paginatedOrders.filter(o => selectedIds.has(o.id)).length;
 
   useLayoutEffect(() => {
     const el = selectAllRef.current;
@@ -206,7 +216,7 @@ function VendorOrderManagement() {
   }, []);
 
   const toggleAllVisibleSelected = useCallback(() => {
-    const ids = orders.map(o => o.id);
+    const ids = paginatedOrders.map(o => o.id);
     setSelectedIds(prev => {
       const allOn = ids.length > 0 && ids.every(id => prev.has(id));
       const next = new Set(prev);
@@ -214,7 +224,7 @@ function VendorOrderManagement() {
       else ids.forEach(id => next.add(id));
       return next;
     });
-  }, [orders]);
+  }, [paginatedOrders]);
 
   // ── Server & table filter handlers ──
   const handleApplyFilters = useCallback(() => {
@@ -225,6 +235,8 @@ function VendorOrderManagement() {
     setAppliedProduct(productDraft);
     setAppliedType(typeDraft);
     setAppliedPlatform(platformDraft);
+    setCurrentPage(1);
+    setSelectedIds(new Set());
   }, [searchDraft, dateFromDraft, dateToDraft, statusDraft, productDraft, typeDraft, platformDraft]);
 
   const handleResetFilters = useCallback(() => {
@@ -235,6 +247,8 @@ function VendorOrderManagement() {
     setProductDraft(appliedProduct);
     setTypeDraft(appliedType);
     setPlatformDraft(appliedPlatform);
+    setCurrentPage(1);
+    setSelectedIds(new Set());
   }, [appliedSearch, appliedDateFrom, appliedDateTo, appliedStatus, appliedProduct, appliedType, appliedPlatform]);
 
   const handleClearFilters = useCallback(() => {
@@ -253,6 +267,8 @@ function VendorOrderManagement() {
     setAppliedProduct([]);
     setAppliedType("");
     setAppliedPlatform("");
+    setCurrentPage(1);
+    setSelectedIds(new Set());
 
     setSearchParams({}, { replace: true });
   }, [setSearchParams]);
@@ -695,9 +711,24 @@ function VendorOrderManagement() {
         <Table
           isLoading={isLoading}
           columns={columns}
-          data={orders}
+          data={paginatedOrders}
           keyExtractor={(o) => o.id}
           emptyMessage="No orders found for your products."
+        />
+
+        <TablePagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={orders.length}
+          totalPages={Math.ceil(orders.length / pageSize) || 1}
+          onPageChange={(page) => setCurrentPage(page)}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[10, 20, 50, 80, 100]}
+          itemLabel="orders"
+          disabled={isLoading}
         />
       </Card>
 

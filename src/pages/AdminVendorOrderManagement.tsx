@@ -15,7 +15,7 @@ import {
   fetchDeliveryMethods,
 } from "../store/deliveriesSlice";
 import { fetchSettings, selectSettings } from "../store/settingsSlice";
-import { Card, Table } from "../components/ui";
+import { Card, Table, TablePagination } from "../components/ui";
 import { toast } from "../lib/toast";
 import { downloadBulkOrdersPdf, downloadOrderPdf } from "../lib/download-order-pdf";
 import type { Order, OrderStatus } from "../types";
@@ -86,6 +86,10 @@ function AdminVendorOrderManagementPage() {
   const [appliedProduct, setAppliedProduct] = useState<string[]>([]);
   const [appliedType, setAppliedType] = useState("");
 
+  // Pagination state (default: 10 items)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
   const [bulkPdfLoading, setBulkPdfLoading] = useState(false);
   const [bulkStatusLoading, setBulkStatusLoading] = useState(false);
@@ -144,6 +148,11 @@ function AdminVendorOrderManagementPage() {
   );
 
   const filteredOrders = groupedOrders;
+
+  const paginatedOrders = useMemo(
+    () => filteredOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filteredOrders, currentPage, pageSize]
+  );
 
   const filteredHeadIdSet = useMemo(
     () => new Set(filteredOrders.map((o) => o.id)),
@@ -659,6 +668,8 @@ function AdminVendorOrderManagementPage() {
     setAppliedStatus(statusDraft);
     setAppliedProduct(productDraft);
     setAppliedType(typeDraft);
+    setCurrentPage(1);
+    setSelectedIds(new Set());
     toast.success("Filters applied");
   }, [
     searchDraft,
@@ -686,6 +697,8 @@ function AdminVendorOrderManagementPage() {
     setAppliedStatus([]);
     setAppliedProduct([]);
     setAppliedType("");
+    setCurrentPage(1);
+    setSelectedIds(new Set());
     toast.success("Filters cleared");
   }, []);
 
@@ -705,6 +718,8 @@ function AdminVendorOrderManagementPage() {
     setAppliedStatus([]);
     setAppliedProduct([]);
     setAppliedType("");
+    setCurrentPage(1);
+    setSelectedIds(new Set());
     toast.success("Filters reset to default");
   }, [initialRange]);
 
@@ -802,9 +817,24 @@ function AdminVendorOrderManagementPage() {
         />
         <Table
           columns={columns}
-          data={filteredOrders}
+          data={paginatedOrders}
           keyExtractor={(o) => o.id}
           emptyMessage={isLoading ? "Loading vendor orders…" : "No vendor orders found."}
+        />
+
+        <TablePagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={filteredOrders.length}
+          totalPages={Math.max(1, Math.ceil(filteredOrders.length / pageSize))}
+          onPageChange={(page) => setCurrentPage(page)}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[10, 20, 50, 80, 100]}
+          itemLabel="orders"
+          disabled={isLoading}
         />
       </Card>
 

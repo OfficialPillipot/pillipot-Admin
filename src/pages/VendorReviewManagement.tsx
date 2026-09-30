@@ -1,6 +1,6 @@
 import { memo, useState, useMemo, useDeferredValue, useEffect } from "react";
 import { useSearchParams } from "react-router";
-import { Card, Table, Badge, Button, Input, Modal, Select, Tooltip } from "../components/ui";
+import { Card, Table, TablePagination, Badge, Button, Input, Modal, Select, Tooltip } from "../components/ui";
 import { useGetVendorPortalReviewsQuery } from "../store/api/edenApi";
 import {
   markVendorSidebarReviewsSeen,
@@ -24,6 +24,13 @@ function VendorReviewManagement() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [ratingFilter, setRatingFilter] = useState<string>("all");
   const [selectedReview, setSelectedReview] = useState<AdminReviewRow | null>(null);
+
+  // Pagination state (default: 10 items)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Checkbox selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const {
     data: rows = [],
@@ -82,8 +89,63 @@ function VendorReviewManagement() {
     );
   }, [rows, deferredQuery, ratingFilter]);
 
-  // Table columns: Order ID, Date, Product Name, Customer, Rating, Review Comment
+  const paginatedRows = useMemo(
+    () => filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filteredRows, currentPage, pageSize]
+  );
+
+  const allOnPageSelected = paginatedRows.length > 0 && paginatedRows.every((r) => selectedIds.has(r.id));
+  const isIndeterminate = selectedIds.size > 0 && !allOnPageSelected;
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        paginatedRows.forEach((r) => next.delete(r.id));
+      } else {
+        paginatedRows.forEach((r) => next.add(r.id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Table columns: Select, Order ID, Date, Product Name, Customer, Rating, Review Comment
   const columns = [
+    {
+      key: "select",
+      header: (
+        <input
+          type="checkbox"
+          ref={(el) => {
+            if (el) el.indeterminate = isIndeterminate;
+          }}
+          checked={allOnPageSelected}
+          onChange={toggleSelectAll}
+          className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+          aria-label="Select all reviews on page"
+        />
+      ),
+      className: "w-10 px-3 text-center",
+      mobileHeaderStart: true,
+      render: (row: AdminReviewRow) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.has(row.id)}
+          onChange={() => toggleSelectRow(row.id)}
+          className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+          aria-label="Select review"
+        />
+      ),
+    },
     {
       key: "orderId",
       header: "Order ID",
@@ -271,7 +333,6 @@ function VendorReviewManagement() {
             </span>
             <span className="text-xs text-text-muted">reviews</span>
           </div>
-          <p className="mt-1 text-xs text-text-muted">Customer feedback on your catalog</p>
         </div>
 
         {/* Card 2: Average Rating */}
@@ -291,16 +352,15 @@ function VendorReviewManagement() {
               {[1, 2, 3, 4, 5].map((star) => (
                 <StarSolidIcon
                   key={star}
-                  className={`h-3.5 w-3.5 ${
-                    star <= Math.round(Number(stats.average))
-                      ? "text-amber-400 fill-amber-400"
-                      : "text-slate-200 fill-slate-200 dark:text-slate-700"
-                  }`}
+                  className={`h-3.5 w-3.5 ${star <= Math.round(Number(stats.average))
+                    ? "text-amber-400 fill-amber-400"
+                    : "text-slate-200 fill-slate-200 dark:text-slate-700"
+                    }`}
                 />
               ))}
             </div>
           </div>
-          <p className="mt-1 text-xs text-text-muted">Overall store satisfaction score</p>
+
         </div>
 
         {/* Card 3: 5-Star Reviews */}
@@ -319,7 +379,7 @@ function VendorReviewManagement() {
               Top Rated
             </span>
           </div>
-          <p className="mt-1 text-xs text-text-muted">Reviews with perfect 5/5 score</p>
+
         </div>
 
         {/* Card 4: Positive % */}
@@ -336,7 +396,7 @@ function VendorReviewManagement() {
             </span>
             <span className="text-xs text-text-muted">4 & 5 star ratings</span>
           </div>
-          <p className="mt-1 text-xs text-text-muted">Customers recommending products</p>
+
         </div>
       </div>
 
@@ -374,19 +434,34 @@ function VendorReviewManagement() {
         </div>
 
         {/* Reviews Table */}
-        <div className="p-4">
+        <div className="p-4 space-y-3">
           <Table
             columns={columns}
-            data={filteredRows}
+            data={paginatedRows}
             keyExtractor={(row) => row.id}
             isLoading={isLoading}
             emptyMessage={
               isLoading
                 ? "Loading reviews..."
                 : searchQuery || ratingFilter !== "all"
-                ? "No reviews match your filters."
-                : "No customer reviews received yet."
+                  ? "No reviews match your filters."
+                  : "No customer reviews received yet."
             }
+          />
+
+          <TablePagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalItems={filteredRows.length}
+            totalPages={Math.max(1, Math.ceil(filteredRows.length / pageSize))}
+            onPageChange={(page) => setCurrentPage(page)}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+            pageSizeOptions={[10, 20, 50, 80, 100]}
+            itemLabel="reviews"
+            disabled={isLoading}
           />
         </div>
       </Card>
@@ -485,11 +560,10 @@ function VendorReviewManagement() {
                     {[1, 2, 3, 4, 5].map((star) => (
                       <StarSolidIcon
                         key={star}
-                        className={`h-4 w-4 ${
-                          star <= Number(selectedReview.rating)
-                            ? "fill-amber-400 text-amber-400"
-                            : "fill-slate-200 text-slate-200"
-                        }`}
+                        className={`h-4 w-4 ${star <= Number(selectedReview.rating)
+                          ? "fill-amber-400 text-amber-400"
+                          : "fill-slate-200 text-slate-200"
+                          }`}
                       />
                     ))}
                   </div>
@@ -498,8 +572,8 @@ function VendorReviewManagement() {
                       Number(selectedReview.rating) >= 4
                         ? "success"
                         : Number(selectedReview.rating) <= 2
-                        ? "error"
-                        : "warning"
+                          ? "error"
+                          : "warning"
                     }
                   >
                     {selectedReview.rating} / 5

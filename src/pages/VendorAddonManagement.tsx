@@ -1,26 +1,28 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import {
   GiftIcon,
-  PlusIcon,
   TrashIcon,
   PencilIcon,
-  MagnifyingGlassIcon,
-  PhotoIcon,
-  CheckCircleIcon,
-  ArrowPathIcon,
-  ListBulletIcon,
-  Squares2X2Icon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import {
   Card,
+  CardHeader,
   Button,
   Input,
   ToggleSwitch,
   Modal,
   Badge,
   Table,
+  TablePagination,
   type Column,
   Tooltip,
+  ManagementFilterPanel,
+  ManagementFilterField,
+  ManagementFilterActions,
+  MANAGEMENT_NATIVE_CONTROL_CLASS,
+  MANAGEMENT_FILTER_BTN_CLASS,
+  ResponsiveManagementFilters,
 } from "../components/ui";
 import {
   useGetVendorPortalProductsQuery,
@@ -34,21 +36,33 @@ import type { Addon, Product } from "../types";
 
 export default function VendorAddonManagement() {
   const { data: products = [], isLoading: isLoadingProducts } = useGetVendorPortalProductsQuery();
-  const { data: addons = [], isLoading: isLoadingAddons, refetch } = useGetVendorPortalAddonsQuery();
+  const { data: addons = [], isLoading: isLoadingAddons } = useGetVendorPortalAddonsQuery();
 
   const [createAddon, { isLoading: isCreating }] = useCreateVendorPortalAddonMutation();
   const [updateAddon, { isLoading: isUpdating }] = useUpdateVendorPortalAddonMutation();
   const [deleteAddon, { isLoading: isDeleting }] = useDeleteVendorPortalAddonMutation();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterProduct, setFilterProduct] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
-  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  // ── Draft Filter States ──
+  const [searchDraft, setSearchDraft] = useState("");
+  const [scopeDraft, setScopeDraft] = useState("");
+  const [statusDraft, setStatusDraft] = useState<"all" | "active" | "inactive">("all");
 
+  // ── Applied Filter States ──
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [appliedScope, setAppliedScope] = useState("");
+  const [appliedStatus, setAppliedStatus] = useState<"all" | "active" | "inactive">("all");
+
+  // ── Pagination State (default: 10 items) ──
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // ── Checkbox Selection State ──
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+
+  // ── Modals & Form State ──
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAddon, setEditingAddon] = useState<Addon | null>(null);
-
-  // Form State
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formPrice, setFormPrice] = useState("");
@@ -58,7 +72,7 @@ export default function VendorAddonManagement() {
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Delete Confirmation State
+  // ── Delete Confirmation State ──
   const [deletingAddonId, setDeletingAddonId] = useState<string | null>(null);
 
   const productMap = useMemo(() => {
@@ -67,33 +81,79 @@ export default function VendorAddonManagement() {
     return map;
   }, [products]);
 
+  const handleApplyFilters = useCallback(() => {
+    setAppliedSearch(searchDraft.trim());
+    setAppliedScope(scopeDraft);
+    setAppliedStatus(statusDraft);
+    setCurrentPage(1);
+    setSelectedIds(new Set());
+  }, [searchDraft, scopeDraft, statusDraft]);
+
+  const handleClearFilters = useCallback(() => {
+    setSearchDraft("");
+    setScopeDraft("");
+    setStatusDraft("all");
+    setAppliedSearch("");
+    setAppliedScope("");
+    setAppliedStatus("all");
+    setCurrentPage(1);
+    setSelectedIds(new Set());
+  }, []);
+
+  const hasAnyApplied = Boolean(
+    appliedSearch.trim() ||
+    appliedScope ||
+    appliedStatus !== "all"
+  );
+
   const filteredAddons = useMemo(() => {
     return addons.filter((addon) => {
       const matchSearch =
-        !searchQuery ||
-        addon.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (addon.description || "").toLowerCase().includes(searchQuery.toLowerCase());
+        !appliedSearch ||
+        addon.name.toLowerCase().includes(appliedSearch.toLowerCase()) ||
+        (addon.description || "").toLowerCase().includes(appliedSearch.toLowerCase());
 
       const matchProduct =
-        !filterProduct ||
-        (filterProduct === "global" ? !addon.productId : addon.productId === filterProduct);
+        !appliedScope ||
+        (appliedScope === "global" ? !addon.productId : addon.productId === appliedScope);
 
       const matchStatus =
-        filterStatus === "all" ||
-        (filterStatus === "active" && addon.isActive) ||
-        (filterStatus === "inactive" && !addon.isActive);
+        appliedStatus === "all" ||
+        (appliedStatus === "active" && addon.isActive) ||
+        (appliedStatus === "inactive" && !addon.isActive);
 
       return matchSearch && matchProduct && matchStatus;
     });
-  }, [addons, searchQuery, filterProduct, filterStatus]);
+  }, [addons, appliedSearch, appliedScope, appliedStatus]);
 
-  const stats = useMemo(() => {
-    const total = addons.length;
-    const active = addons.filter((a) => a.isActive).length;
-    const allProducts = addons.filter((a) => !a.productId).length;
-    const specificProducts = addons.filter((a) => !!a.productId).length;
-    return { total, active, allProducts, specificProducts };
-  }, [addons]);
+  const paginatedAddons = useMemo(
+    () => filteredAddons.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filteredAddons, currentPage, pageSize]
+  );
+
+  const allOnPageSelected = paginatedAddons.length > 0 && paginatedAddons.every((a) => selectedIds.has(a.id));
+  const isIndeterminate = selectedIds.size > 0 && !allOnPageSelected;
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        paginatedAddons.forEach((a) => next.delete(a.id));
+      } else {
+        paginatedAddons.forEach((a) => next.add(a.id));
+      }
+      return next;
+    });
+  }, [allOnPageSelected, paginatedAddons]);
+
+  const toggleSelectRow = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const openCreateModal = () => {
     setEditingAddon(null);
@@ -107,7 +167,7 @@ export default function VendorAddonManagement() {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (addon: Addon) => {
+  const openEditModal = useCallback((addon: Addon) => {
     setEditingAddon(addon);
     setFormName(addon.name);
     setFormDescription(addon.description || "");
@@ -117,7 +177,7 @@ export default function VendorAddonManagement() {
     setSelectedFile(null);
     setPreviewUrl(addon.imageUrl || "");
     setIsModalOpen(true);
-  };
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -174,7 +234,7 @@ export default function VendorAddonManagement() {
     }
   };
 
-  const handleToggleStatus = async (addon: Addon) => {
+  const handleToggleStatus = useCallback(async (addon: Addon) => {
     try {
       await updateAddon({
         id: addon.id,
@@ -184,9 +244,9 @@ export default function VendorAddonManagement() {
     } catch (err: any) {
       toast.error(err?.data?.message || "Failed to update status");
     }
-  };
+  }, [updateAddon]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     try {
       await deleteAddon(id).unwrap();
       toast.success("Add-on deleted successfully");
@@ -194,135 +254,177 @@ export default function VendorAddonManagement() {
     } catch (err: any) {
       toast.error(err?.data?.message || "Failed to delete add-on");
     }
-  };
+  }, [deleteAddon]);
+
+  const handleBulkToggleStatus = useCallback(async (isActive: boolean) => {
+    if (selectedIds.size === 0) return;
+    setBulkActionLoading(true);
+    try {
+      await Promise.all(
+        Array.from(selectedIds).map((id) =>
+          updateAddon({ id, patch: { isActive } }).unwrap()
+        )
+      );
+      toast.success(`${selectedIds.size} add-on(s) ${isActive ? "activated" : "deactivated"}`);
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast.fromError(err, "Failed to update selected add-ons");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  }, [selectedIds, updateAddon]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} selected add-on(s)?`)) return;
+    setBulkActionLoading(true);
+    try {
+      await Promise.all(
+        Array.from(selectedIds).map((id) => deleteAddon(id).unwrap())
+      );
+      toast.success(`${selectedIds.size} add-on(s) deleted`);
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast.fromError(err, "Failed to delete selected add-ons");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  }, [selectedIds, deleteAddon]);
 
   const columns: Column<Addon>[] = useMemo(
     () => [
       {
+        key: "select",
+        header: (
+          <input
+            type="checkbox"
+            ref={(el) => {
+              if (el) el.indeterminate = isIndeterminate;
+            }}
+            checked={allOnPageSelected}
+            onChange={toggleSelectAll}
+            className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+            aria-label="Select all add-ons on page"
+          />
+        ),
+        className: "w-10 px-3 text-center",
+        mobileHeaderStart: true,
+        render: (row: Addon) => (
+          <input
+            type="checkbox"
+            checked={selectedIds.has(row.id)}
+            onChange={() => toggleSelectRow(row.id)}
+            className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+            aria-label={`Select addon ${row.name}`}
+          />
+        ),
+      },
+      {
+        key: "addonCode",
+        header: "ID",
+        className: "whitespace-nowrap min-w-[7.5rem]",
+        render: (row: Addon) => (
+          <span className="whitespace-nowrap font-medium text-text-heading">
+            #ADD-{(row.id || "").slice(0, 6).toUpperCase()}
+          </span>
+        ),
+      },
+      {
         key: "image",
         header: "Image",
         className: "w-16",
-        mobileHide: true,
+        render: (row: Addon) =>
+          row.imageUrl ? (
+            <img
+              src={row.imageUrl}
+              alt={row.name}
+              className="h-10 w-10 rounded object-cover border border-border"
+            />
+          ) : (
+            <div className="h-10 w-10 rounded bg-surface-muted flex items-center justify-center border border-border text-text-muted">
+              <GiftIcon className="h-5 w-5 opacity-40" />
+            </div>
+          ),
+      },
+      {
+        key: "name",
+        header: "Name",
         render: (row: Addon) => (
-          <div className="h-12 w-12 rounded-xl bg-surface-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
-            {row.imageUrl ? (
-              <img
-                src={row.imageUrl}
-                alt={row.name}
-                className="h-full w-full object-cover"
-              />
+          <div className="flex flex-col min-w-0 max-w-xs">
+            <span className="font-medium text-text-heading truncate">{row.name}</span>
+            {row.description ? (
+              <span className="text-xs text-text-muted line-clamp-1">{row.description}</span>
             ) : (
-              <GiftIcon className="h-6 w-6 text-text-muted/40" />
+              <span className="text-[10px] text-text-muted/50 italic">No description</span>
             )}
           </div>
         ),
       },
       {
-        key: "name",
-        header: "Add-on Details",
-        mobileCardTitle: true,
-        render: (row: Addon) => (
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 md:hidden rounded-lg bg-surface-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
-              {row.imageUrl ? (
-                <img
-                  src={row.imageUrl}
-                  alt={row.name}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <GiftIcon className="h-5 w-5 text-text-muted/40" />
-              )}
-            </div>
-            <div className="space-y-0.5 min-w-0">
-              <span className="font-bold text-sm text-text-heading block truncate max-w-xs" title={row.name}>
-                {row.name}
-              </span>
-              {row.description ? (
-                <p className="text-xs text-text-muted line-clamp-1 max-w-sm" title={row.description}>
-                  {row.description}
-                </p>
-              ) : (
-                <span className="text-xs text-text-muted/50 italic">No description</span>
-              )}
-            </div>
-          </div>
-        ),
-      },
-      {
-        key: "price",
-        header: "Price",
-        className: "w-28",
-        render: (row: Addon) => (
-          <span className="font-black text-sm text-primary">
-            ₹{Number(row.price).toLocaleString("en-IN")}
-          </span>
-        ),
-      },
-      {
         key: "scope",
         header: "Applies To",
-        className: "min-w-[170px]",
+        className: "whitespace-nowrap",
         render: (row: Addon) => {
           const product = row.productId ? productMap.get(row.productId) : null;
           return product ? (
-            <span
-              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/50 px-2.5 py-1 rounded-lg truncate max-w-[200px]"
-              title={product.name}
-            >
-              🎯 {product.name}
+            <span className="text-xs font-medium text-text max-w-[180px] truncate block" title={product.name}>
+              {product.name}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-2.5 py-1 rounded-lg">
-              🌟 All My Products
-            </span>
+            <Badge variant="primary">All Products</Badge>
           );
         },
       },
       {
+        key: "price",
+        header: "Price",
+        className: "whitespace-nowrap",
+        render: (row: Addon) => (
+          <span className="font-medium text-text-heading">
+            ₹{Number(row.price).toFixed(2)}
+          </span>
+        ),
+      },
+      {
         key: "status",
         header: "Status",
-        className: "w-36",
+        className: "whitespace-nowrap",
         render: (row: Addon) => (
           <div className="flex items-center gap-2">
+            <Badge variant={row.isActive ? "success" : "muted"}>
+              {row.isActive ? "Active" : "Inactive"}
+            </Badge>
             <ToggleSwitch
               checked={row.isActive}
               onChange={() => handleToggleStatus(row)}
-              aria-label={row.isActive ? "Active" : "Inactive"}
+              aria-label={row.isActive ? "Active add-on" : "Inactive add-on"}
             />
-            <span
-              className={`text-xs font-bold ${
-                row.isActive ? "text-emerald-600 dark:text-emerald-400" : "text-text-muted"
-              }`}
-            >
-              {row.isActive ? "Active" : "Inactive"}
-            </span>
           </div>
         ),
       },
       {
         key: "actions",
-        header: "Actions",
-        className: "w-24 text-right",
+        header: "",
+        className: "w-20 text-right",
         mobileHeaderEnd: true,
         render: (row: Addon) => (
           <div className="flex items-center justify-end gap-1">
-            <Tooltip content="Edit Add-on">
+            <Tooltip content="Edit" side="top">
               <button
                 type="button"
                 onClick={() => openEditModal(row)}
-                className="p-1.5 text-text-muted hover:text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
-                aria-label="Edit Add-on"
+                className="rounded-[var(--radius-md)] p-2 text-text-muted hover:bg-primary-muted hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                aria-label="Edit add-on"
               >
                 <PencilIcon className="h-4 w-4" />
               </button>
             </Tooltip>
-            <Tooltip content="Delete Add-on">
+            <Tooltip content="Delete" side="top">
               <button
                 type="button"
                 onClick={() => setDeletingAddonId(row.id)}
-                className="p-1.5 text-text-muted hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer"
-                aria-label="Delete Add-on"
+                className="rounded-[var(--radius-md)] p-2 text-text-muted hover:bg-error-bg hover:text-error focus:outline-none focus:ring-2 focus:ring-error cursor-pointer"
+                aria-label="Delete add-on"
               >
                 <TrashIcon className="h-4 w-4" />
               </button>
@@ -331,282 +433,238 @@ export default function VendorAddonManagement() {
         ),
       },
     ],
-    [productMap, handleToggleStatus, openEditModal]
+    [
+      productMap,
+      handleToggleStatus,
+      openEditModal,
+      allOnPageSelected,
+      isIndeterminate,
+      selectedIds,
+      toggleSelectAll,
+      toggleSelectRow,
+    ]
   );
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-text-heading tracking-tight flex items-center gap-2.5">
-            <GiftIcon className="h-8 w-8 text-primary" />
-            Add-ons Management
-          </h1>
-          <p className="text-sm text-text-muted mt-1 font-medium">
-            Offer customer extras like gift wrap, greeting cards, or accessories with your products.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => refetch()}
-            className="!px-3 !py-2"
-            title="Refresh"
-          >
-            <ArrowPathIcon className="h-4 w-4 text-text-muted" />
-          </Button>
-          <Button
-            variant="primary"
-            onClick={openCreateModal}
-            className="!px-4 !py-2 shadow-md shadow-primary/20"
-          >
-            <PlusIcon className="h-5 w-5 mr-1.5" />
-            Create Add-on
-          </Button>
-        </div>
-      </div>
-
-      {/* Stats Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="!p-4 bg-gradient-to-br from-surface to-surface-muted/50 border border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-text-muted">Total Add-ons</span>
-            <GiftIcon className="h-5 w-5 text-primary" />
-          </div>
-          <p className="text-2xl font-black text-text-heading mt-2">{stats.total}</p>
-        </Card>
-
-        <Card className="!p-4 bg-gradient-to-br from-surface to-surface-muted/50 border border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-text-muted">Active Add-ons</span>
-            <CheckCircleIcon className="h-5 w-5 text-success" />
-          </div>
-          <p className="text-2xl font-black text-success mt-2">{stats.active}</p>
-        </Card>
-
-        <Card className="!p-4 bg-gradient-to-br from-surface to-surface-muted/50 border border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-text-muted">All Products</span>
-            <Badge variant="info">Storewide</Badge>
-          </div>
-          <p className="text-2xl font-black text-text-heading mt-2">{stats.allProducts}</p>
-        </Card>
-
-        <Card className="!p-4 bg-gradient-to-br from-surface to-surface-muted/50 border border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-text-muted">Product-Specific</span>
-            <Badge variant="default">Targeted</Badge>
-          </div>
-          <p className="text-2xl font-black text-text-heading mt-2">{stats.specificProducts}</p>
-        </Card>
-      </div>
-
-      {/* Search, Filters and View Toggle */}
-      <Card className="!p-4 border border-border bg-surface">
-        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-          <div className="relative flex-1">
-            <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-            <input
-              type="text"
-              placeholder="Search add-ons by name or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm bg-surface-muted/40 border border-border rounded-xl focus:outline-none focus:border-primary focus:bg-surface font-medium text-text-heading placeholder:text-text-muted/60"
-            />
-          </div>
-
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <select
-              value={filterProduct}
-              onChange={(e) => setFilterProduct(e.target.value)}
-              className="px-3 py-2 text-xs font-bold bg-surface-muted/40 border border-border rounded-xl text-text-heading focus:outline-none focus:border-primary"
-            >
-              <option value="">All Scopes</option>
-              <option value="global">All My Products (Storewide)</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name.length > 30 ? p.name.slice(0, 30) + "..." : p.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as any)}
-              className="px-3 py-2 text-xs font-bold bg-surface-muted/40 border border-border rounded-xl text-text-heading focus:outline-none focus:border-primary"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active Only</option>
-              <option value="inactive">Inactive Only</option>
-            </select>
-
-            {/* View Mode Switcher */}
-            <div className="flex items-center bg-surface-muted/40 border border-border rounded-xl p-1 shrink-0">
-              <button
-                type="button"
-                onClick={() => setViewMode("table")}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                  viewMode === "table"
-                    ? "bg-surface text-primary shadow-xs font-bold"
-                    : "text-text-muted hover:text-text-heading"
-                }`}
-                title="Table View"
-                aria-label="Table View"
-              >
-                <ListBulletIcon className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("grid")}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                  viewMode === "grid"
-                    ? "bg-surface text-primary shadow-xs font-bold"
-                    : "text-text-muted hover:text-text-heading"
-                }`}
-                title="Grid View"
-                aria-label="Grid View"
-              >
-                <Squares2X2Icon className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Add-ons Content: Table or Grid */}
-      {viewMode === "table" ? (
-        <Table
-          columns={columns}
-          data={filteredAddons}
-          keyExtractor={(addon) => addon.id}
-          isLoading={isLoadingAddons || isLoadingProducts}
-          emptyMessage={
-            searchQuery || filterProduct || filterStatus !== "all"
-              ? "No add-ons match your current filters."
-              : "No add-ons created yet. Click 'Create Add-on' to add your first one!"
+    <div className="space-y-4">
+      <Card>
+        <CardHeader
+          action={
+            <Button onClick={openCreateModal}>Add Add-on</Button>
           }
         />
-      ) : isLoadingAddons || isLoadingProducts ? (
-        <div className="py-20 flex flex-col items-center justify-center text-text-muted">
-          <ArrowPathIcon className="h-8 w-8 animate-spin text-primary mb-3" />
-          <p className="text-sm font-bold">Loading add-ons...</p>
-        </div>
-      ) : filteredAddons.length === 0 ? (
-        <Card className="!p-12 text-center border-dashed border-2 border-border flex flex-col items-center justify-center">
-          <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-4">
-            <GiftIcon className="h-8 w-8" />
-          </div>
-          <h3 className="text-lg font-black text-text-heading">No Add-ons Found</h3>
-          <p className="text-sm text-text-muted max-w-md mt-1 mb-5">
-            {searchQuery || filterProduct || filterStatus !== "all"
-              ? "No add-ons match your current filters. Try resetting the search or filter options."
-              : "You haven't created any add-ons yet. Start offering gift wrapping, custom cards, or special extras to boost sales!"}
-          </p>
-          <Button variant="primary" onClick={openCreateModal}>
-            <PlusIcon className="h-4 w-4 mr-1.5" />
-            Create Your First Add-on
-          </Button>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredAddons.map((addon) => {
-            const product = addon.productId ? productMap.get(addon.productId) : null;
-            return (
-              <div
-                key={addon.id}
-                className={`relative rounded-2xl border transition-all p-5 bg-surface flex flex-col justify-between shadow-xs hover:shadow-md ${
-                  addon.isActive
-                    ? "border-border hover:border-primary/40"
-                    : "border-border/60 bg-surface-muted/20 opacity-80"
-                }`}
+
+        <div className="pb-4 space-y-2">
+          <ResponsiveManagementFilters modalTitle="Add-on Filters" triggerLabel="Filters">
+            <ManagementFilterPanel>
+              <ManagementFilterField label="Search" className="sm:col-span-2 lg:col-span-1 xl:col-span-2">
+                <input
+                  type="search"
+                  placeholder="Add-on name, description..."
+                  value={searchDraft}
+                  onChange={(e) => setSearchDraft(e.target.value)}
+                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                  aria-label="Search by add-on name, description"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleApplyFilters();
+                    }
+                  }}
+                />
+              </ManagementFilterField>
+
+              <ManagementFilterField label="Scope">
+                <select
+                  value={scopeDraft}
+                  onChange={(e) => setScopeDraft(e.target.value)}
+                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                  aria-label="Filter by product scope"
+                >
+                  <option value="">All Scopes</option>
+                  <option value="global">All My Products (Storewide)</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name.length > 30 ? p.name.slice(0, 30) + "..." : p.name}
+                    </option>
+                  ))}
+                </select>
+              </ManagementFilterField>
+
+              <ManagementFilterField label="Status">
+                <select
+                  value={statusDraft}
+                  onChange={(e) => setStatusDraft(e.target.value as any)}
+                  className={MANAGEMENT_NATIVE_CONTROL_CLASS}
+                  aria-label="Filter by status"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </ManagementFilterField>
+
+              <ManagementFilterActions>
+                <Button
+                  type="button"
+                  size="sm"
+                  className={`${MANAGEMENT_FILTER_BTN_CLASS} font-semibold`}
+                  onClick={handleApplyFilters}
+                >
+                  Apply
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className={`${MANAGEMENT_FILTER_BTN_CLASS} font-medium`}
+                  onClick={handleClearFilters}
+                >
+                  Clear
+                </Button>
+              </ManagementFilterActions>
+            </ManagementFilterPanel>
+          </ResponsiveManagementFilters>
+
+          {/* Active Filter Chips */}
+          {hasAnyApplied && (
+            <div className="flex flex-wrap items-center gap-2 pt-1 px-1">
+              <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                Active Filters:
+              </span>
+              {appliedSearch && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary border border-primary/20">
+                  Search: “{appliedSearch}”
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchDraft("");
+                      setAppliedSearch("");
+                    }}
+                    className="hover:text-red-500 cursor-pointer"
+                    title="Remove search filter"
+                  >
+                    <XMarkIcon className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              )}
+              {appliedScope && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-600 border border-blue-500/20">
+                  Scope: {appliedScope === "global" ? "All Products" : (productMap.get(appliedScope)?.name || appliedScope)}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScopeDraft("");
+                      setAppliedScope("");
+                    }}
+                    className="hover:text-red-500 cursor-pointer"
+                    title="Remove scope filter"
+                  >
+                    <XMarkIcon className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              )}
+              {appliedStatus !== "all" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-600 border border-emerald-500/20">
+                  Status: {appliedStatus === "active" ? "Active" : "Inactive"}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusDraft("all");
+                      setAppliedStatus("all");
+                    }}
+                    className="hover:text-red-500 cursor-pointer"
+                    title="Remove status filter"
+                  >
+                    <XMarkIcon className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="text-xs text-text-muted hover:text-red-500 underline ml-2 cursor-pointer"
               >
-                <div>
-                  {/* Top Bar: Image & Status Toggle */}
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="h-16 w-16 rounded-xl bg-surface-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
-                      {addon.imageUrl ? (
-                        <img
-                          src={addon.imageUrl}
-                          alt={addon.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <GiftIcon className="h-8 w-8 text-text-muted/40" />
-                      )}
-                    </div>
-
-                    <div className="flex flex-col items-end gap-1.5">
-                      <ToggleSwitch
-                        checked={addon.isActive}
-                        onChange={() => handleToggleStatus(addon)}
-                        aria-label={addon.isActive ? "Active" : "Inactive"}
-                      />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
-                        {addon.isActive ? "Visible in Store" : "Hidden"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Title and Price */}
-                  <div className="flex items-baseline justify-between gap-2">
-                    <h3 className="font-black text-base text-text-heading line-clamp-1" title={addon.name}>
-                      {addon.name}
-                    </h3>
-                    <span className="text-base font-black text-primary shrink-0">
-                      ₹{Number(addon.price).toLocaleString("en-IN")}
-                    </span>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-xs text-text-muted mt-1.5 line-clamp-2 min-h-[2rem]">
-                    {addon.description || "No description provided."}
-                  </p>
-                </div>
-
-                {/* Footer: Scope & Actions */}
-                <div className="pt-4 mt-3 border-t border-border flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    {product ? (
-                      <span
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md truncate max-w-[180px]"
-                        title={product.name}
-                      >
-                        🎯 {product.name}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
-                        🌟 All My Products
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => openEditModal(addon)}
-                      className="p-1.5 text-text-muted hover:text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
-                      title="Edit Add-on"
-                    >
-                      <PencilIcon className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeletingAddonId(addon.id)}
-                      className="p-1.5 text-text-muted hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors cursor-pointer"
-                      title="Delete Add-on"
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                Clear all
+              </button>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Bulk Actions Bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-primary/5 border border-primary/20 rounded-[var(--radius-lg)] mb-4">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-white text-xs font-bold">
+                {selectedIds.size}
+              </span>
+              <span className="text-sm font-medium text-text">
+                {selectedIds.size === 1 ? "1 add-on selected" : `${selectedIds.size} add-ons selected`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={bulkActionLoading}
+                onClick={() => handleBulkToggleStatus(true)}
+              >
+                Activate Selected
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={bulkActionLoading}
+                onClick={() => handleBulkToggleStatus(false)}
+              >
+                Deactivate Selected
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={bulkActionLoading}
+                onClick={handleBulkDelete}
+              >
+                Delete Selected
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <Table
+          isLoading={isLoadingAddons || isLoadingProducts}
+          columns={columns}
+          data={paginatedAddons}
+          keyExtractor={(addon) => addon.id}
+          emptyMessage={
+            hasAnyApplied
+              ? "No add-ons match your selected filters."
+              : "You haven't added any add-ons yet."
+          }
+        />
+
+        <TablePagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={filteredAddons.length}
+          totalPages={Math.max(1, Math.ceil(filteredAddons.length / pageSize))}
+          onPageChange={(page) => setCurrentPage(page)}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[10, 20, 50, 80, 100]}
+          itemLabel="add-ons"
+          disabled={isLoadingAddons}
+        />
+      </Card>
 
       {/* Create / Edit Modal */}
       {isModalOpen && (
@@ -673,7 +731,7 @@ export default function VendorAddonManagement() {
                   {previewUrl ? (
                     <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                   ) : (
-                    <PhotoIcon className="h-8 w-8 text-text-muted/40" />
+                    <GiftIcon className="h-8 w-8 text-text-muted/40" />
                   )}
                 </div>
                 <div className="flex-1">

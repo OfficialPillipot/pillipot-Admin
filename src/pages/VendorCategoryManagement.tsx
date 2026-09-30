@@ -5,6 +5,7 @@ import {
   CardHeader, 
   Button, 
   Table, 
+  TablePagination,
   Modal, 
   Input 
 } from "../components/ui";
@@ -23,6 +24,13 @@ function VendorCategoryManagement() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Pagination state (default: 10 items)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Checkbox selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -86,7 +94,62 @@ function VendorCategoryManagement() {
     setModalOpen(true);
   }, []);
 
+  const paginatedCategories = useMemo(
+    () => categories.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [categories, currentPage, pageSize]
+  );
+
+  const allOnPageSelected = paginatedCategories.length > 0 && paginatedCategories.every((c) => selectedIds.has(c.id));
+  const isIndeterminate = selectedIds.size > 0 && !allOnPageSelected;
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        paginatedCategories.forEach((c) => next.delete(c.id));
+      } else {
+        paginatedCategories.forEach((c) => next.add(c.id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const columns = useMemo(() => [
+    {
+      key: "select",
+      header: (
+        <input
+          type="checkbox"
+          ref={(el) => {
+            if (el) el.indeterminate = isIndeterminate;
+          }}
+          checked={allOnPageSelected}
+          onChange={toggleSelectAll}
+          className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+          aria-label="Select all categories on page"
+        />
+      ),
+      className: "w-10 px-3 text-center",
+      mobileHeaderStart: true,
+      render: (row: Category) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.has(row.id)}
+          onChange={() => toggleSelectRow(row.id)}
+          className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+          aria-label={`Select category ${row.name}`}
+        />
+      ),
+    },
     {
       key: "imageUrl",
       header: "Image",
@@ -123,7 +186,13 @@ function VendorCategoryManagement() {
         </div>
       ),
     },
-  ], [openEdit]);
+  ], [
+    openEdit,
+    allOnPageSelected,
+    isIndeterminate,
+    selectedIds,
+    paginatedCategories,
+  ]);
 
   return (
     <div className="space-y-4">
@@ -134,9 +203,24 @@ function VendorCategoryManagement() {
         <Table
           isLoading={isLoading}
           columns={columns}
-          data={categories}
+          data={paginatedCategories}
           keyExtractor={(c) => c.id}
           emptyMessage="No categories found."
+        />
+
+        <TablePagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={categories.length}
+          totalPages={Math.max(1, Math.ceil(categories.length / pageSize))}
+          onPageChange={(page) => setCurrentPage(page)}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[10, 20, 50, 80, 100]}
+          itemLabel="categories"
+          disabled={isLoading}
         />
       </Card>
 

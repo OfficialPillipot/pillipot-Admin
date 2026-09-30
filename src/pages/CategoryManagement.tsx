@@ -9,7 +9,7 @@ import {
   deleteCategory,
 } from "../store/categoriesSlice";
 import { fetchProducts, selectProducts } from "../store/productsSlice";
-import { Card, CardHeader, Button, Table, Modal, Input, Tooltip } from "../components/ui";
+import { Card, CardHeader, Button, Table, TablePagination, Modal, Input, Tooltip } from "../components/ui";
 import { toast } from "../lib/toast";
 import type { Category } from "../types";
 
@@ -35,6 +35,14 @@ function CategoryManagementPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewingCategory, setViewingCategory] = useState<Category | null>(null);
+
+  // Pagination state (default: 10 items)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Checkbox selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   const deferredSearchQuery = useDeferredValue(searchQuery);
 
@@ -137,8 +145,86 @@ function CategoryManagementPage() {
     [dispatch, editingId, productCountByCategory]
   );
 
+  const paginatedCategories = useMemo(
+    () => filteredCategories.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filteredCategories, currentPage, pageSize]
+  );
+
+  const allOnPageSelected = paginatedCategories.length > 0 && paginatedCategories.every((c) => selectedIds.has(c.id));
+  const isIndeterminate = selectedIds.size > 0 && !allOnPageSelected;
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        paginatedCategories.forEach((c) => next.delete(c.id));
+      } else {
+        paginatedCategories.forEach((c) => next.add(c.id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const canDeleteList = paginatedCategories.filter(
+      (c) => selectedIds.has(c.id) && (productCountByCategory.get(c.id) ?? 0) === 0
+    );
+    const blockedCount = selectedIds.size - canDeleteList.length;
+    if (canDeleteList.length === 0) {
+      toast.error("Selected categories cannot be deleted because products are assigned to them.");
+      return;
+    }
+    if (!window.confirm(`Delete ${canDeleteList.length} category(s)?${blockedCount > 0 ? ` (${blockedCount} category(s) skipped due to assigned products)` : ""}`)) return;
+    setBulkActionLoading(true);
+    try {
+      await Promise.all(canDeleteList.map((c) => dispatch(deleteCategory(c.id)).unwrap()));
+      toast.success(`${canDeleteList.length} category(s) deleted`);
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast.fromError(err, "Failed to delete selected categories");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   const columns = useMemo(
     () => [
+      {
+        key: "select",
+        header: (
+          <input
+            type="checkbox"
+            ref={(el) => {
+              if (el) el.indeterminate = isIndeterminate;
+            }}
+            checked={allOnPageSelected}
+            onChange={toggleSelectAll}
+            className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+            aria-label="Select all categories on page"
+          />
+        ),
+        className: "w-10 px-3 text-center",
+        mobileHeaderStart: true,
+        render: (row: Category) => (
+          <input
+            type="checkbox"
+            checked={selectedIds.has(row.id)}
+            onChange={() => toggleSelectRow(row.id)}
+            className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+            aria-label={`Select category ${row.name}`}
+          />
+        ),
+      },
       {
         key: "imageUrl",
         header: "Image",
@@ -212,7 +298,16 @@ function CategoryManagementPage() {
         },
       },
     ],
-    [openEdit, openView, handleDelete, productCountByCategory]
+    [
+      openEdit,
+      openView,
+      handleDelete,
+      productCountByCategory,
+      allOnPageSelected,
+      isIndeterminate,
+      selectedIds,
+      paginatedCategories,
+    ]
   );
 
   return (
@@ -226,18 +321,68 @@ function CategoryManagementPage() {
             label=""
             placeholder="Search categories..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+              setSelectedIds(new Set());
+            }}
           />
         </div>
+
+        {/* Bulk Actions Bar */}
+        {selectedIds.size > 0 && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 p-3 bg-primary/5 border border-primary/20 rounded-[var(--radius-lg)]">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-white text-xs font-bold">
+                {selectedIds.size}
+              </span>
+              <span className="text-sm font-medium text-text">
+                {selectedIds.size === 1 ? "1 category selected" : `${selectedIds.size} categories selected`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={bulkActionLoading}
+                onClick={handleBulkDelete}
+              >
+                Delete Selected
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+
         <Table
           columns={columns}
-          data={filteredCategories}
+          data={paginatedCategories}
           keyExtractor={(c) => c.id}
           emptyMessage={
             searchQuery
               ? "No categories match your search."
               : "No categories yet. Add one before creating products."
           }
+        />
+
+        <TablePagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={filteredCategories.length}
+          totalPages={Math.max(1, Math.ceil(filteredCategories.length / pageSize))}
+          onPageChange={(page) => setCurrentPage(page)}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[10, 20, 50, 80, 100]}
+          itemLabel="categories"
         />
       </Card>
 

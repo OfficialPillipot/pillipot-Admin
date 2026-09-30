@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   Card, 
   Table, 
+  TablePagination,
   Badge, 
   Tooltip,
   ToggleSwitch,
@@ -31,6 +32,14 @@ function ActiveVendorManagementPage() {
   const [resetPassword] = useResetVendorPasswordMutation();
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+
+  // Pagination state (default: 10 items)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Checkbox selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   const handleToggleStatus = async (vendor: Vendor) => {
     try {
@@ -81,7 +90,59 @@ function ActiveVendorManagementPage() {
     setIsViewModalOpen(true);
   };
 
-  const activeVendors = vendors?.filter((v) => v.status === "APPROVED" || v.status === "DISABLED") || [];
+  const activeVendors = useMemo(() => vendors?.filter((v) => v.status === "APPROVED" || v.status === "DISABLED") || [], [vendors]);
+
+  const paginatedVendors = useMemo(
+    () => activeVendors.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [activeVendors, currentPage, pageSize]
+  );
+
+  const allOnPageSelected = paginatedVendors.length > 0 && paginatedVendors.every((v) => selectedIds.has(v.id));
+  const isIndeterminate = selectedIds.size > 0 && !allOnPageSelected;
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        paginatedVendors.forEach((v) => next.delete(v.id));
+      } else {
+        paginatedVendors.forEach((v) => next.add(v.id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkToggleStatus = async (enable: boolean) => {
+    if (selectedIds.size === 0) return;
+    setBulkActionLoading(true);
+    try {
+      const selectedList = activeVendors.filter((v) => selectedIds.has(v.id));
+      await Promise.all(
+        selectedList.map((v) => {
+          const isCurrentlyActive = v.user?.isActive ?? false;
+          if (isCurrentlyActive !== enable) {
+            return toggleVendorStatus(v.id).unwrap();
+          }
+          return Promise.resolve();
+        })
+      );
+      toast.success(`${selectedIds.size} vendor(s) ${enable ? "enabled" : "disabled"}`);
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast.fromError(err, "Failed to update selected vendors");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -97,11 +158,76 @@ function ActiveVendorManagementPage() {
   return (
     <div className="space-y-4">
       <Card>
+        {/* Bulk Actions Bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-primary/5 border border-primary/20 rounded-[var(--radius-lg)] mb-4">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-white text-xs font-bold">
+                {selectedIds.size}
+              </span>
+              <span className="text-sm font-medium text-text">
+                {selectedIds.size === 1 ? "1 vendor selected" : `${selectedIds.size} vendors selected`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={bulkActionLoading}
+                onClick={() => handleBulkToggleStatus(true)}
+              >
+                Enable Selected
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={bulkActionLoading}
+                onClick={() => handleBulkToggleStatus(false)}
+              >
+                Disable Selected
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+
         <Table
           isLoading={isLoading}
           keyExtractor={(v: Vendor) => v.id}
           emptyMessage="No active vendors"
           columns={[
+            {
+              key: "select",
+              header: (
+                <input
+                  type="checkbox"
+                  ref={(el) => {
+                    if (el) el.indeterminate = isIndeterminate;
+                  }}
+                  checked={allOnPageSelected}
+                  onChange={toggleSelectAll}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+                  aria-label="Select all vendors on page"
+                />
+              ),
+              className: "w-10 px-3 text-center",
+              mobileHeaderStart: true,
+              render: (v: Vendor) => (
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(v.id)}
+                  onChange={() => toggleSelectRow(v.id)}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+                  aria-label={`Select vendor ${v.businessName || v.ownerName}`}
+                />
+              ),
+            },
             { key: "businessName", header: "Business Name" },
             { key: "ownerName", header: "Owner" },
             { key: "email", header: "Email" },
@@ -211,7 +337,22 @@ function ActiveVendorManagementPage() {
               )
             }
           ]}
-          data={activeVendors}
+          data={paginatedVendors}
+        />
+
+        <TablePagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={activeVendors.length}
+          totalPages={Math.max(1, Math.ceil(activeVendors.length / pageSize))}
+          onPageChange={(page) => setCurrentPage(page)}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[10, 20, 50, 80, 100]}
+          itemLabel="vendors"
+          disabled={isLoading}
         />
       </Card>
 
