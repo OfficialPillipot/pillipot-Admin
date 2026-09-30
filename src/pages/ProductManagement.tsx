@@ -1,9 +1,9 @@
 import { memo, useState, useCallback, useMemo, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { PencilIcon, TrashIcon, XMarkIcon, EyeIcon, TagIcon } from "@heroicons/react/24/outline";
-import { useGetTagsQuery } from "../store/api/edenApi";
+import { useGetTagsQuery, useGetProductsPaginatedQuery } from "../store/api/edenApi";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { selectProducts, createProduct, updateProduct, deleteProduct } from "../store/productsSlice";
+import { createProduct, updateProduct, deleteProduct } from "../store/productsSlice";
 import { selectCategories, fetchCategories } from "../store/categoriesSlice";
 import { selectSubcategories, fetchSubcategories } from "../store/subcategoriesSlice";
 import {
@@ -13,6 +13,7 @@ import {
   Button,
   ToggleSwitch,
   Table,
+  TablePagination,
   Modal,
   Input,
   Tooltip,
@@ -56,8 +57,22 @@ function validateVideoFile(file: File): string | null {
 
 function ProductManagementPage() {
   const dispatch = useAppDispatch();
-  const products = useAppSelector(selectProducts);
-  console.log("[ProductManagement] Products in state:", products.map(p => ({ name: p.name, isActive: p.isActive })));
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("");
+
+  const { data: paginatedData, isLoading: productsLoading } = useGetProductsPaginatedQuery({
+    page: currentPage,
+    limit: pageSize,
+    categoryId: (categoryFilter && categoryFilter !== UNCATEGORIZED_FILTER) ? categoryFilter : undefined,
+  });
+
+  const products = useMemo(() => paginatedData?.items ?? [], [paginatedData]);
+  const totalItems = paginatedData?.total ?? 0;
+  const totalPages = paginatedData?.totalPages ?? 1;
+
   const categories = useAppSelector(selectCategories);
   const subcategories = useAppSelector(selectSubcategories);
   const [modalOpen, setModalOpen] = useState(false);
@@ -89,7 +104,6 @@ function ProductManagementPage() {
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState("");
   const [togglingActiveId, setTogglingActiveId] = useState<string | null>(null);
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [offeringProduct, setOfferingProduct] = useState<Product | null>(null);
@@ -413,8 +427,78 @@ function ProductManagementPage() {
     [editingId, products],
   );
 
+  const allOnPageSelected = products.length > 0 && products.every((p) => selectedIds.has(p.id));
+  const isIndeterminate = selectedIds.size > 0 && !allOnPageSelected;
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        products.forEach((p) => next.delete(p.id));
+      } else {
+        products.forEach((p) => next.add(p.id));
+      }
+      return next;
+    });
+  }, [allOnPageSelected, products]);
+
+  const toggleSelectRow = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleBulkUpdateStatus = useCallback(async (isActive: boolean) => {
+    if (selectedIds.size === 0) return;
+    setBulkActionLoading(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await Promise.all(
+        ids.map((id) => dispatch(updateProduct({ id, patch: { isActive } })).unwrap())
+      );
+      toast.success(`${ids.length} product(s) ${isActive ? "activated" : "hidden from catalog"}`);
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast.fromError(err, "Failed to update selected products");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  }, [selectedIds, dispatch]);
+
   const columns = useMemo(
     () => [
+      {
+        key: "select",
+        header: (
+          <input
+            type="checkbox"
+            ref={(el) => {
+              if (el) el.indeterminate = isIndeterminate;
+            }}
+            checked={allOnPageSelected}
+            onChange={toggleSelectAll}
+            className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+            aria-label="Select all products on page"
+          />
+        ),
+        className: "w-10 px-3 text-center",
+        mobileHeaderStart: true,
+        render: (row: Product) => (
+          <input
+            type="checkbox"
+            checked={selectedIds.has(row.id)}
+            onChange={() => toggleSelectRow(row.id)}
+            className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+            aria-label={`Select product ${row.name}`}
+          />
+        ),
+      },
       {
         key: "productCode",
         header: "Product ID",
@@ -620,7 +704,18 @@ function ProductManagementPage() {
         ),
       },
     ],
-    [openEdit, openView, handleDelete, toggleProductActive, togglingActiveId]
+    [
+      openEdit,
+      openView,
+      handleDelete,
+      toggleProductActive,
+      togglingActiveId,
+      allOnPageSelected,
+      isIndeterminate,
+      selectedIds,
+      toggleSelectAll,
+      toggleSelectRow,
+    ]
   );
 
   return (
@@ -640,14 +735,59 @@ function ProductManagementPage() {
                   fullWidth
                   options={categoryFilterOptions}
                   value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  onChange={(e) => {
+                    setCategoryFilter(e.target.value);
+                    setCurrentPage(1);
+                    setSelectedIds(new Set());
+                  }}
                   aria-label="Filter by category"
                 />
               </ManagementFilterField>
             </ManagementFilterPanel>
           </ResponsiveManagementFilters>
         </div>
+
+        {/* Bulk Actions Bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-primary/5 border border-primary/20 rounded-[var(--radius-lg)] mb-4">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-white text-xs font-bold">
+                {selectedIds.size}
+              </span>
+              <span className="text-sm font-medium text-text">
+                {selectedIds.size === 1 ? "1 product selected" : `${selectedIds.size} products selected`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={bulkActionLoading}
+                onClick={() => handleBulkUpdateStatus(true)}
+              >
+                Activate Selected
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={bulkActionLoading}
+                onClick={() => handleBulkUpdateStatus(false)}
+              >
+                Deactivate Selected
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+
         <Table
+          isLoading={productsLoading}
           columns={columns}
           data={filteredProducts}
           keyExtractor={(p) => p.id}
@@ -656,6 +796,20 @@ function ProductManagementPage() {
               ? "No products in this category."
               : "No products. Add one to show in the staff order form."
           }
+        />
+
+        <TablePagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={totalItems}
+          totalPages={totalPages}
+          onPageChange={(page) => setCurrentPage(page)}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[10, 20, 50, 80, 100]}
+          disabled={productsLoading}
         />
       </Card>
 

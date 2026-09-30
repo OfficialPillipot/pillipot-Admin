@@ -5,6 +5,7 @@ import {
 import {
   Card,
   Table,
+  TablePagination,
   Tooltip,
   ToggleSwitch,
   Button,
@@ -18,7 +19,7 @@ import {
   type MultiSelectOption,
 } from "../components/ui";
 import {
-  useGetAdminVendorProductsQuery,
+  useGetAdminVendorProductsPaginatedQuery,
   useGetVendorsQuery,
   useGetCategoriesQuery,
   useGetSubcategoriesQuery,
@@ -33,13 +34,13 @@ const STATUS_MULTI_OPTIONS: MultiSelectOption[] = [
 ];
 
 export default function AdminVendorProductManagement() {
-  const { data: products = [], isLoading: productsLoading } = useGetAdminVendorProductsQuery();
-  const { data: vendors = [], isLoading: vendorsLoading } = useGetVendorsQuery();
-  const { data: categories = [] } = useGetCategoriesQuery();
-  const { data: subcategories = [] } = useGetSubcategoriesQuery();
-  const [updateProduct] = useUpdateProductMutation();
+  // ── Pagination State (default: 10 items) ──
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  const isLoading = productsLoading || vendorsLoading;
+  // ── Checkbox Selection State ──
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   // ── Draft Filter State (Only applied upon clicking "Apply") ──
   const [searchDraft, setSearchDraft] = useState("");
@@ -52,6 +53,26 @@ export default function AdminVendorProductManagement() {
   const [appliedStatus, setAppliedStatus] = useState<string[]>([]);
   const [appliedCategory, setAppliedCategory] = useState<string[]>([]);
   const [appliedSubcategory, setAppliedSubcategory] = useState<string[]>([]);
+
+  const { data: paginatedData, isLoading: productsLoading } = useGetAdminVendorProductsPaginatedQuery({
+    page: currentPage,
+    limit: pageSize,
+    search: appliedSearch.trim() || undefined,
+    status: appliedStatus.length === 1 ? appliedStatus[0] : undefined,
+    categoryId: appliedCategory.length === 1 ? appliedCategory[0] : undefined,
+    subcategoryId: appliedSubcategory.length === 1 ? appliedSubcategory[0] : undefined,
+  });
+
+  const products = useMemo(() => paginatedData?.items ?? [], [paginatedData]);
+  const totalItems = paginatedData?.total ?? 0;
+  const totalPages = paginatedData?.totalPages ?? 1;
+
+  const { data: vendors = [], isLoading: vendorsLoading } = useGetVendorsQuery();
+  const { data: categories = [] } = useGetCategoriesQuery();
+  const { data: subcategories = [] } = useGetSubcategoriesQuery();
+  const [updateProduct] = useUpdateProductMutation();
+
+  const isLoading = productsLoading || vendorsLoading;
 
   const vendorMap = useMemo(() => {
     const map = new Map<string, (typeof vendors)[0]>();
@@ -95,6 +116,8 @@ export default function AdminVendorProductManagement() {
     setAppliedStatus(statusDraft);
     setAppliedCategory(categoryDraft);
     setAppliedSubcategory(subcategoryDraft);
+    setCurrentPage(1);
+    setSelectedIds(new Set());
   }, [searchDraft, statusDraft, categoryDraft, subcategoryDraft]);
 
   const handleClearAll = useCallback(() => {
@@ -107,6 +130,8 @@ export default function AdminVendorProductManagement() {
     setAppliedStatus([]);
     setAppliedCategory([]);
     setAppliedSubcategory([]);
+    setCurrentPage(1);
+    setSelectedIds(new Set());
   }, []);
 
   const hasAnyApplied = Boolean(
@@ -197,7 +222,77 @@ export default function AdminVendorProductManagement() {
     subcategoryMap,
   ]);
 
+  const allOnPageSelected = products.length > 0 && products.every((p) => selectedIds.has(p.id));
+  const isIndeterminate = selectedIds.size > 0 && !allOnPageSelected;
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        products.forEach((p) => next.delete(p.id));
+      } else {
+        products.forEach((p) => next.add(p.id));
+      }
+      return next;
+    });
+  }, [allOnPageSelected, products]);
+
+  const toggleSelectRow = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleBulkUpdateStatus = useCallback(async (isActive: boolean) => {
+    if (selectedIds.size === 0) return;
+    setBulkActionLoading(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await Promise.all(
+        ids.map((id) => updateProduct({ id, patch: { isActive } }).unwrap())
+      );
+      toast.success(`${ids.length} product(s) ${isActive ? "activated" : "hidden from catalog"}`);
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast.fromError(err, "Failed to update selected products");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  }, [selectedIds, updateProduct]);
+
   const columns = useMemo(() => [
+    {
+      key: "select",
+      header: (
+        <input
+          type="checkbox"
+          ref={(el) => {
+            if (el) el.indeterminate = isIndeterminate;
+          }}
+          checked={allOnPageSelected}
+          onChange={toggleSelectAll}
+          className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+          aria-label="Select all products on page"
+        />
+      ),
+      className: "w-10 px-3 text-center",
+      mobileHeaderStart: true,
+      render: (row: Product) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.has(row.id)}
+          onChange={() => toggleSelectRow(row.id)}
+          className="h-4 w-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+          aria-label={`Select product ${row.name}`}
+        />
+      ),
+    },
     { 
       key: "productCode", 
       header: "ID", 
@@ -428,6 +523,45 @@ export default function AdminVendorProductManagement() {
           )}
         </div>
 
+        {/* Bulk Actions Bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-primary/5 border border-primary/20 rounded-[var(--radius-lg)] mb-4">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-primary text-white text-xs font-bold">
+                {selectedIds.size}
+              </span>
+              <span className="text-sm font-medium text-text">
+                {selectedIds.size === 1 ? "1 product selected" : `${selectedIds.size} products selected`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={bulkActionLoading}
+                onClick={() => handleBulkUpdateStatus(true)}
+              >
+                Activate Selected
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={bulkActionLoading}
+                onClick={() => handleBulkUpdateStatus(false)}
+              >
+                Deactivate Selected
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Table Content */}
         <Table 
           columns={columns} 
@@ -436,6 +570,20 @@ export default function AdminVendorProductManagement() {
           emptyMessage={hasAnyApplied ? "No products match your filter criteria." : "No vendor products found."} 
           isLoading={isLoading}
           mobileCards={true}
+        />
+
+        <TablePagination
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalItems={totalItems}
+          totalPages={totalPages}
+          onPageChange={(page) => setCurrentPage(page)}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[10, 20, 50, 80, 100]}
+          disabled={isLoading}
         />
       </Card>
     </div>

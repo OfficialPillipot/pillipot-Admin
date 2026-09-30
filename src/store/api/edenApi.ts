@@ -20,6 +20,7 @@ import type {
   Order,
   PdfSize,
   Product,
+  PaginatedResponse,
   ProductDeliveryFee,
   ProductOffer,
   RbacMatrixResponse,
@@ -173,6 +174,22 @@ export const edenApi = createApi({
           ? [
             { type: "Product" as const, id: "LIST" },
             ...r.map((p) => ({ type: "Product" as const, id: p.id })),
+          ]
+          : [{ type: "Product", id: "LIST" }],
+    }),
+    getProductsPaginated: builder.query<
+      PaginatedResponse<Product>,
+      { page?: number; limit?: number; search?: string; categoryId?: string; subcategoryId?: string; status?: string } | void
+    >({
+      query: (params) => ({
+        url: endpoints.products,
+        params: params || undefined,
+      }),
+      providesTags: (r) =>
+        r?.items
+          ? [
+            { type: "Product" as const, id: "LIST" },
+            ...r.items.map((p) => ({ type: "Product" as const, id: p.id })),
           ]
           : [{ type: "Product", id: "LIST" }],
     }),
@@ -1394,6 +1411,26 @@ export const edenApi = createApi({
           ]
           : [{ type: "VendorPortalProduct", id: "LIST" }],
     }),
+    getVendorPortalProductsPaginated: builder.query<
+      PaginatedResponse<Product>,
+      { page?: number; limit?: number; search?: string; categoryId?: string; subcategoryId?: string; status?: string } | void
+    >({
+      query: (params) => ({
+        url: endpoints.vendorPortalProducts,
+        params: params || undefined,
+      }),
+      providesTags: (r) =>
+        r?.items
+          ? [
+            { type: "VendorPortalProduct" as const, id: "LIST" },
+            { type: "Product" as const, id: "LIST" },
+            ...r.items.map((p) => ({ type: "VendorPortalProduct" as const, id: p.id })),
+          ]
+          : [
+            { type: "VendorPortalProduct", id: "LIST" },
+            { type: "Product", id: "LIST" },
+          ],
+    }),
     createVendorPortalProduct: builder.mutation<Product, Partial<Product> & { image?: File | File[]; video?: File }>({
       query: (body) => {
         const fd = new FormData();
@@ -1632,6 +1669,22 @@ export const edenApi = createApi({
           ]
           : [{ type: "Product", id: "LIST" }],
     }),
+    getAdminVendorProductsPaginated: builder.query<
+      PaginatedResponse<Product>,
+      { page?: number; limit?: number; search?: string; vendorId?: string; categoryId?: string; subcategoryId?: string; status?: string } | void
+    >({
+      query: (params) => ({
+        url: endpoints.adminVendorProducts,
+        params: params || undefined,
+      }),
+      providesTags: (result) =>
+        result?.items
+          ? [
+            ...result.items.map(({ id }) => ({ type: "Product" as const, id })),
+            { type: "Product", id: "LIST" },
+          ]
+          : [{ type: "Product", id: "LIST" }],
+    }),
     getAdminVendorOrders: builder.query<OrderListPayload, void>({
       query: () => endpoints.adminVendorOrders,
       providesTags: (r) =>
@@ -1829,7 +1882,9 @@ export const {
   useToggleVendorStatusMutation,
   useToggleVendorStoreMutation,
   useResetVendorPasswordMutation,
+  useGetProductsPaginatedQuery,
   useGetVendorPortalProductsQuery,
+  useGetVendorPortalProductsPaginatedQuery,
   useCreateVendorPortalProductMutation,
   useUpdateVendorPortalProductMutation,
   useDeleteVendorPortalProductMutation,
@@ -1845,6 +1900,7 @@ export const {
   useUpdateVendorPortalOfferMutation,
   useDeleteVendorPortalOfferMutation,
   useGetAdminVendorProductsQuery,
+  useGetAdminVendorProductsPaginatedQuery,
   useGetAdminVendorOrdersQuery,
   useGetVendorPortalProfileQuery,
   useUpdateVendorPortalProfileMutation,

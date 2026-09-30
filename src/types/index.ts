@@ -116,6 +116,14 @@ export interface Product {
   } | null;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface ProductOffer {
   id: string;
   productId: string;

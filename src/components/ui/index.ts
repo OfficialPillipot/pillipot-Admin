@@ -28,4 +28,4 @@ export {
     DATE_RANGE_PICKER_WIDTH_CLASS,
 } from "./SingleCalendarDateRangePicker";
 export { SearchableMultiSelect, type MultiSelectOption } from "./SearchableMultiSelect";
-
+export { TablePagination, type TablePaginationProps } from "./TablePagination";
