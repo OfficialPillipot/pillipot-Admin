@@ -30,6 +30,17 @@ export interface SearchableMultiSelectProps {
 
 import { autoScrollDropdownIntoView } from "../../lib/scrollUtils";
 
+function pluralizeNoun(noun: string, count: number): string {
+  if (count === 1) return noun;
+  if (noun.endsWith("y") && !/[aeiou]y$/i.test(noun)) {
+    return `${noun.slice(0, -1)}ies`;
+  }
+  if (noun.endsWith("s") || noun.endsWith("x") || noun.endsWith("ch") || noun.endsWith("sh")) {
+    return `${noun}es`;
+  }
+  return `${noun}s`;
+}
+
 export function SearchableMultiSelect({
   selectedValues,
   onChange,
@@ -134,11 +145,11 @@ export function SearchableMultiSelect({
       const second = options.find((o) => o.value === selectedValues[1])?.label;
       if (first && second) return `${first}, ${second}`;
     }
-    return `${selectedValues.length} ${itemNoun}s selected`;
+    return `${selectedValues.length} ${pluralizeNoun(itemNoun, selectedValues.length)} selected`;
   }, [selectedValues, options, placeholder, itemNoun]);
 
   return (
-    <div ref={containerRef} className={`relative w-full ${className}`}>
+    <div ref={containerRef} className={`relative w-full ${isOpen ? "z-30" : "z-auto"} ${className}`}>
       {/* Trigger button matching MANAGEMENT_NATIVE_CONTROL_CLASS */}
       <div
         role="button"
@@ -191,7 +202,7 @@ export function SearchableMultiSelect({
         <div
           ref={popoverRef}
           style={{ scrollMarginBottom: 24 }}
-          className="absolute left-0 top-full z-50 mt-1.5 w-full min-w-[280px] sm:min-w-[320px] rounded-[var(--radius-lg)] border border-border bg-surface p-2 shadow-xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+          className="absolute left-0 top-full z-[100] mt-1.5 w-full min-w-[280px] sm:min-w-[320px] rounded-[var(--radius-lg)] border border-border bg-surface p-2.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100"
         >
           {/* Search Input field */}
           <div className="relative mb-2">
@@ -202,7 +213,7 @@ export function SearchableMultiSelect({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full rounded-[var(--radius-sm)] border border-border/80 bg-surface-elevated/80 pl-8 pr-7 py-1.5 text-xs sm:text-sm text-text-heading outline-none focus:border-primary"
+              className="w-full rounded-[var(--radius-md)] border border-border bg-surface-elevated/90 pl-8 pr-7 py-2 text-xs sm:text-sm text-text-heading outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-xs"
             />
             {searchTerm && (
               <button
@@ -219,7 +230,7 @@ export function SearchableMultiSelect({
           {/* Quick Action row */}
           <div className="mb-2 flex items-center justify-between border-b border-border/60 px-1 pb-1.5 text-xs text-text-muted">
             <span>
-              {filteredOptions.length} {filteredOptions.length === 1 ? itemNoun : `${itemNoun}s`}
+              {filteredOptions.length} {pluralizeNoun(itemNoun, filteredOptions.length)}
               {selectedValues.length > 0 && ` (${selectedValues.length} selected)`}
             </span>
             <div className="flex items-center gap-2">
@@ -249,7 +260,7 @@ export function SearchableMultiSelect({
           <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
             {filteredOptions.length === 0 ? (
               <div className="py-4 text-center text-xs text-text-muted">
-                No {itemNoun}s found matching “{searchTerm}”
+                No {pluralizeNoun(itemNoun, 0)} found matching “{searchTerm}”
               </div>
             ) : (
               filteredOptions.map((opt) => {
@@ -296,11 +307,11 @@ export function SearchableMultiSelect({
           </div>
 
           {/* Footer with Done button */}
-          <div className="mt-2 flex items-center justify-end border-t border-border/60 pt-2">
+          <div className="mt-2.5 flex items-center justify-end border-t border-border/80 pt-2">
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="rounded-[var(--radius-xs)] bg-primary px-3 py-1 text-xs font-semibold text-white hover:bg-primary/90 transition-colors"
+              className="rounded-[var(--radius-md)] bg-primary px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
             >
               Done
             </button>

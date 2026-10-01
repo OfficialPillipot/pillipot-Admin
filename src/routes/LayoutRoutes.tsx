@@ -141,19 +141,11 @@ export function LayoutRoutes({ user }: LayoutRoutesProps) {
         />
         <Route
           path="/vendor/categories"
-          element={
-            <ProtectedRoute allowedRoles={["vendor"]}>
-              <Pages.VendorCategoryManagement />
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/vendor/products" replace />}
         />
         <Route
           path="/vendor/subcategories"
-          element={
-            <ProtectedRoute allowedRoles={["vendor"]}>
-              <Pages.VendorSubcategoryManagement />
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/vendor/products" replace />}
         />
         <Route
           path="/vendor/offers"

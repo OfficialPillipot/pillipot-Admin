@@ -28,7 +28,7 @@ export const ResponsiveManagementFilters = memo(function ResponsiveManagementFil
   const [open, setOpen] = useState(false);
 
   if (isMdUp) {
-    return <div className="w-full">{children}</div>;
+    return <div className="relative z-20 w-full">{children}</div>;
   }
 
   return (

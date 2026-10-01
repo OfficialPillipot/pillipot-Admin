@@ -285,6 +285,10 @@ export const edenApi = createApi({
             (val as string[]).forEach((t) => fd.append("tags", String(t)));
             return;
           }
+          if ((key === "categoryIds" || key === "subcategoryIds") && Array.isArray(val)) {
+            (val as string[]).forEach((id) => fd.append(key, String(id)));
+            return;
+          }
           if (typeof val === "object" && val !== null) {
             fd.append(key, JSON.stringify(val));
           } else {

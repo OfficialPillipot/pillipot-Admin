@@ -470,7 +470,7 @@ function ProductManagementPage() {
       const payload: any = {
         name: name.trim(),
         categoryId: categoryIds[0] || "",
-        subcategoryId: subcategoryIds[0] || undefined,
+        subcategoryId: subcategoryIds.length > 0 ? subcategoryIds[0] : (editingId ? null : undefined),
         categoryIds,
         subcategoryIds,
         sku: sku.trim() || undefined,

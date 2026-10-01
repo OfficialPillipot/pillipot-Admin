@@ -23,8 +23,6 @@ const DEFAULT_TITLES: Record<string, string> = {
   "/vendor/profile": "My Profile",
   "/vendor/orders": "My Orders",
   "/vendor/products": "My Products",
-  "/vendor/categories": "Categories",
-  "/vendor/subcategories": "Subcategories",
   "/vendor/offers": "Offers",
   "/vendor/reviews": "Reviews",
   "/vendor/addons": "Add-ons",
@@ -73,8 +71,6 @@ const DEFAULT_TITLES: Record<string, string> = {
 const TABLE_SHOWING_PATHS = new Set([
   "/vendor/orders",
   "/vendor/products",
-  "/vendor/categories",
-  "/vendor/subcategories",
   "/vendor/offers",
   "/vendor/reviews",
   "/vendor/addons",

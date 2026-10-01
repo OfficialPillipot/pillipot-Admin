@@ -120,13 +120,6 @@ const VENDOR_NAV_SECTIONS: NavSection<StaffNavItem>[] = [
     ],
   },
   {
-    title: "Catalog",
-    items: [
-      { to: "/vendor/categories", label: "Categories", end: true, icon: TagIcon },
-      { to: "/vendor/subcategories", label: "Subcategories", end: true, icon: ListBulletIcon },
-    ],
-  },
-  {
     title: "Account",
     items: [
       { to: "/vendor/profile", label: "My Profile", end: true, icon: UserCircleIcon },

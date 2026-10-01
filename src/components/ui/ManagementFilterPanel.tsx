@@ -18,7 +18,7 @@ export const MANAGEMENT_FILTER_BTN_CLASS =
   "h-11 w-28 shrink-0 justify-center text-sm rounded-[var(--radius-md)]";
 
 const panelClass =
-  "rounded-[var(--radius-xl)] border border-border/80 bg-surface p-4 shadow-[var(--shadow-card)] backdrop-blur-sm md:p-5";
+  "relative z-20 rounded-[var(--radius-xl)] border border-border/80 bg-surface p-4 shadow-[var(--shadow-card)] backdrop-blur-sm md:p-5";
 
 const gridClass =
   "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 [&>*]:min-w-0";
