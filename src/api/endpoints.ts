@@ -121,4 +121,5 @@ export const endpoints = {
   vendorPortalAddonById: (id: string) => `${V1}/vendor-portal/addons/${id}`,
   tags: `${V1}/tags`,
   tagById: (id: string) => `${V1}/tags/${id}`,
+  notificationsStream: `${V1}/notifications/stream`,
 } as const;

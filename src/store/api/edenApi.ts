@@ -1550,6 +1550,35 @@ export const edenApi = createApi({
           ]
           : [{ type: "VendorPortalOrder", id: "LIST" }],
     }),
+    getVendorPortalOrdersPaginated: builder.query<
+      PaginatedResponse<Order>,
+      {
+        page?: number;
+        limit?: number;
+        search?: string;
+        status?: string;
+        dateFrom?: string;
+        dateTo?: string;
+        type?: string;
+        productId?: string;
+      } | void
+    >({
+      query: (params) => ({
+        url: endpoints.vendorPortalOrders,
+        params: params || undefined,
+      }),
+      providesTags: (r) =>
+        r?.items
+          ? [
+            { type: "VendorPortalOrder" as const, id: "LIST" },
+            { type: "Order" as const, id: "LIST" },
+            ...r.items.map((o) => ({ type: "VendorPortalOrder" as const, id: o.id })),
+          ]
+          : [
+            { type: "VendorPortalOrder", id: "LIST" },
+            { type: "Order", id: "LIST" },
+          ],
+    }),
     updateVendorPortalOrderStatus: builder.mutation<
       Order,
       { id: string; status?: Order["status"]; trackingId?: string; remark?: string }
@@ -1917,6 +1946,7 @@ export const {
   useUpdateVendorPortalProductMutation,
   useDeleteVendorPortalProductMutation,
   useGetVendorPortalOrdersQuery,
+  useGetVendorPortalOrdersPaginatedQuery,
   useUpdateVendorPortalOrderStatusMutation,
   useGetVendorPortalCategoriesQuery,
   useCreateVendorPortalCategoryMutation,

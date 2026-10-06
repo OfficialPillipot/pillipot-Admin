@@ -307,12 +307,14 @@ function SidebarComponent({ user, onLogout, mobileOpen, setMobileOpen }: Sidebar
 
   const { data: vendorOrders = [] } = useGetVendorPortalOrdersQuery(undefined, {
     skip: !isVendor,
-    pollingInterval: 20000,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
   });
 
   const { data: vendorReviews = [] } = useGetVendorPortalReviewsQuery(undefined, {
     skip: !isVendor,
-    pollingInterval: 20000,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
   });
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);

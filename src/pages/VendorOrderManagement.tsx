@@ -17,10 +17,10 @@ import {
   type SelectOption
 } from "../components/orders/AdminOrderFilters";
 import { OrderStatusBadge } from "../components/orders/OrderStatusBadge";
-import { formatDate, isCompletedOrCodOrder } from "../lib/orderUtils";
+import { formatDate } from "../lib/orderUtils";
 import { downloadOrderPdf } from "../lib/download-order-pdf";
 import {
-  useGetVendorPortalOrdersQuery,
+  useGetVendorPortalOrdersPaginatedQuery,
   useUpdateVendorPortalOrderStatusMutation,
   useGetVendorPortalProductsQuery,
   useGetVendorPortalProfileQuery,
@@ -116,14 +116,23 @@ function VendorOrderManagement() {
   const selectAllRef = useRef<HTMLInputElement>(null);
 
   const queryParams = useMemo(() => {
-    const p: Record<string, string> = {};
+    const p: Record<string, string | number> = {
+      page: currentPage,
+      limit: pageSize,
+    };
     if (appliedSearch) p.search = appliedSearch;
     if (appliedDateFrom) p.dateFrom = appliedDateFrom;
     if (appliedDateTo) p.dateTo = appliedDateTo;
-    return Object.keys(p).length > 0 ? p : undefined;
-  }, [appliedSearch, appliedDateFrom, appliedDateTo]);
+    if (appliedStatus.length > 0) p.status = appliedStatus.join(",");
+    if (appliedProduct.length > 0) p.productId = appliedProduct.join(",");
+    if (appliedType) p.type = appliedType;
+    return p;
+  }, [currentPage, pageSize, appliedSearch, appliedDateFrom, appliedDateTo, appliedStatus, appliedProduct, appliedType]);
 
-  const { data: allOrders = [], isLoading } = useGetVendorPortalOrdersQuery(queryParams);
+  const { data: paginatedData, isLoading } = useGetVendorPortalOrdersPaginatedQuery(queryParams);
+  const orders = useMemo(() => paginatedData?.items ?? [], [paginatedData]);
+  const totalItems = paginatedData?.total ?? 0;
+  const totalPages = paginatedData?.totalPages ?? 1;
 
   useEffect(() => {
     markVendorSidebarOrdersSeen();
@@ -131,11 +140,11 @@ function VendorOrderManagement() {
   }, []);
 
   useEffect(() => {
-    if (allOrders.length > 0) {
+    if (orders.length > 0) {
       markVendorSidebarOrdersSeen();
       dispatchSidebarVendorOrdersRefresh();
     }
-  }, [allOrders.length]);
+  }, [orders.length]);
 
   const { data: products = [] } = useGetVendorPortalProductsQuery();
   const { refetch: refetchProfile } = useGetVendorPortalProfileQuery(undefined, {
@@ -154,29 +163,7 @@ function VendorOrderManagement() {
   const [storeDisabledModalOpen, setStoreDisabledModalOpen] = useState(false);
   const [storeDisabledReason, setStoreDisabledReason] = useState("");
 
-  // ── Filtered orders (table-level) ──
-  const orders = useMemo(() => {
-    let result = allOrders.filter(isCompletedOrCodOrder);
-    if (appliedStatus.length > 0) {
-      result = result.filter(o => appliedStatus.includes(o.status));
-    }
-    if (appliedProduct.length > 0) {
-      result = result.filter(o => appliedProduct.includes(o.productId));
-    }
-    if (appliedType) {
-      result = result.filter(o => {
-        if (appliedType === "cod") return o.orderType === "cod" || o.paymentMethod === "cod";
-        if (appliedType === "prepaid") return o.orderType === "prepaid" || o.paymentMethod === "razorpay" || o.paymentMethod === "online";
-        return o.orderType === appliedType;
-      });
-    }
-    return result;
-  }, [allOrders, appliedStatus, appliedProduct, appliedType]);
-
-  const paginatedOrders = useMemo(
-    () => orders.slice((currentPage - 1) * pageSize, currentPage * pageSize),
-    [orders, currentPage, pageSize]
-  );
+  const paginatedOrders = orders;
 
   // ── Checkbox selection logic ──
   const allVisibleSelected = paginatedOrders.length > 0 && paginatedOrders.every(o => selectedIds.has(o.id));
@@ -700,8 +687,8 @@ function VendorOrderManagement() {
         <TablePagination
           currentPage={currentPage}
           pageSize={pageSize}
-          totalItems={orders.length}
-          totalPages={Math.ceil(orders.length / pageSize) || 1}
+          totalItems={totalItems}
+          totalPages={totalPages}
           onPageChange={(page) => setCurrentPage(page)}
           onPageSizeChange={(size) => {
             setPageSize(size);

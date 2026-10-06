@@ -25,6 +25,8 @@ import {
   useGetVendorPortalOrdersQuery,
   useGetVendorPortalReviewsQuery,
 } from "../../store/api/edenApi";
+import { getAccessToken } from "../../lib/auth-token";
+import { getApiBaseUrl } from "../../api/api-base-url";
 import type { AdminReviewRow, BlogFeedItem, Order, StaffEnquiryListRow, User } from "../../types";
 
 function postPublishedMs(iso: string): number {
@@ -126,15 +128,17 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
     user.role === "super_admin" ||
     (user.role === "guest" && hasPermission(user, "staff_enquiries.view"));
 
-  // Shared RTK Query hooks: deduplicates requests with Sidebar.tsx automatically
+  // Shared RTK Query hooks (refetches on focus, zero background polling)
   const { data: rawVendorOrders = [], refetch: refetchVendorOrders } = useGetVendorPortalOrdersQuery(undefined, {
     skip: !isVendor,
-    pollingInterval: 20000,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
   });
 
   const { data: rawVendorReviews = [], refetch: refetchVendorReviews } = useGetVendorPortalReviewsQuery(undefined, {
     skip: !isVendor,
-    pollingInterval: 20000,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
   });
 
   // Keep track of known orders and triggered reminder milestones
@@ -283,50 +287,73 @@ function HeaderNotificationsComponent({ user }: { user: User }) {
     }
   }, [isStaff, showAdminEnquiries]);
 
-  // Polling for non-RTK staff / admin feeds
+  // Initial load and focus listener for non-RTK staff / admin feeds (zero background polling)
   useEffect(() => {
     if (!isStaff && !showAdminEnquiries) return;
     void refresh();
 
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-    const pollIntervalMs = 60_000;
-
-    const stopPolling = () => {
-      if (intervalId != null) {
-        window.clearInterval(intervalId);
-        intervalId = null;
-      }
-    };
-
-    const tick = () => {
-      if (document.visibilityState !== "visible") return;
-      void refresh();
-    };
-
-    const startPolling = () => {
-      if (intervalId != null) return;
-      intervalId = window.setInterval(tick, pollIntervalMs);
-    };
-
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
         void refresh();
-        startPolling();
-      } else {
-        stopPolling();
       }
     };
-
-    if (document.visibilityState === "visible") {
-      startPolling();
-    }
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onVisibility);
 
     return () => {
-      stopPolling();
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onVisibility);
     };
   }, [refresh, isStaff, showAdminEnquiries]);
+
+  // Real-time zero-cost Server-Sent Events (SSE) notification listener
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+
+    const baseUrl = getApiBaseUrl();
+    const streamUrl = `${baseUrl}${endpoints.notificationsStream}?token=${encodeURIComponent(token)}`;
+
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource(streamUrl);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data) as { type: string };
+          if (data.type === "HEARTBEAT") return;
+
+          if (data.type === "ORDER_CREATED" || data.type === "ORDER_UPDATED") {
+            if (isVendor) {
+              void refetchVendorOrders();
+            }
+          } else if (data.type === "REVIEW_CREATED") {
+            if (isVendor) {
+              void refetchVendorReviews();
+            }
+          } else if (data.type === "BLOG_POSTED" || data.type === "STAFF_ENQUIRY") {
+            if (isStaff || showAdminEnquiries) {
+              void refresh();
+            }
+          }
+        } catch {
+          /* ignore json parse error */
+        }
+      };
+
+      eventSource.onerror = () => {
+        // Native EventSource automatically handles reconnection
+      };
+    } catch {
+      /* ignore EventSource creation error */
+    }
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, [isVendor, isStaff, showAdminEnquiries, refetchVendorOrders, refetchVendorReviews, refresh]);
 
   useEffect(() => {
     const onRefresh = () => {
