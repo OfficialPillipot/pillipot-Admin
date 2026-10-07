@@ -1,9 +1,9 @@
-import { memo, useMemo, useState, useCallback } from "react";
+import { memo, useMemo, useState, useCallback, useEffect } from "react";
 import { Link } from "react-router";
-import { useAppSelector } from "../store/hooks";
-import { selectOrders } from "../store/ordersSlice";
-import { selectStaffMe, selectStaffMeLoading } from "../store/staffSlice";
-import { selectProducts } from "../store/productsSlice";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { fetchOrders, selectOrders } from "../store/ordersSlice";
+import { fetchStaffMe, selectStaffMe, selectStaffMeLoading } from "../store/staffSlice";
+import { fetchProducts, selectProducts } from "../store/productsSlice";
 import type { Order, OrderStatus } from "../types";
 import {
   Card,
@@ -24,10 +24,17 @@ import {
 type RecentOrderGroupRow = { items: Order[] };
 
 function StaffRecentOrdersPage() {
+  const dispatch = useAppDispatch();
   const orders = useAppSelector(selectOrders);
   const staffProfile = useAppSelector(selectStaffMe);
   const meLoading = useAppSelector(selectStaffMeLoading);
   const products = useAppSelector(selectProducts);
+
+  useEffect(() => {
+    void dispatch(fetchOrders());
+    void dispatch(fetchStaffMe());
+    void dispatch(fetchProducts());
+  }, [dispatch]);
   const staffId = staffProfile?.id ?? null;
   const [statusFilter, setStatusFilter] = useState("");
 

@@ -247,6 +247,10 @@ function AdminVendorOrderManagementPage() {
   }, [dispatch]);
 
   useEffect(() => {
+    void dispatch(fetchProducts());
+  }, [dispatch]);
+
+  useEffect(() => {
     if (!detailId) {
       setDiscountDraft("");
       return;

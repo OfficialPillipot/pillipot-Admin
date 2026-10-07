@@ -23,7 +23,7 @@ import {
   useGetVendorPortalOrdersPaginatedQuery,
   useUpdateVendorPortalOrderStatusMutation,
   useGetVendorPortalProductsQuery,
-  useGetVendorPortalProfileQuery,
+  useLazyGetVendorPortalProfileQuery,
 } from "../store/api/edenApi";
 import { toast } from "../lib/toast";
 import {
@@ -56,13 +56,26 @@ function getPendingTimeRemaining(createdAt: string): { hours: number; mins: numb
   return { hours, mins, isExpired: false, text: `${hours}h ${mins}m remaining` };
 }
 
+function getInitialMonthRange(): { from: string; to: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return {
+    from: `${y}-${m}-01`,
+    to: `${y}-${m}-${d}`,
+  };
+}
+
 function VendorOrderManagement() {
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const initialRange = useMemo(() => getInitialMonthRange(), []);
+
   // ── Draft filter states (updated in UI controls, applied on clicking Apply or Enter) ──
   const [searchDraft, setSearchDraft] = useState(() => searchParams.get("search") || "");
-  const [dateFromDraft, setDateFromDraft] = useState("");
-  const [dateToDraft, setDateToDraft] = useState("");
+  const [dateFromDraft, setDateFromDraft] = useState(() => searchParams.get("dateFrom") || initialRange.from);
+  const [dateToDraft, setDateToDraft] = useState(() => searchParams.get("dateTo") || initialRange.to);
   const [statusDraft, setStatusDraft] = useState<string[]>(() => {
     const s = searchParams.get("status");
     return s ? [s] : [];
@@ -71,12 +84,12 @@ function VendorOrderManagement() {
     const pid = searchParams.get("productId");
     return pid ? [pid] : [];
   });
-  const [typeDraft, setTypeDraft] = useState("");
+  const [typeDraft, setTypeDraft] = useState(() => searchParams.get("type") || "");
 
   // ── Applied filter states (used for querying server and filtering list) ──
   const [appliedSearch, setAppliedSearch] = useState(() => searchParams.get("search") || "");
-  const [appliedDateFrom, setAppliedDateFrom] = useState("");
-  const [appliedDateTo, setAppliedDateTo] = useState("");
+  const [appliedDateFrom, setAppliedDateFrom] = useState(() => searchParams.get("dateFrom") || initialRange.from);
+  const [appliedDateTo, setAppliedDateTo] = useState(() => searchParams.get("dateTo") || initialRange.to);
   const [appliedStatus, setAppliedStatus] = useState<string[]>(() => {
     const s = searchParams.get("status");
     return s ? [s] : [];
@@ -85,7 +98,7 @@ function VendorOrderManagement() {
     const pid = searchParams.get("productId");
     return pid ? [pid] : [];
   });
-  const [appliedType, setAppliedType] = useState("");
+  const [appliedType, setAppliedType] = useState(() => searchParams.get("type") || "");
 
   // Pagination state (default: 10 items)
   const [currentPage, setCurrentPage] = useState(1);
@@ -109,6 +122,21 @@ function VendorOrderManagement() {
       setSearchDraft(q);
       setAppliedSearch(q);
     }
+    const df = searchParams.get("dateFrom");
+    if (df !== null) {
+      setDateFromDraft(df);
+      setAppliedDateFrom(df);
+    }
+    const dt = searchParams.get("dateTo");
+    if (dt !== null) {
+      setDateToDraft(dt);
+      setAppliedDateTo(dt);
+    }
+    const t = searchParams.get("type");
+    if (t !== null) {
+      setTypeDraft(t);
+      setAppliedType(t);
+    }
   }, [searchParams]);
 
   const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
@@ -129,7 +157,7 @@ function VendorOrderManagement() {
     return p;
   }, [currentPage, pageSize, appliedSearch, appliedDateFrom, appliedDateTo, appliedStatus, appliedProduct, appliedType]);
 
-  const { data: paginatedData, isLoading } = useGetVendorPortalOrdersPaginatedQuery(queryParams);
+  const { data: paginatedData, isLoading, refetch } = useGetVendorPortalOrdersPaginatedQuery(queryParams);
   const orders = useMemo(() => paginatedData?.items ?? [], [paginatedData]);
   const totalItems = paginatedData?.total ?? 0;
   const totalPages = paginatedData?.totalPages ?? 1;
@@ -147,10 +175,7 @@ function VendorOrderManagement() {
   }, [orders.length]);
 
   const { data: products = [] } = useGetVendorPortalProductsQuery();
-  const { refetch: refetchProfile } = useGetVendorPortalProfileQuery(undefined, {
-    refetchOnMountOrArgChange: true,
-    refetchOnFocus: true,
-  });
+  const [triggerGetProfile] = useLazyGetVendorPortalProfileQuery();
   const [updateStatus] = useUpdateVendorPortalOrderStatusMutation();
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -221,15 +246,27 @@ function VendorOrderManagement() {
   }, [searchDraft, dateFromDraft, dateToDraft, statusDraft, productDraft, typeDraft]);
 
   const handleResetFilters = useCallback(() => {
-    setSearchDraft(appliedSearch);
-    setDateFromDraft(appliedDateFrom);
-    setDateToDraft(appliedDateTo);
-    setStatusDraft(appliedStatus);
-    setProductDraft(appliedProduct);
-    setTypeDraft(appliedType);
+    const defaultRange = getInitialMonthRange();
+    setSearchDraft("");
+    setDateFromDraft(defaultRange.from);
+    setDateToDraft(defaultRange.to);
+    setStatusDraft([]);
+    setProductDraft([]);
+    setTypeDraft("");
+
+    setAppliedSearch("");
+    setAppliedDateFrom(defaultRange.from);
+    setAppliedDateTo(defaultRange.to);
+    setAppliedStatus([]);
+    setAppliedProduct([]);
+    setAppliedType("");
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, [appliedSearch, appliedDateFrom, appliedDateTo, appliedStatus, appliedProduct, appliedType]);
+
+    setSearchParams({}, { replace: true });
+    void refetch();
+    toast.success("Filters reset to default");
+  }, [refetch, setSearchParams]);
 
   const handleClearFilters = useCallback(() => {
     setSearchDraft("");
@@ -249,6 +286,7 @@ function VendorOrderManagement() {
     setSelectedIds(new Set());
 
     setSearchParams({}, { replace: true });
+    toast.success("Filters cleared");
   }, [setSearchParams]);
 
   // ── Options ──
@@ -368,13 +406,13 @@ function VendorOrderManagement() {
         Boolean(res?.notes?.includes("[Store Disabled")) ||
         Boolean(res?.notes?.includes("Store Disabled"));
 
-      const profileResult = await refetchProfile();
-      const isNowDisabled = wasStoreDisabled || Boolean(profileResult?.data?.storeDisabledByAdmin);
+      const profileResult = await triggerGetProfile().unwrap().catch(() => null);
+      const isNowDisabled = wasStoreDisabled || Boolean(profileResult?.storeDisabledByAdmin);
 
       if (isNowDisabled) {
         const reason =
           (res as any)?.storeDisabledReason ||
-          profileResult?.data?.storeDisabledReason ||
+          profileResult?.storeDisabledReason ||
           "Two consecutive orders were cancelled without accepting an order in between.";
         setStoreDisabledReason(reason);
         setStoreDisabledModalOpen(true);
@@ -388,7 +426,7 @@ function VendorOrderManagement() {
     } finally {
       setIsCancelling(false);
     }
-  }, [cancelModalOrder, cancelRemark, updateStatus, selectedOrder, refetchProfile]);
+  }, [cancelModalOrder, cancelRemark, updateStatus, selectedOrder, triggerGetProfile]);
 
   const handleDownloadCustomerImage = useCallback(async (imageUrl: string, orderId: string) => {
     try {

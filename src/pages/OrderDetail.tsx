@@ -1,8 +1,8 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useParams, Link } from "react-router";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { selectOrders, updateOrder } from "../store/ordersSlice";
-import { selectProducts } from "../store/productsSlice";
+import { fetchOrders, selectOrders, updateOrder } from "../store/ordersSlice";
+import { fetchProducts, selectProducts } from "../store/productsSlice";
 import { Card, Badge, Button } from "../components/ui";
 import {
   formatDateTime,
@@ -16,6 +16,12 @@ import { toast } from "../lib/toast";
 function OrderDetailPage() {
   const dispatch = useAppDispatch();
   const { id } = useParams<{ id: string }>();
+
+  useEffect(() => {
+    void dispatch(fetchOrders());
+    void dispatch(fetchProducts());
+  }, [dispatch]);
+
   const allOrders = useAppSelector(selectOrders);
   const currentOrder = allOrders.find((o) => o.id === id);
   const relatedItems = allOrders.filter(

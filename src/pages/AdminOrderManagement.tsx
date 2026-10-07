@@ -290,6 +290,10 @@ function AdminOrderManagementPage({ mode = "main" }: { mode?: "main" | "pending_
   }, [dispatch]);
 
   useEffect(() => {
+    void dispatch(fetchProducts());
+  }, [dispatch]);
+
+  useEffect(() => {
     if (!detailId) {
       setDiscountDraft("");
       return;

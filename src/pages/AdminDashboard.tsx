@@ -1,11 +1,11 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { useAppSelector } from "../store/hooks";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { useMediaQuery } from "../hooks/useMediaQuery";
-import { selectOrders } from "../store/ordersSlice";
-import { selectStaff } from "../store/staffSlice";
-import { selectProducts } from "../store/productsSlice";
-import { selectSettings } from "../store/settingsSlice";
+import { fetchOrders, selectOrders } from "../store/ordersSlice";
+import { fetchStaff, selectStaff } from "../store/staffSlice";
+import { fetchProducts, selectProducts } from "../store/productsSlice";
+import { fetchSettings, selectSettings } from "../store/settingsSlice";
 import {
   useGetAdminVendorOrdersQuery,
   useGetVendorsQuery,
@@ -126,10 +126,18 @@ const AdminDashboardPeriodControls = memo(function AdminDashboardPeriodControls(
 });
 
 function AdminDashboardPage() {
+  const dispatch = useAppDispatch();
   const orders = useAppSelector(selectOrders);
   const staff = useAppSelector(selectStaff);
   const products = useAppSelector(selectProducts);
   const settings = useAppSelector(selectSettings);
+
+  useEffect(() => {
+    void dispatch(fetchOrders());
+    void dispatch(fetchStaff());
+    void dispatch(fetchProducts());
+    void dispatch(fetchSettings());
+  }, [dispatch]);
 
   const { data: vendorOrdersData } = useGetAdminVendorOrdersQuery();
   const vendorOrders = useMemo(

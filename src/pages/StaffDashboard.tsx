@@ -1,14 +1,14 @@
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import { Link } from "react-router";
 import {
   TrophyIcon,
   CheckCircleIcon,
 } from "@heroicons/react/24/solid";
-import { useAppSelector } from "../store/hooks";
-import { selectOrders } from "../store/ordersSlice";
-import { selectStaffMe, selectStaffMeLoading } from "../store/staffSlice";
-import { selectProducts } from "../store/productsSlice";
-import { selectSettings } from "../store/settingsSlice";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { fetchOrders, selectOrders } from "../store/ordersSlice";
+import { fetchStaffMe, selectStaffMe, selectStaffMeLoading } from "../store/staffSlice";
+import { fetchProducts, selectProducts } from "../store/productsSlice";
+import { fetchSettings, selectSettings } from "../store/settingsSlice";
 import {
   Card,
   CardHeader,
@@ -23,11 +23,19 @@ import {
 } from "../lib/orderUtils";
 
 function StaffDashboardPage() {
+  const dispatch = useAppDispatch();
   const orders = useAppSelector(selectOrders);
   const staffProfile = useAppSelector(selectStaffMe);
   const meLoading = useAppSelector(selectStaffMeLoading);
   const products = useAppSelector(selectProducts);
   const settings = useAppSelector(selectSettings);
+
+  useEffect(() => {
+    void dispatch(fetchOrders());
+    void dispatch(fetchStaffMe());
+    void dispatch(fetchProducts());
+    void dispatch(fetchSettings());
+  }, [dispatch]);
 
   const lowStockThreshold = settings?.lowStockThreshold ?? 0;
 

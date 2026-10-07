@@ -1,10 +1,10 @@
-import { memo, useMemo, useState, useCallback, useDeferredValue } from "react";
+import { memo, useMemo, useState, useCallback, useDeferredValue, useEffect } from "react";
 import { Link, useSearchParams } from "react-router";
 import { PencilIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../context/AuthContext";
-import { useAppSelector } from "../store/hooks";
-import { selectOrders } from "../store/ordersSlice";
-import { selectProducts } from "../store/productsSlice";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { fetchOrders, selectOrders } from "../store/ordersSlice";
+import { fetchProducts, selectProducts } from "../store/productsSlice";
 import {
   Card,
   CardHeader,
@@ -38,9 +38,15 @@ const getTodayStr = () => {
 };
 
 function OrdersListPage() {
+  const dispatch = useAppDispatch();
   const { user } = useAuth();
   const orders = useAppSelector(selectOrders);
   const products = useAppSelector(selectProducts);
+
+  useEffect(() => {
+    void dispatch(fetchOrders());
+    void dispatch(fetchProducts());
+  }, [dispatch]);
   const [searchParams, setSearchParams] = useSearchParams();
   const [productFilter, setProductFilter] = useState(
     () => searchParams.get("product") ?? ""

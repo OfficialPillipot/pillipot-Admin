@@ -1961,6 +1961,7 @@ export const {
   useGetAdminVendorProductsPaginatedQuery,
   useGetAdminVendorOrdersQuery,
   useGetVendorPortalProfileQuery,
+  useLazyGetVendorPortalProfileQuery,
   useUpdateVendorPortalProfileMutation,
   useGetVendorPortalReviewsQuery,
   useGetAdminAddonsQuery,

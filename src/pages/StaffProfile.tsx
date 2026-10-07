@@ -1,11 +1,11 @@
 import { memo, useMemo, useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { selectStaff, updateStaff } from "../store/staffSlice";
+import { fetchStaff, selectStaff, updateStaff } from "../store/staffSlice";
 import { selectStaffPositions, fetchStaffPositions } from "../store/staffPositionsSlice";
 import { selectAssignedNumbers, fetchAssignedNumbers } from "../store/assignedNumbersSlice";
-import { selectOrders } from "../store/ordersSlice";
-import { selectProducts } from "../store/productsSlice";
+import { fetchOrders, selectOrders } from "../store/ordersSlice";
+import { fetchProducts, selectProducts } from "../store/productsSlice";
 import {
   Card,
   CardHeader,
@@ -55,6 +55,9 @@ function StaffProfilePage() {
   useEffect(() => {
     void dispatch(fetchStaffPositions());
     void dispatch(fetchAssignedNumbers());
+    void dispatch(fetchStaff());
+    void dispatch(fetchOrders());
+    void dispatch(fetchProducts());
   }, [dispatch]);
 
   useEffect(() => {

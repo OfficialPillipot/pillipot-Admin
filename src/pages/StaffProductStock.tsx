@@ -1,7 +1,7 @@
-import { memo, useMemo } from "react";
-import { useAppSelector } from "../store/hooks";
-import { selectProducts } from "../store/productsSlice";
-import { selectSettings } from "../store/settingsSlice";
+import { memo, useEffect, useMemo } from "react";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { fetchProducts, selectProducts } from "../store/productsSlice";
+import { fetchSettings, selectSettings } from "../store/settingsSlice";
 import type { Product } from "../types";
 import { Card, Table, Badge } from "../components/ui";
 import {
@@ -10,8 +10,14 @@ import {
 } from "../lib/stockUtils";
 
 function StaffProductStockPage() {
+  const dispatch = useAppDispatch();
   const products = useAppSelector(selectProducts);
   const settings = useAppSelector(selectSettings);
+
+  useEffect(() => {
+    void dispatch(fetchProducts());
+    void dispatch(fetchSettings());
+  }, [dispatch]);
   const lowStockThreshold = settings?.lowStockThreshold ?? 0;
 
   const productsInventorySorted = useMemo(() => {

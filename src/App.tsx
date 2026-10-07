@@ -1,17 +1,7 @@
 import { useEffect, useState } from "react";
 import { ToastContainer } from "react-toastify";
 import { BrowserRouter } from "react-router";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-import { useAppDispatch } from "./store/hooks";
-import {
-  fetchProducts,
-  fetchCategories,
-  fetchOrders,
-  fetchStaff,
-  fetchStaffMe,
-  fetchCustomers,
-  fetchSettings,
-} from "./store";
+import { AuthProvider } from "./context/AuthContext";
 import { ApiLoadingOverlay } from "./components/ApiLoadingOverlay";
 import { RootRoutes } from "./routes";
 
@@ -30,50 +20,8 @@ function resolveTheme(): ThemeMode {
     : "light";
 }
 
-function DataLoader() {
-  const dispatch = useAppDispatch();
-  const { isAuthenticated, user } = useAuth();
-  /** Avoid re-running bootstrap when `user` is a new object reference with the same data (overwrites staff list and drops optimistic rows). */
-  const userId = user?.id ?? "";
-  const userRole = user?.role;
-  const permissionsKey = (user?.permissions ?? []).slice().sort().join("|");
-  const staffId = user?.staffId ?? "";
-  useEffect(() => {
-    if (!isAuthenticated || !user) return;
-    if (user.role !== "vendor") {
-      dispatch(fetchProducts());
-      dispatch(fetchCategories());
-      dispatch(fetchOrders());
-      void dispatch(fetchSettings());
-    }
-    const p = user.permissions ?? [];
-    if (user.role === "super_admin" || p.includes("staff.view")) {
-      dispatch(fetchStaff());
-    }
-    if (user.role === "super_admin" || p.includes("customers.view")) {
-      dispatch(fetchCustomers());
-    }
-    if (user.role === "staff" && user.staffId) {
-      void dispatch(fetchStaffMe());
-    }
-  }, [
-    dispatch,
-    isAuthenticated,
-    userId,
-    userRole,
-    permissionsKey,
-    staffId,
-  ]);
-  return null;
-}
-
 function AppWithData() {
-  return (
-    <>
-      <DataLoader />
-      <RootRoutes />
-    </>
-  );
+  return <RootRoutes />;
 }
 
 function App() {
