@@ -1459,12 +1459,24 @@ export const edenApi = createApi({
             { type: "Product", id: "LIST" },
           ],
     }),
-    createVendorPortalProduct: builder.mutation<Product, Partial<Product> & { image?: File | File[]; video?: File }>({
+    createVendorPortalProduct: builder.mutation<Product, Partial<Product> & { image?: File | File[]; video?: File; tags?: string[] }>({
       query: (body) => {
         const fd = new FormData();
         Object.entries(body).forEach(([key, val]) => {
           if (val === undefined || key === "image" || key === "video") return;
-          fd.append(key, val === null ? "" : String(val));
+          if (key === "tags" && Array.isArray(val)) {
+            (val as string[]).forEach((t) => fd.append("tags", String(t)));
+            return;
+          }
+          if ((key === "categoryIds" || key === "subcategoryIds") && Array.isArray(val)) {
+            (val as string[]).forEach((id) => fd.append(key, String(id)));
+            return;
+          }
+          if (typeof val === "object" && val !== null) {
+            fd.append(key, JSON.stringify(val));
+          } else {
+            fd.append(key, val === null ? "" : String(val));
+          }
         });
         if (body.image) {
           if (Array.isArray(body.image)) {
@@ -1487,13 +1499,25 @@ export const edenApi = createApi({
     }),
     updateVendorPortalProduct: builder.mutation<
       Product,
-      { id: string; patch: Partial<Product> & { image?: File | File[]; video?: File } }
+      { id: string; patch: Partial<Product> & { image?: File | File[]; video?: File; tags?: string[] } }
     >({
       query: ({ id, patch }) => {
         const fd = new FormData();
         Object.entries(patch).forEach(([key, val]) => {
           if (val === undefined || key === "image" || key === "video") return;
-          fd.append(key, val === null ? "" : String(val));
+          if (key === "tags" && Array.isArray(val)) {
+            (val as string[]).forEach((t) => fd.append("tags", String(t)));
+            return;
+          }
+          if ((key === "categoryIds" || key === "subcategoryIds") && Array.isArray(val)) {
+            (val as string[]).forEach((id) => fd.append(key, String(id)));
+            return;
+          }
+          if (typeof val === "object" && val !== null) {
+            fd.append(key, JSON.stringify(val));
+          } else {
+            fd.append(key, val === null ? "" : String(val));
+          }
         });
         if (patch.image) {
           if (Array.isArray(patch.image)) {
